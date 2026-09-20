@@ -1,7 +1,23 @@
 package Entities;
 
 
+import Scene.CameraController;
+
 import static com.raylib.Raylib.*;
+
+enum PlayerAnimation {
+    Jump_Full_Long,
+    Jump_Full_Short,
+    Jump_Idle,
+    Jump_Land,
+    Jump_Start,
+    Running_A,
+    Running_B,
+    T_Pose,
+    Walking_A,
+    Walking_B,
+    Walking_C
+}
 
 public class Player extends Entity {
 
@@ -10,6 +26,9 @@ public class Player extends Entity {
     private boolean sex; // true = male, false = female
     private int level;
     private int health;
+
+
+    private CameraController cameraController;
 
     public void setName(String name) {
         this.name = name;
@@ -43,30 +62,72 @@ public class Player extends Entity {
         this.level = level;
     }
 
+    public void setCameraController(CameraController cameraController) {
+        this.cameraController = cameraController;
+    }
+
     @Override
     public void update(float dt) {
         Vector3 position = getPosition();
 
         boolean moving = false;
 
+        Camera3D camera = cameraController.getCamera();
+
+        float forwardX = camera.target().x() - camera._position().x();
+        float forwardZ = camera.target().z() - camera._position().z();
+
+        float length = (float)Math.sqrt(forwardX * forwardX + forwardZ * forwardZ);
+
+        if (length > 0.0f) {
+            forwardX /= length;
+            forwardZ /= length;
+        }
+
+        float rightX = -forwardZ;
+        float rightZ = forwardX;
+
+        float moveX = 0.0f;
+        float moveZ = 0.0f;
+
         if (IsKeyDown(KEY_W)) {
-            position.z(position.z() - movementSpeed * dt);
+            moveX += forwardX;
+            moveZ += forwardZ;
             moving = true;
         }
 
         if (IsKeyDown(KEY_S)) {
-            position.z(position.z() + movementSpeed * dt);
-            moving = true;
-        }
-
-        if (IsKeyDown(KEY_A)) {
-            position.x(position.x() - movementSpeed * dt);
+            moveX -= forwardX;
+            moveZ -= forwardZ;
             moving = true;
         }
 
         if (IsKeyDown(KEY_D)) {
-            position.x(position.x() + movementSpeed * dt);
+            moveX += rightX;
+            moveZ += rightZ;
             moving = true;
+        }
+
+        if (IsKeyDown(KEY_A)) {
+            moveX -= rightX;
+            moveZ -= rightZ;
+            moving = true;
+        }
+
+        float moveLength = (float)Math.sqrt(moveX * moveX + moveZ * moveZ);
+
+        if (moveLength > 0.0f) {
+            moveX /= moveLength;
+            moveZ /= moveLength;
+            position.x(position.x() + moveX * movementSpeed * dt);
+
+            position.z( position.z() + moveZ * movementSpeed * dt);
+            float angle = (float)Math.toDegrees(Math.atan2(moveX, moveZ));
+
+            setRotation(new Vector3()
+                .x(0)
+                .y(angle)
+                .z(0));
         }
 
         setPosition(position);
@@ -74,7 +135,7 @@ public class Player extends Entity {
         if (moving) {
             setAnimation(9);
         } else {
-            setAnimation(7);
+            setAnimation(2);
         }
 
         updateAnimation(dt);

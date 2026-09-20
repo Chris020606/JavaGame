@@ -17,7 +17,7 @@ public abstract class Entity {
     private boolean hasSkeleton;
 
     private float  scale = 1.0f;
-    private Vector3  rotation;
+    private Vector3  rotation = new Vector3();
     private Vector3  position;
     private Material material;
 
@@ -49,7 +49,7 @@ public abstract class Entity {
         this.position = position;
     }
 
-    public void setRotation(Vector3 rotation, Vector3 z) {
+    public void setRotation(Vector3 rotation) {
         this.rotation = rotation;
     }
 

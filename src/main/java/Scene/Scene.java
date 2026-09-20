@@ -72,9 +72,16 @@ public class Scene {
         for (Entity entity : entities ) {
             DrawModelEx(entity.getModel(),
                 entity.getPosition(),
-                new Vector3().x(0).y(1).z(0)
-                ,180.0f,
-                    new Vector3().x(entity.getScale()).y(entity.getScale()).z(entity.getScale()), WHITE);
+                new Vector3()
+                    .x(0)
+                    .y(1)
+                    .z(0)
+                ,entity.getRotation().y(),
+                new Vector3()
+                    .x(entity.getScale())
+                    .y(entity.getScale())
+                    .z(entity.getScale()),
+                WHITE);
 
 
         }

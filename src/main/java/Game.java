@@ -97,6 +97,8 @@ public class Game {
 
         scene.addEntity(player);
         scene.setMainCamera(player);
+
+        player.setCameraController(scene.getCameraController());
     }
 
     public Player getPlayer() {

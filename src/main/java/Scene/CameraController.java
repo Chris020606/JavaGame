@@ -50,27 +50,20 @@ public class CameraController {
     public void update(float dt) {
 
         Vector2 mouseDelta = GetMouseDelta();
-
         yaw -= mouseDelta.x() * mouseSensitivity;
-
         pitch -= mouseDelta.y() * mouseSensitivity;
-
         pitch = Math.max(-20.0f, Math.min(70.0f, pitch));
 
         Vector3 playerPosition = target.getPosition();
 
         float yawRadians = (float) Math.toRadians(yaw);
-
         float pitchRadians = (float) Math.toRadians(pitch);
 
         float horizontalDistance = distance * (float) Math.cos(pitchRadians);
-
         float verticalDistance = distance * (float) Math.sin(pitchRadians);
 
         float cameraX = playerPosition.x() + horizontalDistance * (float) Math.sin(yawRadians);
-
         float cameraZ = playerPosition.z() + horizontalDistance * (float) Math.cos(yawRadians);
-
         float cameraY =  playerPosition.y() + verticalDistance + 1.0f;
 
         camera._position( new Vector3()
