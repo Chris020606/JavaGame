@@ -1,28 +1,29 @@
-import static com.raylib.Colors.RAYWHITE;
-import static com.raylib.Colors.VIOLET;
+import Entities.Player;
+import Scene.SceneManager;
+import com.raylib.Raylib;
+
+import static com.raylib.Colors.*;
 import static com.raylib.Raylib.*;
 
 public class Main {
     public static void main(String args[]) {
-        String appHomeDir = System.getenv("APP_HOME");
-        System.out.println(appHomeDir);
-        InitWindow(800, 450, "Demo");
+
+        final int screenWidth = 1200;
+        final int screenHeight = 1200;
+        SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT | FLAG_WINDOW_HIGHDPI);
+        InitWindow(screenWidth, screenHeight, "Demo");
         SetTargetFPS(60);
-        Camera3D camera = new Camera3D()._position(new Vector3().x(18).y(16).z(18))
-                .target(new Vector3())
-                .up(new Vector3().x(0).y(1).z(0))
-                .fovy(45).projection(CAMERA_PERSPECTIVE);
+
+        Game game = new Game();
 
         while (!WindowShouldClose()) {
-            UpdateCamera(camera, CAMERA_ORBITAL);
+            game.update(GetFrameTime());
+
             BeginDrawing();
-            ClearBackground(RAYWHITE);
-            BeginMode3D(camera);
-            DrawGrid(20, 1.0f);
-            EndMode3D();
-            DrawText("Hello world", 190, 200, 20, VIOLET);
-            DrawFPS(20, 20);
+            ClearBackground(Fade(BLUE, 0.3f));
+            game.render();
             EndDrawing();
+
         }
         CloseWindow();
     }
