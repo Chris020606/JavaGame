@@ -36,8 +36,8 @@ jobs:
         shell: bash
         run: |
           GAME="$GITHUB_WORKSPACE/build/native/Outpost/bin/Outpost"
-          test -x "$GAME"
-          test -d "$GITHUB_WORKSPACE/build/native/Outpost/resources"
+          test -f "$GAME"
+          test -d "$GITHUB_WORKSPACE/build/native/Outpost/lib/app/resources"
       - name: Verify packaged macOS launcher
         if: runner.os == 'macOS'
         shell: bash
@@ -51,7 +51,7 @@ jobs:
         run: |
           $game = Join-Path $env:GITHUB_WORKSPACE 'build/native/Outpost/Outpost.exe'
           if (!(Test-Path $game)) { throw "Packaged game launcher was not created" }
-          if (!(Test-Path (Join-Path $env:GITHUB_WORKSPACE 'build/native/Outpost/resources'))) { throw "Packaged resources were not created" }
+          if (!(Test-Path (Join-Path $env:GITHUB_WORKSPACE 'build/native/Outpost/app/resources'))) { throw "Packaged resources were not created" }
       - name: Archive portable game
         shell: bash
         run: python tools/archive_release.py '${{ matrix.name }}'
