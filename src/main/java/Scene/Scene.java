@@ -94,12 +94,11 @@ public class Scene {
 
     public void updatesEntities(float dt) {
 
-        if (cameraController != null) {
-            cameraController.update(dt);
-        }
-
         for (Entity entity : entities ) {
             entity.update(dt);
+        }
+        if (cameraController != null) {
+            cameraController.update(dt);
         }
     }
 }

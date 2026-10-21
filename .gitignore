@@ -61,3 +61,25 @@ node_modules/
 
 # User-generated content
 # (Add any runtime-generated data directories here)
+
+# Local game state and native crash dumps
+/outpost-data/
+/save.properties*
+/settings.properties*
+replay_pid*.log
+hs_err_pid*.log
+*.hprof
+*.dmp
+
+# Downloaded source archives and unused asset authoring formats (keep runtime glTF)
+/resources/*.zip
+/resources/KayKit_Adventurers_2.0_FREE/Samples/
+/resources/KayKit_Adventurers_2.0_FREE/Animations/
+/resources/KayKit_Adventurers_2.0_FREE/Assets/fbx*/
+/resources/KayKit_Adventurers_2.0_FREE/Assets/obj/
+/resources/KayKit_Adventurers_2.0_FREE/Characters/fbx/
+/resources/KayKit_Adventurers_2.0_FREE/Textures/
+/resources/KayKit_Adventurers_2.0_FREE/contents.png
+/resources/KayKit_Character_Animations_1.1/*
+!/resources/KayKit_Character_Animations_1.1/License.txt
+!/gradle/wrapper/gradle-wrapper.jar

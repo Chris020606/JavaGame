@@ -1,0 +1,91 @@
+name: Test and package Outpost
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows-x64
+          - os: ubuntu-24.04
+            name: linux-x64
+          - os: macos-15
+            name: macos-arm64
+          - os: macos-15-intel
+            name: macos-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Build, test, and bundle Java runtime
+        shell: bash
+        run: bash ./gradlew test packageGame
+      - name: Linux display dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1 libasound2t64
+      - name: Test packaged Linux launcher from another directory
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          GAME="$GITHUB_WORKSPACE/build/native/Outpost/bin/Outpost"
+          cd "$RUNNER_TEMP"
+          xvfb-run -a "$GAME" --smoke-test --hidden
+      - name: Test packaged macOS launcher from another directory
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          GAME="$GITHUB_WORKSPACE/build/native/Outpost.app/Contents/MacOS/Outpost"
+          cd "$RUNNER_TEMP"
+          "$GAME" --smoke-test --hidden
+      - name: Test packaged Windows launcher from another directory
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $game = Join-Path $env:GITHUB_WORKSPACE 'build/native/Outpost/Outpost.exe'
+          Set-Location $env:RUNNER_TEMP
+          $process = Start-Process $game -ArgumentList '--smoke-test','--hidden' -PassThru -Wait
+          if ($process.ExitCode -ne 0) { throw "Packaged game failed: $($process.ExitCode)" }
+      - name: Archive portable game
+        shell: bash
+        run: python tools/archive_release.py '${{ matrix.name }}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Outpost-${{ matrix.name }}
+          path: build/release/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: diagnostics-${{ matrix.name }}
+          path: |
+            build/reports/tests/
+            build/ui-*.png
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: desktop
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Outpost-*
+          merge-multiple: true
+          path: release
+      - name: Publish tagged release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" release/* --verify-tag --title "Outpost $RELEASE_TAG" --generate-notes

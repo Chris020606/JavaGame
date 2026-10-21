@@ -9,8 +9,8 @@ public class CameraController {
     private Camera3D camera;
     private Entity target;
     private float yaw = 0.0f;
-    private float pitch = 20.0f;
-    private float distance = 7.0f;
+    private float pitch = 48.0f;
+    private float distance = 15.0f;
     private float mouseSensitivity = 0.15f;
 
     public CameraController(Entity entity) {
@@ -21,15 +21,17 @@ public class CameraController {
         camera = new Camera3D()._position(new Vector3() .x(targetPosition.x() + 5.0f)
                                                         .y(targetPosition.y() + 5.0f)
                                                         .z(targetPosition.z() + 6.0f));
-        camera.fovy(90.0f);
+        camera.fovy(55.0f);
         camera.up().x(0.0f).y(1.0f).z(0.0f);
         camera.projection(CAMERA_PERSPECTIVE);
         camera.target(new Vector3() .x(targetPosition.x())
                                     .y(targetPosition.y() + 1.0f)
                                     .z(targetPosition.z()));
 
-        DisableCursor();
+
     }
+
+    public void setSensitivity(float value) { mouseSensitivity=value; }
 
     public void setCamera(Camera3D camera) {
         this.camera = camera;
@@ -50,9 +52,11 @@ public class CameraController {
     public void update(float dt) {
 
         Vector2 mouseDelta = GetMouseDelta();
-        yaw -= mouseDelta.x() * mouseSensitivity;
-        pitch -= mouseDelta.y() * mouseSensitivity;
-        pitch = Math.max(-20.0f, Math.min(70.0f, pitch));
+        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+            yaw -= mouseDelta.x() * mouseSensitivity;
+            pitch -= mouseDelta.y() * mouseSensitivity;
+        }
+        pitch = Math.max(15.0f, Math.min(70.0f, pitch));
 
         Vector3 playerPosition = target.getPosition();
 

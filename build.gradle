@@ -6,41 +6,76 @@ plugins {
     id 'com.gradleup.shadow' version '9.4.1'
 }
 
-group = 'org.example'
-version = '1.0-SNAPSHOT'
-
-repositories {
-    mavenCentral()
-//    maven {
-//        url "https://s01.oss.sonatype.org/content/repositories/staging/"
-//        metadataSources { artifact() }
-//    }
-}
+group = 'outpost'
+version = '1.0.0'
+repositories { mavenCentral() }
 
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
-    implementation 'uk.co.electronstudio.jaylib:jaylib:6.0.+'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.7.0'
+    implementation 'uk.co.electronstudio.jaylib:jaylib:6.0.1-0'
 }
 
+tasks.withType(JavaCompile).configureEach { options.release = 24 }
+def isMac = DefaultNativePlatform.currentOperatingSystem.isMacOsX()
 application {
     mainClass = project.properties['main'] ?: 'Main'
-    if(DefaultNativePlatform.currentOperatingSystem.isMacOsX()) {
-        applicationDefaultJvmArgs = ['-XstartOnFirstThread']
+    applicationDefaultJvmArgs = ['--enable-native-access=ALL-UNNAMED'] + (isMac ? ['-XstartOnFirstThread'] : [])
+}
+test { useJUnitPlatform() }
+
+def runtimeAssets = copySpec {
+    from('resources') {
+        include 'knight.glb', 'outpost/**', 'audio/**'
+        include 'KayKit_Adventurers_2.0_FREE/Assets/gltf/**'
+        include 'KayKit_Adventurers_2.0_FREE/Characters/gltf/*.png'
+        include 'KayKit_Adventurers_2.0_FREE/License.txt', 'KayKit_Character_Animations_1.1/License.txt'
     }
 }
-
-test {
-    useJUnitPlatform()
-}
-
-
 distributions {
     main {
         contents {
-            into('resources'){
-                from 'resources'
-            }
+            into('resources') { with runtimeAssets }
+            from('README.md', 'THIRD_PARTY_NOTICES.md')
+            into('licenses') { from 'licenses' }
         }
     }
+}
+shadowJar { archiveFileName = 'outpost.jar'; mergeServiceFiles() }
+
+tasks.register('stagePackage', Sync) {
+    dependsOn shadowJar
+    into layout.buildDirectory.dir('package-input')
+    from(tasks.shadowJar.archiveFile)
+    into('resources') { with runtimeAssets }
+    from('README.md', 'THIRD_PARTY_NOTICES.md')
+    into('licenses') { from 'licenses' }
+    into('icons') { from 'packaging/icons' }
+}
+// Build on each target OS: jpackage embeds a matching Java runtime and native launcher.
+tasks.register('packageGame', Exec) {
+    dependsOn stagePackage
+    doFirst {
+        def destination = layout.buildDirectory.dir('native').get().asFile
+        delete destination
+        def icon = DefaultNativePlatform.currentOperatingSystem.isWindows() ? 'outpost.ico' :
+            (DefaultNativePlatform.currentOperatingSystem.isMacOsX() ? 'outpost.icns' : 'outpost.png')
+        commandLine([new File(System.getProperty('java.home'), DefaultNativePlatform.currentOperatingSystem.isWindows() ? 'bin/jpackage.exe' : 'bin/jpackage').absolutePath,
+            '--type', 'app-image', '--name', 'Outpost', '--app-version', project.version.toString(),
+            '--input', layout.buildDirectory.dir('package-input').get().asFile.absolutePath,
+            '--dest', destination.absolutePath, '--main-jar', 'outpost.jar', '--main-class', 'Main',
+            '--icon', layout.buildDirectory.dir('package-input/icons/' + icon).get().asFile.absolutePath,
+            '--add-modules', 'java.base,java.desktop,java.logging,java.management,jdk.unsupported,jdk.zipfs',
+            '--java-options', '--enable-native-access=ALL-UNNAMED'] +
+            (isMac ? ['--java-options', '-XstartOnFirstThread'] : []))
+    }
+}
+tasks.register('inputSmokeTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'InputSmokeTest'
+    jvmArgs = application.applicationDefaultJvmArgs
+    systemProperty 'outpost.dataDir', layout.buildDirectory.dir('smoke-userdata').get().asFile.absolutePath
+    workingDir = projectDir
 }

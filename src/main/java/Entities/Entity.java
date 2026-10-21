@@ -1,5 +1,7 @@
 package Entities;
 
+import java.util.HashMap;
+
 import static com.raylib.Raylib.*;
 
 public abstract class Entity {
@@ -18,7 +20,7 @@ public abstract class Entity {
 
     private float  scale = 1.0f;
     private Vector3  rotation = new Vector3();
-    private Vector3  position;
+    private Vector3  position = new Vector3();
     private Material material;
 
     public Model getModel() {
@@ -61,22 +63,39 @@ public abstract class Entity {
         this.model = model;
     }
 
+    private final HashMap<String, Integer> animationIndices = new HashMap<>();
+
+    protected Integer getAnimationIndex(String name) { return animationIndices.get(name);}
+
     public void setAnimation(int index) {
         if (!hasAnimation) {
+            System.out.println("No animation");
             return;
         }
 
         if (index < 0 || index >= animationCount[0]) {
+            System.out.println("Invalid index");
             return;
         }
 
-        // Don't restart the animation every frame
         if (animationIndex == index) {
             return;
         }
         animationIndex = index;
         currentFrame = 0;
         animationTimer = 0.0f;
+    }
+
+    public void restartAnimation() {
+        currentFrame = 0;
+        animationTimer = 0;
+    }
+
+    public void playAnimationProgress(float progress) {
+        if (!hasAnimation || model == null) return;
+        ModelAnimation clip = new ModelAnimation(animations).position(animationIndex);
+        currentFrame = Math.min(clip.keyframeCount()-1, (int)(Math.max(0, progress)*clip.keyframeCount()));
+        UpdateModelAnimation(model, clip, currentFrame);
     }
 
     public ModelAnimation getAnimation() {
@@ -87,12 +106,16 @@ public abstract class Entity {
 
         animations = LoadModelAnimations(path, animationCount);
 
-        if (animationCount[0] > 0) {
+        for (int i = 0; i < animationCount[0]; i++) {
             hasAnimation = true;
-            System.out.println("Loaded " + animationCount[0] + " animations");
-        }
-        else {
-            System.out.println("WARNING: No animations loaded from: " + path);
+
+            ModelAnimation animation = new ModelAnimation(animations).position(i);
+
+            String name = animation.name().getString();
+
+            animationIndices.put(name, i);
+
+            System.out.println(i + ": " + name + " | Frames: " + animation.keyframeCount());
         }
     }
 
@@ -107,7 +130,8 @@ public abstract class Entity {
         animationTimer += dt;
         float frameTime = 1.0f / animationFPS;
 
-        if (animationTimer >= frameTime) {
+        if (animation.keyframeCount() <= 0) return;
+        while (animationTimer >= frameTime) {
             animationTimer -= frameTime;
             currentFrame++;
             if (currentFrame >= animation.keyframeCount()) {
@@ -132,11 +156,16 @@ public abstract class Entity {
     }
 
     public void setAnimationFPS(float fps) {
-        animationFPS = fps;
+        if (fps > 0 && Float.isFinite(fps)) animationFPS = fps;
     }
 
     public ModelSkeleton getModelSkeleton() {
         return modelSkeleton;
+    }
+
+    public void dispose() {
+        if (animations != null) { UnloadModelAnimations(animations, animationCount[0]); animations = null; }
+        if (model != null) { UnloadModel(model); model = null; }
     }
 
     public void update(float dt) {

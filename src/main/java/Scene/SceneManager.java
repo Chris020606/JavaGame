@@ -33,7 +33,9 @@ public class SceneManager {
     }
 
     public void setOpenSceneID(int id) {
-        openSceneID = id;
+        Scene scene = getScene(id);
+        if (scene == null) throw new IllegalArgumentException("Unknown scene: " + id);
+        setOpenScene(scene);
     }
 
     public Scene getScene(int id) {

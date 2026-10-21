@@ -1,32 +1,22 @@
 package Entities;
 
-
 import Scene.CameraController;
-
+import Config.Controls;
+import static Config.Controls.Action.*;
 import static com.raylib.Raylib.*;
 
-enum PlayerAnimation {
-    Jump_Full_Long,
-    Jump_Full_Short,
-    Jump_Idle,
-    Jump_Land,
-    Jump_Start,
-    Running_A,
-    Running_B,
-    T_Pose,
-    Walking_A,
-    Walking_B,
-    Walking_C
-}
 
 public class Player extends Entity {
 
+    private Controls controls=new Controls();
+    public void setControls(Controls controls) { this.controls=controls; }
     private String name;
     private float movementSpeed = 5.0f;
     private boolean sex; // true = male, false = female
     private int level;
-    private int health;
-
+    private int health = 100;
+    private float attackTime, attackDuration=.5f;
+    private PlayerAnimation attackClip=PlayerAnimation.ATTACK_CHOP;
 
     private CameraController cameraController;
 
@@ -66,6 +56,18 @@ public class Player extends Entity {
         this.cameraController = cameraController;
     }
 
+    public void setAnimation(PlayerAnimation animation) {
+
+        Integer index = getAnimationIndex(animation.getAnimationName());
+
+        if (index == null) {
+            // Some imported models omit optional animation clips.
+            return;
+        }
+
+        setAnimation(index);
+    }
+
     @Override
     public void update(float dt) {
         Vector3 position = getPosition();
@@ -90,25 +92,25 @@ public class Player extends Entity {
         float moveX = 0.0f;
         float moveZ = 0.0f;
 
-        if (IsKeyDown(KEY_W)) {
+        if (controls.down(FORWARD)) {
             moveX += forwardX;
             moveZ += forwardZ;
             moving = true;
         }
 
-        if (IsKeyDown(KEY_S)) {
+        if (controls.down(BACK)) {
             moveX -= forwardX;
             moveZ -= forwardZ;
             moving = true;
         }
 
-        if (IsKeyDown(KEY_D)) {
+        if (controls.down(RIGHT)) {
             moveX += rightX;
             moveZ += rightZ;
             moving = true;
         }
 
-        if (IsKeyDown(KEY_A)) {
+        if (controls.down(LEFT)) {
             moveX -= rightX;
             moveZ -= rightZ;
             moving = true;
@@ -119,25 +121,48 @@ public class Player extends Entity {
         if (moveLength > 0.0f) {
             moveX /= moveLength;
             moveZ /= moveLength;
-            position.x(position.x() + moveX * movementSpeed * dt);
+            position.x(Math.max(-22, Math.min(22, position.x() + moveX * movementSpeed * dt * (isAttacking() ? .4f : 1))));
 
-            position.z( position.z() + moveZ * movementSpeed * dt);
+            position.z(Math.max(-22, Math.min(22, position.z() + moveZ * movementSpeed * dt * (isAttacking() ? .4f : 1))));
             float angle = (float)Math.toDegrees(Math.atan2(moveX, moveZ));
 
-            setRotation(new Vector3()
-                .x(0)
-                .y(angle)
-                .z(0));
-        }
+            if (!isAttacking()) setRotation(new Vector3().x(0).y(angle).z(0));}
 
         setPosition(position);
 
-        if (moving) {
-            setAnimation(9);
+        attackTime = Math.max(0, attackTime - dt);
+        if (attackTime > 0) {
+            setAnimation(attackClip);
+        } else if (moving) {
+            setAnimation(PlayerAnimation.WALK);
         } else {
-            setAnimation(2);
+            setAnimation(PlayerAnimation.MELEE_IDLE);
         }
 
-        updateAnimation(dt);
+        if (attackTime > 0) playAnimationProgress(1-attackTime/attackDuration);
+        else updateAnimation(dt);
     }
+
+    public void attack(boolean hasWeapon) { attack(1,false,.5f); }
+
+    public void attack(int combo,boolean heavy,float duration) {
+        attackDuration=duration; attackTime=duration;
+        attackClip=heavy ? PlayerAnimation.ATTACK_CHOP : combo==2 ? PlayerAnimation.ATTACK_DIAGONAL : PlayerAnimation.ATTACK_HORIZONTAL;
+        setAnimation(attackClip);
+        restartAnimation(); playAnimationProgress(0);
+    }
+
+    public boolean isAttacking() { return attackTime > 0; }
+
+    public void resetCombat() {
+        attackTime = 0;
+        setAnimation(PlayerAnimation.MELEE_IDLE);
+        restartAnimation();
+        updateAnimation(0);
+    }
+
+    public void movement(float dt) {
+
+    }
+
 }

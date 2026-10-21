@@ -1,0 +1,18 @@
+newmtl stone
+Kd 0.36 0.43 0.46
+Ka .2 .2 .2
+newmtl roof
+Kd 0.15 0.43 0.43
+Ka .2 .2 .2
+newmtl wood
+Kd 0.36 0.23 0.14
+Ka .2 .2 .2
+newmtl leaf
+Kd 0.2 0.38 0.27
+Ka .2 .2 .2
+newmtl leaflight
+Kd 0.29 0.48 0.32
+Ka .2 .2 .2
+newmtl iron
+Kd 0.2 0.25 0.27
+Ka .2 .2 .2
