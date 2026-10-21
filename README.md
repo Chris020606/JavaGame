@@ -46,8 +46,6 @@ On Windows or macOS, the first launch may show a security confirmation because t
 
 Face an enemy before attacking. Sword swings hit in the direction your warden is facing. Press again near the end of a swing to continue the combo. The third attack is stronger, while the heavy cleave does more damage but takes longer to recover.
 
-![Name entry](docs/images/name-entry.png)
-
 ## Enemies
 
 Each wave sends enemies toward the outpost at different times, so you can choose which threat to handle first.
@@ -69,8 +67,6 @@ Defeated enemies drop crystals. Spend them at the workshop near the outpost:
 - **Character:** increases sword damage and maximum health.
 
 Stay near the outpost when you need to recover. The safe area heals your warden over time.
-
-![Settings](docs/images/settings.png)
 
 ## Playing from the source code
 
