@@ -40,21 +40,21 @@ jobs:
         run: |
           GAME="$GITHUB_WORKSPACE/build/native/Outpost/bin/Outpost"
           cd "$RUNNER_TEMP"
-          xvfb-run -a "$GAME" --smoke-test --hidden
+          xvfb-run -a "$GAME" --smoke-test
       - name: Test packaged macOS launcher from another directory
         if: runner.os == 'macOS'
         shell: bash
         run: |
           GAME="$GITHUB_WORKSPACE/build/native/Outpost.app/Contents/MacOS/Outpost"
           cd "$RUNNER_TEMP"
-          "$GAME" --smoke-test --hidden
+          "$GAME" --smoke-test
       - name: Test packaged Windows launcher from another directory
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $game = Join-Path $env:GITHUB_WORKSPACE 'build/native/Outpost/Outpost.exe'
           Set-Location $env:RUNNER_TEMP
-          $process = Start-Process $game -ArgumentList '--smoke-test','--hidden' -PassThru -Wait
+          $process = Start-Process $game -ArgumentList '--smoke-test' -PassThru -Wait
           if ($process.ExitCode -ne 0) { throw "Packaged game failed: $($process.ExitCode)" }
       - name: Archive portable game
         shell: bash
