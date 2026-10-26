@@ -1,4 +1,4 @@
-# Outpost game guide (v1.1.0)
+# Outpost game guide (v1.2.0)
 
 ## Start here
 
@@ -44,7 +44,7 @@ Settings lets you rebind keyboard actions, adjust camera sensitivity and volume,
 
 Tab shows your class, equipment, damage, armor reduction, crystal balance, and potions. Click Use Potion there or press H during play. Each potion restores up to 60 HP, capped at your maximum. It is not consumed at full health, and cannot revive a defeated hero. You can carry five. Buy more at the workshop for 30 crystals each; potions do not drop from enemies.
 
-Each defeated enemy awards 15 crystals. Stand within six units of the center and press E to shop. Time pauses while shopping. Each upgrade costs 45 times its current level, starting at 45 crystals.
+Regular enemies award 15 crystals each; Warlords award 120. Stand within six units of the center and press E to shop. Time pauses while shopping. Each upgrade costs 45 times its current level, starting at 45 crystals.
 
 | Upgrade | Effect |
 | --- | --- |
@@ -52,11 +52,17 @@ Each defeated enemy awards 15 crystals. Stand within six units of the center and
 | Armor | +2 damage reduction per level after level 1 |
 | Character | +10 base damage, +25 maximum hero HP, and a full heal |
 
-Base damage starts at 25, outpost integrity at 250, and armor reduction at zero. Positive incoming damage to the player is reduced by armor but always deals at least 1 HP. Armor does not protect the outpost. Standing within six units of the center regenerates 3 + outpost level HP per second.
+Base damage starts at 25 before weapon bonuses, outpost integrity at 250, and armor reduction at zero. Positive incoming damage to the player is reduced by armor but always deals at least 1 HP. Armor does not protect the outpost. Standing within six units of the center regenerates 3 + outpost level HP per second.
+
+## Weapon loot and equipment
+
+Every Warlord defeated unlocks the next tier of your class weapon. The first three unlock Forged (+8 damage), Runic (+16), and Legendary (+24). Further Warlords still award 120 crystals but do not add more tiers. Drops go directly into inventory and never disappear on the ground. Starting a new defense resets this progression.
+
+Open Tab and click an unlocked weapon to equip it. The `>` marker identifies your current weapon. Locked tiers show what you can earn next. You can switch back to any unlocked tier. Bonuses do not stack: a Legendary weapon adds 24 damage total. Bonuses add to character upgrades and apply before each attack's damage multiplier. The weapon's tint changes with its tier; tiers share the sword, bow, or staff model of your class. Loot does not automatically replace the equipped weapon.
 
 ## Waves and enemies
 
-The first wave begins after five seconds. Each wave queues up to 36 enemies (4 + 3 times the wave number). Arrivals are staggered along four trails. The next wave waits until both the queue and living enemies are empty, followed by eight seconds of rest. Rings and the minimap warn of imminent arrivals.
+The first wave begins after five seconds. Each wave queues up to 36 enemies (4 + 3 times the wave number). Arrivals are staggered along four trails. The next wave waits until both the queue and living enemies are empty, followed by eight seconds of rest. Rings and the minimap warn of imminent arrivals. Every fifth wave starts with exactly one Warlord, followed by the usual raiders; the boss replaces one regular arrival. A boss wave banner announces it. A living Warlord has a gold tint, crown marker, gold ground ring, minimap marker, and a large health bar.
 
 | Enemy | Behavior |
 | --- | --- |
@@ -65,8 +71,9 @@ The first wave begins after five seconds. Each wave queues up to 36 enemies (4 +
 | Brute | More health, slower movement, stronger melee hits |
 | Archer | Appears from wave 2; retreats when close and shoots arrows |
 | Shaman | Appears from wave 3; fires slower, stronger magic |
+| Warlord | One leads every fifth wave; tough melee boss with heavy attacks and weapon loot |
 
-Enemies choose the hero when close enough, otherwise attack the outpost. Melee enemies can flank and crowd around targets. Attack warnings show the direction of a pending strike. Move away before impact, or interrupt with a hit. Enemy health and speed increase with waves. There are no extra enemy types or maps in v1.1.0.
+Enemies choose the hero when close enough, otherwise attack the outpost. Melee enemies can flank and crowd around targets. Attack warnings show the direction of a pending strike. Move away before impact, or interrupt regular enemies with a hit. Warlords resist interruption and knockback: hitting them will not cancel their attack. Enemy health and speed increase with waves. Warlords have five times a normal raider’s health, slower movement, and a 1.2-second attack animation with impact after 0.95 seconds. They deal 22 + 3 times the wave number damage to the hero, or 30 + 3 times the wave number to the outpost. Their longer reach is shown by the attack warning. The game still has one arena.
 
 Gold numbers show damage dealt, red shows damage taken, and teal shows crystal rewards. The HUD displays health, outpost integrity, crystals, queued enemies, wave, attack recovery, and potion count. The minimap marks your hero, enemies, the outpost, and announced arrivals.
 
@@ -82,7 +89,7 @@ There is one save slot. F5, the pause menu, and Save & Main Menu save the defens
 
 Files are `save.properties` and `settings.properties`. Replacing a file keeps the prior version as `.bak`. You can manually copy that backup over a damaged file while the game is closed. Invalid saves report an error without replacing the active defense. Back up the folder before editing files.
 
-Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. Older v1 saves load as Warrior with two potions. Avoid loading a new Archer or Mage save in an older game version, which does not understand those classes.
+Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, unlocked and equipped weapon tiers, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v1.2 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
 
 ## Build, test, and release
 
@@ -125,6 +132,6 @@ For isolated manual testing, Java system property `outpost.dataDir` overrides th
 | `resources/`, `tools/`, `packaging/` | Models/audio, asset/release scripts, application icons |
 | `.github/workflows/build.yml` | Cross-platform package and release pipeline |
 
-Gameplay rules are separated from native rendering where practical so JUnit can check them directly. Rendering and input still live together in Game. Enemy variants are numeric: 0 Raider, 1 Scout, 2 Brute, 3 Archer, 4 Shaman. Update persistence bounds and rendering together if adding variants. Add class rules in HeroClass and keep equipment rendering consistent in WorldAssets.
+Gameplay rules are separated from native rendering where practical so JUnit can check them directly. Rendering and input still live together in Game. Enemy variants are numeric: 0 Raider, 1 Scout, 2 Brute, 3 Archer, 4 Shaman, 5 Warlord. Update persistence bounds and rendering together if adding variants. Add class rules in HeroClass and keep equipment rendering consistent in WorldAssets.
 
 Character and weapon assets are from KayKit under CC0. See THIRD_PARTY_NOTICES.md and the included licenses for dependencies. See DEVELOPMENT_NOTES.md for known limits and future work.

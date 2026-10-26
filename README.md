@@ -9,9 +9,10 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 ## Features
 
 - Choose Warrior, Archer, or Mage with a sword, bow, or staff.
-- A paused inventory with healing potions and workshop restocking.
+- An inventory with equippable weapon tiers, healing potions, and workshop restocking.
+- Warlord bosses every fifth wave with crystal rewards and weapon loot.
 - Directional sword attacks with a three-hit combo and a heavy cleave.
-- Five enemy types with different strengths and attack styles.
+- Six enemy types with different strengths and attack styles.
 - Archers and shamans that attack from a distance.
 - Enemy attack warnings, floating damage numbers, health bars, and a minimap.
 - A decorated low-poly map with paths, trees, lanterns, fences, rocks, and flowers.
@@ -62,6 +63,7 @@ Each wave sends enemies toward the outpost at different times, so you can choose
 - **Brutes** are slow, tough, and hit hard.
 - **Archers** keep their distance and fire arrows.
 - **Shamans** cast powerful magic from a safe range.
+- **Warlords** lead every fifth wave and resist interruption. Defeat them for 120 crystals and the next weapon tier, then equip it with `Tab`.
 
 Red and gold warnings show where an enemy is about to attack. Step away from the warning or interrupt the enemy with your sword. Gold numbers show damage you deal, red numbers show damage you take, and teal text shows rewards.
 

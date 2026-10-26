@@ -231,7 +231,24 @@ public class InputSmokeTest {
             for(int i=0;i<65;i++)frame(game);
             check(game.getEnemies().size()<2 || game.getEnemies().stream().allMatch(e->e.health<e.maxHealth),"Mage surge did not pierce both targets");
             capture("ui-mage-hero");
-            System.out.println("PASS: name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions");
+            // Boss attacks, loot collection, real inventory equipment buttons, and saves.
+            Entities.Enemy warlord=new Entities.Enemy(0,10,5,5,.5f);
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",0,8,0,new Progression(),new WaveDirector.State(5,0,1,8,0,21,0),java.util.List.of(warlord)));
+            check(game.loadCurrent(),"Warlord save failed to load");key(game,KEY_ENTER);
+            Entities.Enemy liveBoss=game.getEnemies().get(0);liveBoss.beginAttack(0,8,true);
+            for(int i=0;i<58;i++)frame(game);
+            check(game.getProgression().health()<100,"Warlord impact failed");capture("ui-warlord");
+            liveBoss.health=1;key(game,KEY_Q);for(int i=0;i<35;i++)frame(game);
+            check(game.getProgression().weaponUnlocked()==1,"Boss did not unlock loot");
+            check(game.getProgression().crystals()==120,"Boss crystal reward incorrect");
+            key(game,KEY_TAB);
+            int ix=(GetScreenWidth()-620)/2,iy=(GetScreenHeight()-520)/2;
+            event(MOUSE_POSITION,ix+465,iy+177);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
+            event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);
+            check(game.getProgression().weaponTier()==1 && game.getProgression().damage()==33,"Inventory equip failed");for(int i=0;i<3;i++)frame(game);capture("ui-weapon-loot");
+            key(game,KEY_ESCAPE);check(game.saveCurrent() && game.loadCurrent(),"Equipment save failed");
+            check(game.getProgression().weaponTier()==1,"Equipment did not persist");
+            System.out.println("PASS: name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

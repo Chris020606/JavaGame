@@ -1,6 +1,7 @@
 /** Rules and economy kept independent of rendering so they can be tested. */
 public class Progression {
     public void store(java.util.Properties p) {
+        p.setProperty("weaponUnlocked",weaponUnlocked+""); p.setProperty("weaponTier",weaponTier+"");
         p.setProperty("heroClass",heroClass.name()); p.setProperty("potions",potions+"");
         p.setProperty("crystals",crystals+""); p.setProperty("kills",kills+"");
         p.setProperty("baseLevel",baseLevel+""); p.setProperty("armorLevel",armorLevel+""); p.setProperty("characterLevel",characterLevel+"");
@@ -9,6 +10,8 @@ public class Progression {
     public static Progression restore(java.util.Properties p) {
         Progression result=new Progression(HeroClass.valueOf(p.getProperty("heroClass","WARRIOR")));
         result.potions=p.containsKey("potions")?SaveGame.integer(p,"potions",0,5):2;
+        result.weaponUnlocked=p.containsKey("weaponUnlocked")?SaveGame.integer(p,"weaponUnlocked",0,3):0;
+        result.weaponTier=p.containsKey("weaponTier")?SaveGame.integer(p,"weaponTier",0,result.weaponUnlocked):0;
         result.crystals=SaveGame.integer(p,"crystals",0,100000000); result.kills=SaveGame.integer(p,"kills",0,100000000);
         result.baseLevel=SaveGame.integer(p,"baseLevel",1,1000); result.armorLevel=SaveGame.integer(p,"armorLevel",1,1000);
         result.characterLevel=SaveGame.integer(p,"characterLevel",1,1000);
@@ -18,7 +21,7 @@ public class Progression {
     public enum Upgrade { BASE, ARMOR, CHARACTER }
     private int crystals, kills, baseLevel = 1, armorLevel = 1, characterLevel = 1;
     private final HeroClass heroClass;
-    private int potions=2;
+    private int potions=2, weaponUnlocked, weaponTier;
     private float health, baseHealth = 250;
     public Progression() { this(HeroClass.WARRIOR); }
     public Progression(HeroClass heroClass) { this.heroClass=heroClass; health=maxHealth(); }
@@ -32,6 +35,21 @@ public class Progression {
         if (potions>=5 || crystals<30 || defeated()) return false;
         crystals-=30; potions++; return true;
     }
+    public int weaponTier() { return weaponTier; }
+    public int weaponUnlocked() { return weaponUnlocked; }
+    public int weaponBonus(int tier) { return tier*8; }
+    public String weaponName(int tier) {
+        String quality=switch(tier) { case 1 -> "Forged"; case 2 -> "Runic"; case 3 -> "Legendary"; default -> "Starter"; };
+        return quality+" "+switch(heroClass) { case WARRIOR -> "Sword"; case ARCHER -> "Bow"; case MAGE -> "Staff"; };
+    }
+    public boolean equipWeapon(int tier) {
+        if (tier<0 || tier>weaponUnlocked || defeated()) return false;
+        weaponTier=tier; return true;
+    }
+    public void rewardEnemy(boolean boss) {
+        kills++; crystals+=boss?120:15;
+        if (boss) weaponUnlocked=Math.min(3,weaponUnlocked+1);
+    }
     public int crystals() { return crystals; }
     public int kills() { return kills; }
     public int baseLevel() { return baseLevel; }
@@ -39,12 +57,12 @@ public class Progression {
     public int characterLevel() { return characterLevel; }
     public int maxHealth() { return heroClass.health + (characterLevel - 1) * 25; }
     public int maxBaseHealth() { return 250 + (baseLevel - 1) * 100; }
-    public int damage() { return 25 + (characterLevel - 1) * 10; }
+    public int damage() { return 25 + (characterLevel - 1) * 10 + weaponBonus(weaponTier); }
     public int defense() { return (armorLevel - 1) * 2; }
     public float health() { return health; }
     public float baseHealth() { return baseHealth; }
     public boolean defeated() { return health <= 0 || baseHealth <= 0; }
-    public void rewardKill() { kills++; crystals += 15; }
+    public void rewardKill() { rewardEnemy(false); }
     public int level(Upgrade type) { return switch (type) { case BASE -> baseLevel; case ARMOR -> armorLevel; case CHARACTER -> characterLevel; }; }
     public int cost(Upgrade type) { return 45 * level(type); }
     public boolean purchase(Upgrade type) {

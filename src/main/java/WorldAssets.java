@@ -103,20 +103,30 @@ public final class WorldAssets implements AutoCloseable {
         ModelAnimation clips=enemy.variant==3?archerAnimations:enemy.variant==4?shamanAnimations:animations;
         int attackClip=enemy.variant==3?(enemy.attackTime>.25f?2:3):enemy.variant==4?2:chop;
         ModelAnimation clip=new ModelAnimation(clips).position(enemy.attackTime>0?attackClip:run);
-        int frame=enemy.attackTime>0 ? Math.min(clip.keyframeCount()-1,(int)((.7f-enemy.attackTime)*clip.keyframeCount()/.7f))
+        int frame=enemy.attackTime>0 ? Math.min(clip.keyframeCount()-1,(int)((enemy.attackDuration()-enemy.attackTime)*clip.keyframeCount()/enemy.attackDuration()))
             : (int)(enemy.animationTime*60)%Math.max(1,clip.keyframeCount());
         if (enemy.variant==3 && enemy.attackTime>0) {
             float phase=enemy.attackTime>.25f?(.7f-enemy.attackTime)/.45f:(.25f-enemy.attackTime)/.25f;
             frame=Math.min(clip.keyframeCount()-1,(int)(phase*clip.keyframeCount()));
         }
         UpdateModelAnimation(character,clip,frame);
-        Color tint=enemy.hitFlash>0 ? Menu.GOLD : enemy.variant==2?Menu.color(220,178,157):enemy.variant==1?Menu.color(185,210,229):WHITE;
+        Color tint=enemy.hitFlash>0 ? Menu.GOLD : enemy.boss()?Menu.GOLD:enemy.variant==2?Menu.color(220,178,157):enemy.variant==1?Menu.color(185,210,229):WHITE;
         DrawCylinder(v(enemy.x,.025f,enemy.z),.42f,.42f,.015f,12,Menu.color(38,54,47));
         DrawModelEx(character,v(enemy.x,0,enemy.z),v(0,1,0),enemy.facing,v(1,1,1),tint);
+        if (enemy.boss()) {
+            DrawCylinderWires(v(enemy.x,.08f,enemy.z),.85f,.85f,.12f,24,Menu.GOLD);
+            DrawCube(v(enemy.x,2.05f,enemy.z),.5f,.18f,.5f,Menu.GOLD);
+        }
         drawWeapon(character,v(enemy.x,0,enemy.z),enemy.facing,enemy.variant==3?bow:enemy.variant==4?staff:sword);
     }
-    public void drawPlayerWeapon(Player player,int style) { drawWeapon(player.getModel(),player.getPosition(),player.getRotation().y(),style==1?bow:style==2?staff:sword); }
+    public void drawPlayerWeapon(Player player,int style,int tier) {
+        Color tint=tier==3?Menu.GOLD:tier==2?Menu.TEAL:tier==1?Menu.color(190,205,225):WHITE;
+        drawWeapon(player.getModel(),player.getPosition(),player.getRotation().y(),style==1?bow:style==2?staff:sword,tint);
+    }
     private void drawWeapon(Model character,Vector3 position,float facing,Model weapon) {
+        drawWeapon(character,position,facing,weapon,WHITE);
+    }
+    private void drawWeapon(Model character,Vector3 position,float facing,Model weapon,Color tint) {
         ModelSkeleton skeleton=character.skeleton();
         for (int i=0;i<skeleton.boneCount();i++) {
             if (!new BoneInfo(skeleton.bones()).position(i).name().getString().equals(weapon==bow?"handslot.l":"handslot.r")) continue;
@@ -129,7 +139,7 @@ public final class WorldAssets implements AutoCloseable {
                 .m8(2*x*z+2*w*y).m9(2*y*z-2*w*x).m10(1-2*x*x-2*y*y).m11(0)
                 .m12(pose.translation().x()).m13(pose.translation().y()).m14(pose.translation().z()).m15(1);
             weapon.transform(m);
-            DrawModelEx(weapon,position,v(0,1,0),facing,v(1,1,1),WHITE);
+            DrawModelEx(weapon,position,v(0,1,0),facing,v(1,1,1),tint);
             return;
         }
     }

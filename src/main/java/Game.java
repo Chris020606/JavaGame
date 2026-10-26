@@ -147,8 +147,10 @@ public class Game {
         while (iterator.hasNext()) {
             Enemy enemy = iterator.next();
             if (enemy.health <= 0) {
-                iterator.remove(); progress.rewardKill(); audio.play("kill");
-                feedback.add(enemy.x,enemy.z,"+15 crystals",Menu.TEAL); continue;
+                iterator.remove(); progress.rewardEnemy(enemy.boss()); audio.play("kill");
+                feedback.add(enemy.x,enemy.z,"+"+enemy.reward()+" crystals",Menu.TEAL);
+                if (enemy.boss()) notifyPlayer("WARLORD DEFEATED / "+progress.weaponName(progress.weaponUnlocked())+" in inventory");
+                continue;
             }
             boolean huntsPlayer=enemy.distance(px,pz)<(enemy.variant==1?11:enemy.variant==2?5:8);
             float tx=huntsPlayer?px:0, tz=huntsPlayer?pz:0;
@@ -161,11 +163,11 @@ public class Game {
             if (enemy.impactPending && enemy.attackTime<=.25f) {
                 enemy.impactPending=false;
                 if (enemy.ranged()) projectiles.add(new Projectile(enemy,wave));
-                else if (enemy.targetsPlayer && Combat.inArc(enemy.x,enemy.z,enemy.facing,px,pz,2.2f,65)) {
-                    float before=progress.health(); progress.damagePlayer(8+wave*2+(enemy.variant==2?5:0));
+                else if (enemy.targetsPlayer && Combat.inArc(enemy.x,enemy.z,enemy.facing,px,pz,enemy.meleeRange(),65)) {
+                    float before=progress.health(); progress.damagePlayer(enemy.meleeDamage(wave));
                     feedback.add(px,pz,"-"+Math.round(before-progress.health()),Menu.RED); hurtFlash=.25f; audio.play("hurt");
-                } else if (!enemy.targetsPlayer && enemy.distance(0,0)<2.3f) {
-                    float before=progress.baseHealth(); progress.damageBase(10+wave*2);
+                } else if (!enemy.targetsPlayer && enemy.distance(0,0)<enemy.meleeRange()+.1f) {
+                    float before=progress.baseHealth(); progress.damageBase(enemy.siegeDamage(wave));
                     feedback.add(0,0,"OUTPOST -"+Math.round(before-progress.baseHealth()),Menu.RED); audio.play("hurt");
                 }
             }
@@ -202,7 +204,7 @@ public class Game {
         }
         if (progress.defeated()) { state = GameState.GAME_OVER; return; }
         WaveDirector.Spawn spawn=director.update(dt,enemies.size());
-        if (director.wave()!=wave) { wave=director.wave(); audio.play("wave"); notifyPlayer("WAVE "+wave+"  /  Raiders approaching the trails"); }
+        if (director.wave()!=wave) { wave=director.wave(); audio.play("wave"); notifyPlayer("WAVE "+wave+(director.bossWave()?" / WARLORD APPROACHING":" / Raiders approaching the trails")); }
         if (spawn!=null) enemies.add(new Enemy(spawn.x(),spawn.z(),spawn.wave(),spawn.variant(),random.nextFloat()));
         nextWave=director.rest();
     }
@@ -269,14 +271,14 @@ public class Game {
             DrawLine3D(v(director.x(),0,director.z()),v(director.x(),3,director.z()),Menu.GOLD);
         }
         DrawModelEx(player.getModel(), player.getPosition(), v(0, 1, 0), player.getRotation().y(), v(1, 1, 1), hurtFlash>0?Menu.RED:WHITE);
-        assets.drawPlayerWeapon(player,progress.heroClass().ordinal());
+        assets.drawPlayerWeapon(player,progress.heroClass().ordinal(),progress.weaponTier());
         for (HeroShot shot:heroShots) {
             if (shot.magic) DrawSphere(v(shot.x,1,shot.z),.2f,Menu.TEAL);
             else DrawLine3D(v(shot.x,1,shot.z),v(shot.x-shot.vx*.04f,1,shot.z-shot.vz*.04f),Menu.GOLD);
         }
         if (player.isAttacking()) drawArc(player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),activeAttack.range(),activeAttack.halfAngle(),slashTime>0?Menu.GOLD:Menu.TEAL);
         for (Enemy enemy:enemies) if (enemy.attackTime>.25f)
-            drawArc(enemy.x,enemy.z,enemy.facing,enemy.ranged()?8:2.2f,enemy.ranged()?8:65,enemy.ranged()?Menu.GOLD:Menu.RED);
+            drawArc(enemy.x,enemy.z,enemy.facing,enemy.ranged()?8:enemy.meleeRange(),enemy.ranged()?8:65,enemy.ranged()?Menu.GOLD:Menu.RED);
         for (Projectile shot:projectiles) {
             if (shot.magic) DrawSphere(v(shot.x,1,shot.z),.22f,Menu.color(180,124,235));
             else DrawLine3D(v(shot.x,1,shot.z),v(shot.x-shot.vx*.07f,1,shot.z-shot.vz*.07f),Menu.GOLD);
@@ -299,7 +301,7 @@ public class Game {
     private void drawEnemyHealth() {
         for (Enemy enemy : enemies) {
             Vector2 screen = GetWorldToScreen(v(enemy.x, 2.1f, enemy.z), sceneManager.getOpenScene().getCameraController().getCamera());
-            Menu.bar((int)screen.x()-22, (int)screen.y(), 44, enemy.health, enemy.maxHealth, enemy.variant==2?Menu.GOLD:Menu.RED);
+            Menu.bar((int)screen.x()-22, (int)screen.y(), 44, enemy.health, enemy.maxHealth, enemy.boss()||enemy.variant==2?Menu.GOLD:Menu.RED);
             String label=enemy.attackTime>.25f?"! ATTACK":enemy.label();
             Menu.text(label,(int)screen.x()-MeasureText(label,10)/2,(int)screen.y()-14,10,enemy.attackTime>.25f?Menu.RED:Menu.TEXT);
         }
@@ -313,7 +315,7 @@ public class Game {
         Menu.text(progress.heroClass().label+" / Armor " + progress.armorLevel() + " / DMG " + progress.damage(), 36, 104, 14, Menu.MUTED);
         Menu.panel(w-272, 20, 252, 108);
         Menu.text(progress.crystals() + "  CRYSTALS", w-254, 36, 24, Menu.GOLD);
-        Menu.text("WAVE " + wave + "   /   " + enemies.size() + " RAIDERS", w-254, 71, 18, Menu.TEXT);
+        Menu.text((director.bossWave()?"BOSS ":"WAVE ") + wave + " / " + enemies.size() + " ENEMIES", w-254, 71, 18, Menu.TEXT);
         Menu.text(director.remaining()>0 ? director.remaining()+" incoming / "+director.total()+" total" : enemies.isEmpty() ? "Next wave in " + (int)Math.ceil(nextWave) + "s" : "Eliminate remaining raiders", w-254, 101, 14, Menu.MUTED);
         Menu.panel(20, h-112, 280, 90);
         Menu.text("OUTPOST / LV " + progress.baseLevel(), 36, h-98, 18, Menu.TEXT);
@@ -328,6 +330,12 @@ public class Game {
         Menu.text("KILLS "+progress.kills()+"   /   HEAVY "+Math.round(progress.damage()*progress.heroClass().attack(1,true).multiplier())+" DMG",36,131,13,Menu.GOLD);
         Menu.text(!audio.ready()?"Audio unavailable":audio.muted()?settings.controls.label(MUTE)+" / SOUND OFF":settings.controls.label(MUTE)+" / SOUND ON",w-180,320,13,Menu.MUTED);
         Menu.text(settings.controls.label(WORKSHOP)+" shop / "+settings.controls.label(SAVE)+" save / "+settings.controls.label(INVENTORY)+" bag / "+settings.controls.label(POTION)+" potion ("+progress.potions()+")", 320, h-35, 16, Menu.MUTED);
+        for (Enemy enemy:enemies) if (enemy.boss() && enemy.health>0) {
+            int bx=w/2-170;
+            Menu.panel(bx,20,340,66);
+            Menu.text("WARLORD / "+(int)enemy.health+" HP",bx+14,32,18,Menu.GOLD);
+            Menu.bar(bx+14,62,312,enemy.health,enemy.maxHealth,Menu.RED);
+        }
         if (nearBase()) Menu.text("SAFE HAVEN  /  Healing +" + (3+progress.baseLevel()) + " HP/s", 24, 166, 14, Menu.TEAL);
         if (noticeTime > 0) Menu.text(notice, (w-MeasureText(notice, 20))/2, 196, 20, Menu.GOLD);
     }
@@ -338,7 +346,7 @@ public class Game {
         DrawCircleLines(cx,cy,59,Menu.LINE);
         DrawLine(cx-59,cy,cx+59,cy,Menu.LINE); DrawLine(cx,cy-59,cx,cy+59,Menu.LINE);
         DrawCircle(cx,cy,5,Menu.TEAL);
-        for (Enemy e:enemies) DrawCircle(cx+(int)(e.x*2.5f),cy+(int)(e.z*2.5f),3,e.variant==2?Menu.GOLD:Menu.RED);
+        for (Enemy e:enemies) DrawCircle(cx+(int)(e.x*2.5f),cy+(int)(e.z*2.5f),3,e.boss()||e.variant==2?Menu.GOLD:Menu.RED);
         if (director.warning()) DrawCircleLines(cx+(int)(director.x()*2.5f),cy+(int)(director.z()*2.5f),6,Menu.GOLD);
         DrawCircle(cx+(int)(player.getPosition().x()*2.5f),cy+(int)(player.getPosition().z()*2.5f),4,Menu.TEXT);
     }
@@ -358,14 +366,22 @@ public class Game {
         Menu.text(menuMessage.isEmpty()?"Hold right mouse to orbit. ESC pauses.":menuMessage, x, y+401, 15, Menu.MUTED);
     }
     private void drawInventory() {
-        dim();int x=(GetScreenWidth()-560)/2,y=(GetScreenHeight()-340)/2;
+        dim();int x=(GetScreenWidth()-620)/2,y=(GetScreenHeight()-520)/2;
         Menu.text("INVENTORY / "+progress.heroClass().label,x,y,30,Menu.TEXT);
-        Menu.text(progress.heroClass().description,x,y+54,18,Menu.TEAL);
-        Menu.text("Damage "+progress.damage()+" / Armor "+progress.defense()+" / Crystals "+progress.crystals(),x,y+95,18,Menu.GOLD);
-        Menu.text("Healing potions: "+progress.potions()+" / 5. Each restores 60 HP.",x,y+140,18,Menu.TEXT);
-        if (Menu.button("USE POTION",x,y+190,260,progress.potions()>0 && progress.health()<progress.maxHealth())) progress.usePotion();
-        Menu.text("Buy potions at the workshop for 30 crystals.",x,y+250,17,Menu.MUTED);
-        if (Menu.button("RETURN ["+settings.controls.label(INVENTORY)+" / ESC]",x,y+290,350,true)) inventory=false;
+        Menu.text("Equipped: "+progress.weaponName(progress.weaponTier()),x,y+48,20,Menu.TEAL);
+        Menu.text("Damage "+progress.damage()+" / Armor "+progress.defense()+" / Crystals "+progress.crystals(),x,y+82,18,Menu.GOLD);
+        Menu.text("Defeat Warlords every 5 waves to unlock weapons.",x,y+118,17,Menu.MUTED);
+        for (int tier=0;tier<=3;tier++) {
+            int left=x+(tier%2)*315,top=y+155+(tier/2)*86;
+            boolean unlocked=tier<=progress.weaponUnlocked();
+            String label=unlocked?progress.weaponName(tier):"LOCKED / TIER "+tier;
+            if (Menu.button((tier==progress.weaponTier()?"> ":"")+label,left,top,300,unlocked)) progress.equipWeapon(tier);
+            Menu.text("+"+progress.weaponBonus(tier)+" damage"+(unlocked?"":" / defeat another Warlord"),left+4,top+51,14,Menu.MUTED);
+        }
+        Menu.text("Potions: "+progress.potions()+" / 5 / Restore up to 60 HP",x,y+340,18,Menu.TEXT);
+        if (Menu.button("USE POTION",x,y+378,270,progress.potions()>0 && progress.health()<progress.maxHealth())) progress.usePotion();
+        Menu.text("Workshop: 30 crystals per potion",x,y+440,17,Menu.MUTED);
+        if (Menu.button("RETURN ["+settings.controls.label(INVENTORY)+" / ESC]",x,y+477,350,true)) inventory=false;
     }
     private void drawWorkshop() {
         dim(); int width = Math.min(900, GetScreenWidth()-60), x = (GetScreenWidth()-width)/2, y = (GetScreenHeight()-430)/2;

@@ -18,7 +18,7 @@ public final class SaveGame {
     }
     public static void write(Path file,Snapshot s) throws IOException {
         Properties p=new Properties();
-        p.setProperty("version","1"); p.setProperty("name",Settings.cleanName(s.name));
+        p.setProperty("version","2"); p.setProperty("name",Settings.cleanName(s.name));
         p.setProperty("player.x",s.x+""); p.setProperty("player.z",s.z+""); p.setProperty("player.facing",s.facing+"");
         s.progression.store(p);
         WaveDirector.State w=s.wave;
@@ -40,7 +40,9 @@ public final class SaveGame {
         catch (RuntimeException e) { throw new IOException("Save is damaged or uses an unsupported version",e); }
     }
     private static Snapshot decode(Properties p) {
-        if (!"1".equals(p.getProperty("version"))) throw new IllegalArgumentException("Unsupported save version");
+        boolean legacy="1".equals(p.getProperty("version"));
+        if (!legacy && !"2".equals(p.getProperty("version"))) throw new IllegalArgumentException("Unsupported save version");
+        if (!legacy) { integer(p,"weaponUnlocked",0,3); integer(p,"weaponTier",0,3); }
         Progression progress=Progression.restore(p);
         int wave=integer(p,"wave",0,10000),total=integer(p,"total",0,36),remaining=integer(p,"remaining",0,total);
         int count=integer(p,"enemies",0,36);
@@ -49,7 +51,7 @@ public final class SaveGame {
         List<Enemy> enemies=new ArrayList<>();
         for (int i=0;i<count;i++) {
             String k="enemy."+i+".";
-            Enemy e=new Enemy(number(p,k+"x",-30,30),number(p,k+"z",-30,30),wave,integer(p,k+"variant",0,4),number(p,k+"personality",0,1));
+            Enemy e=new Enemy(number(p,k+"x",-30,30),number(p,k+"z",-30,30),wave,integer(p,k+"variant",0,legacy?4:5),number(p,k+"personality",0,1));
             e.health=number(p,k+"health",.001f,e.maxHealth); e.facing=number(p,k+"facing",-360,360);
             // Resume with a short grace period; interrupted windups/projectiles are cancelled.
             e.cooldown=Math.max(.6f,number(p,k+"cooldown",0,5)); enemies.add(e);

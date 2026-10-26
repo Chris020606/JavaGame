@@ -18,7 +18,7 @@ public final class WaveDirector {
         }
         arrival-=dt;
         if (arrival>0) return null;
-        Spawn result=new Spawn(x,z,wave,random.nextInt(wave>=3?5:wave>=2?4:3));
+        Spawn result=new Spawn(x,z,wave,bossWave() && remaining==total?5:random.nextInt(wave>=3?5:wave>=2?4:3));
         remaining--;
         if (remaining>0) schedule(); else rest=8;
         return result;
@@ -35,6 +35,8 @@ public final class WaveDirector {
     public record State(int wave,int remaining,int total,float rest,float arrival,float x,float z) {}
     public State snapshot() { return new State(wave,remaining,total,rest,arrival,x,z); }
     public void restore(State s) { wave=s.wave;remaining=s.remaining;total=s.total;rest=s.rest;arrival=s.arrival;x=s.x;z=s.z; }
+    public boolean bossWave() { return wave>0 && wave%5==0; }
+    public boolean bossIncoming() { return bossWave() && remaining==total; }
     public int wave() { return wave; }
     public int remaining() { return remaining; }
     public int total() { return total; }
