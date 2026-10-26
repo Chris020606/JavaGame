@@ -12,6 +12,7 @@ public class Player extends Entity {
     public void setControls(Controls controls) { this.controls=controls; }
     private String name;
     private float movementSpeed = 5.0f;
+    public void setMovementSpeed(float speed) { movementSpeed=speed; }
     private boolean sex; // true = male, false = female
     private int level;
     private int health = 100;

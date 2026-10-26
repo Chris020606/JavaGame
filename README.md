@@ -4,8 +4,12 @@
 
 **Outpost** is a small 3D wave-defense game about a warden protecting a frontier settlement. Fight through increasingly dangerous raids, collect crystals, and improve your hero and outpost before the next attack arrives.
 
+See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, and [DEVELOPMENT_NOTES.md](DEVELOPMENT_NOTES.md) for future work.
+
 ## Features
 
+- Choose Warrior, Archer, or Mage with a sword, bow, or staff.
+- A paused inventory with healing potions and workshop restocking.
 - Directional sword attacks with a three-hit combo and a heavy cleave.
 - Five enemy types with different strengths and attack styles.
 - Archers and shamans that attack from a distance.
@@ -37,14 +41,17 @@ On Windows or macOS, the first launch may show a security confirmation because t
 | Move | `W A S D` |
 | Orbit the camera | Hold the right mouse button |
 | Sword combo | `Space` or left click |
-| Heavy cleave | `Q` |
+| Heavy class attack | `Q` |
+| Inventory / use potion | `Tab` / `H` |
 | Open the workshop | `E` near the outpost |
 | Save / load | `F5` / `F9` |
 | Mute sound | `M` |
 | Pause or go back | `Escape` |
 | Confirm a choice | `Enter` |
 
-Face an enemy before attacking. Sword swings hit in the direction your warden is facing. Press again near the end of a swing to continue the combo. The third attack is stronger, while the heavy cleave does more damage but takes longer to recover.
+Choose your class on the name screen before beginning. Face an enemy before attacking. Arrows stop at the first enemy; magic bolts pierce enemies. Each class has a stronger attack on Q.
+
+ Sword swings hit in the direction your warden is facing. Press again near the end of a swing to continue the combo. The third attack is stronger, while the heavy cleave does more damage but takes longer to recover.
 
 ## Enemies
 

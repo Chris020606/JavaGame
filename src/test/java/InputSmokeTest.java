@@ -64,7 +64,7 @@ public class InputSmokeTest {
         System.setProperty("outpost.dataDir",profile.toAbsolutePath().toString());
         Settings initialSettings=new Settings();initialSettings.playerName="Ada";initialSettings.save(profile.resolve("settings.properties"));
         boolean standardDpi = java.util.Arrays.asList(args).contains("--standard-dpi");
-        SetConfigFlags(FLAG_WINDOW_HIDDEN | FLAG_WINDOW_RESIZABLE | (standardDpi ? 0 : FLAG_WINDOW_HIGHDPI));
+        SetConfigFlags(FLAG_WINDOW_RESIZABLE | (standardDpi ? 0 : FLAG_WINDOW_HIGHDPI));
         InitWindow(1280, 800, "Outpost input regression check");
         SetExitKey(KEY_NULL); SetTargetFPS(60);
         Game game = null;
@@ -199,7 +199,39 @@ public class InputSmokeTest {
             capture("ui-ranged-enemies");
             for(int i=0;i<55;i++)frame(game);
             capture("ui-projectiles");
-            System.out.println("PASS: name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize");
+            // Exercise class selection, ranged impact, and inventory through real UI/input.
+            game.setState(GameState.MAIN_MENU);key(game,KEY_ENTER);
+            int hx=(GetScreenWidth()-560)/2,hy=(GetScreenHeight()-450)/2;
+            event(MOUSE_POSITION,hx+280,hy+207);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
+            event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);key(game,KEY_ENTER);
+            check(game.getProgression().heroClass()==HeroClass.ARCHER,"Archer selection failed");
+            game.getPlayer().getPosition().x(0).z(8);game.getPlayer().getRotation().y(0);
+            Entities.Enemy rangedTarget=new Entities.Enemy(0,14,1);
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Ada",0,8,0,game.getProgression(),new WaveDirector.State(1,0,1,8,0,21,0),java.util.List.of(rangedTarget)));
+            check(game.loadCurrent(),"Archer load failed");key(game,KEY_ENTER);
+            Entities.Enemy loadedTarget=game.getEnemies().get(0);loadedTarget.stun=5;loadedTarget.cooldown=5;
+            for(int i=0;i<20;i++)frame(game);
+            float targetHp=loadedTarget.health;key(game,KEY_SPACE);
+            for(int i=0;i<35;i++)frame(game);
+            check(loadedTarget.health<targetHp,"Player arrow failed to hit at range");capture("ui-archer-hero");
+            game.getProgression().damagePlayer(65);
+            key(game,KEY_TAB);float frozen=game.getProgression().health();
+            event(KEY_DOWN,KEY_I,0);for(int i=0;i<10;i++)frame(game);event(KEY_UP,KEY_I,0);frame(game);
+            check(game.getProgression().health()==frozen,"Inventory did not pause simulation");capture("ui-inventory");
+            key(game,KEY_ESCAPE);int potions=game.getProgression().potions();key(game,KEY_H);
+            check(game.getProgression().potions()==potions-1,"Potion hotkey failed");
+            check(game.saveCurrent() && game.loadCurrent(),"Class/inventory save failed");
+            check(game.getProgression().heroClass()==HeroClass.ARCHER && game.getProgression().potions()==potions-1,"Class/inventory did not restore");
+            Progression mage=new Progression(HeroClass.MAGE);
+            Entities.Enemy first=new Entities.Enemy(0,12,1),second=new Entities.Enemy(0,15,1);
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Mage",0,8,0,mage,new WaveDirector.State(1,0,2,8,0,21,0),java.util.List.of(first,second)));
+            check(game.loadCurrent(),"Mage load failed");key(game,KEY_ENTER);
+            for(Entities.Enemy enemy:game.getEnemies()) { enemy.stun=5;enemy.cooldown=5; }
+            for(int i=0;i<20;i++)frame(game);key(game,KEY_Q);
+            for(int i=0;i<65;i++)frame(game);
+            check(game.getEnemies().size()<2 || game.getEnemies().stream().allMatch(e->e.health<e.maxHealth),"Mage surge did not pierce both targets");
+            capture("ui-mage-hero");
+            System.out.println("PASS: name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions");
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

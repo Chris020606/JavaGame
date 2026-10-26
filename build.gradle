@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'outpost'
-version = '1.0.0'
+version = '1.1.0'
 repositories { mavenCentral() }
 
 dependencies {
@@ -37,7 +37,7 @@ distributions {
     main {
         contents {
             into('resources') { with runtimeAssets }
-            from('README.md', 'THIRD_PARTY_NOTICES.md')
+            from('README.md', 'GAME_GUIDE.md', 'DEVELOPMENT_NOTES.md', 'THIRD_PARTY_NOTICES.md')
             into('licenses') { from 'licenses' }
         }
     }
@@ -49,7 +49,7 @@ tasks.register('stagePackage', Sync) {
     into layout.buildDirectory.dir('package-input')
     from(tasks.shadowJar.archiveFile)
     into('resources') { with runtimeAssets }
-    from('README.md', 'THIRD_PARTY_NOTICES.md')
+    from('README.md', 'GAME_GUIDE.md', 'DEVELOPMENT_NOTES.md', 'THIRD_PARTY_NOTICES.md')
     into('licenses') { from 'licenses' }
     into('icons') { from 'packaging/icons' }
 }

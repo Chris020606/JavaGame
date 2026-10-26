@@ -115,7 +115,7 @@ public final class WorldAssets implements AutoCloseable {
         DrawModelEx(character,v(enemy.x,0,enemy.z),v(0,1,0),enemy.facing,v(1,1,1),tint);
         drawWeapon(character,v(enemy.x,0,enemy.z),enemy.facing,enemy.variant==3?bow:enemy.variant==4?staff:sword);
     }
-    public void drawPlayerWeapon(Player player) { drawWeapon(player.getModel(),player.getPosition(),player.getRotation().y(),sword); }
+    public void drawPlayerWeapon(Player player,int style) { drawWeapon(player.getModel(),player.getPosition(),player.getRotation().y(),style==1?bow:style==2?staff:sword); }
     private void drawWeapon(Model character,Vector3 position,float facing,Model weapon) {
         ModelSkeleton skeleton=character.skeleton();
         for (int i=0;i<skeleton.boneCount();i++) {

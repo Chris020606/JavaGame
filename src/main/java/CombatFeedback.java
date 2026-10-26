@@ -14,8 +14,15 @@ public final class CombatFeedback {
         if (labels.size()>=64) labels.remove(0);
         labels.add(new Popup(x,z,text,color,(serial++%3-1)*.28f));
     }
-    public void update(float dt) { labels.removeIf(p -> { p.time-=dt;return p.time<=0; }); }
-    public void clear() { labels.clear(); serial=0; }
+
+    public void update(float dt) {
+        labels.removeIf(p -> { p.time-=dt;return p.time<=0; });
+    }
+
+    public void clear() {
+        labels.clear(); serial=0;
+    }
+
     public void draw(Camera3D camera) {
         for (Popup p:labels) {
             float age=1.05f-p.time;
