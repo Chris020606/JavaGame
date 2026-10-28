@@ -38,6 +38,18 @@ for character,output in [('Rogue_Hooded','raider'),('Ranger','archer'),('Mage','
     for img in d.get('images',[]):
         if 'uri' in img: img['uri']='../KayKit_Adventurers_2.0_FREE/Characters/gltf/'+img['uri']
     write_glb(OUT/(output+'.glb'),d,b)
+# Player variants retain the full shared locomotion/combat set plus ranged clips.
+for character, output, clips in [
+    ('Ranger', 'hero_archer', ('Ranged_Bow_Draw', 'Ranged_Bow_Release')),
+    ('Mage', 'hero_mage', ('Ranged_Magic_Spellcasting',))]:
+    d,b=read_glb(ROOT/('resources/KayKit_Adventurers_2.0_FREE/Characters/gltf/'+character+'.glb'))
+    d['animations']=[]
+    source,_=read_glb(ROOT/'resources/knight.glb')
+    b=append_animations(d,b,ROOT/'resources/knight.glb',tuple(a['name'] for a in source['animations']))
+    b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_CombatRanged.glb',clips)
+    for img in d.get('images',[]):
+        if 'uri' in img: img['uri']='../KayKit_Adventurers_2.0_FREE/Characters/gltf/'+img['uri']
+    write_glb(OUT/(output+'.glb'),d,b)
 # Original flat-shaded scenery, exported as reusable model assets.
 colors={'stone':(.36,.43,.46),'roof':(.15,.43,.43),'wood':(.36,.23,.14),'leaf':(.20,.38,.27),'leaflight':(.29,.48,.32),'iron':(.2,.25,.27)}
 (OUT/'scenery.mtl').write_text(''.join(f'newmtl {k}\nKd {r} {g} {b}\nKa .2 .2 .2\n' for k,(r,g,b) in colors.items()))

@@ -1,5 +1,13 @@
 # Development progress and future work
 
+## Current update: heroes and highlands
+
+Implemented distinct Ranger and Mage player meshes with shared locomotion and class-specific bow-release / spellcasting clips. Asset generation is reproducible with the bundled CC0 sources. Switching class replaces and unloads GPU assets, resets animation lookup state, and validates skeleton compatibility.
+
+Added a second visual stage, Highland Ruins, reached at wave 6 and restored from saved wave progress. It features a slate ground palette, stone colonnades, rocky perimeter, and distant mountain silhouettes. Woodland also gains distant silhouettes; both stages show the healing boundary. Stage II retains the same arena layout, combat rules, and endless-wave flow; a separate campaign/map selector remains future work. HUD panels gain shadows and teal accents, with a stage label under player stats.
+
+Validation: unit tests, visible desktop smoke tests at high and standard DPI, and native macOS packaging. Smoke coverage now includes restored wave-6 scenery and stage save/load, alongside class switching, ranged combat, equipment, and prior regressions. See the latest commit for the exact checked revision; cross-platform builds still require CI.
+
 ## v1.2.0 scope
 
 Added one Warlord boss at the start of every fifth wave, stronger melee and siege damage, longer attack warnings, interruption resistance, gold/crown visuals, and a dedicated boss health bar. Boss rewards grant 120 crystals and unlock Forged, Runic, then Legendary class weapons. The inventory supports equipping unlocked tiers with damage bonuses and weapon tints. Added save format 2 with format 1 migration; equipped tiers cannot exceed unlocked tiers. Tests cover scheduling and resumed queues, boss mechanics, rewards, equipment, save migration, and desktop boss impact/loot/equipping. Version is 1.2.0. The game still has one arena.
@@ -12,9 +20,9 @@ This is a complete, bounded update. No unfinished feature is enabled. Use git hi
 
 ## Future work, in suggested order
 
-1. Give Archer and Mage distinct animated character models and ranged animation clips. Currently the player uses the knight mesh and shared attack animations with a class-specific held weapon.
+1. Polish ranged animation transitions (bow draw/hold/release) and add directional aim feedback. Distinct Ranger/Mage meshes and attack clips now exist.
 2. Expand equipment with distinct weapon models, armor slots, randomized loot, and more comparison stats. Class weapon tiers and format migration now exist.
-3. Add a second arena and a level-selection or campaign flow. Currently there is one arena and endless waves.
+3. Expand the highland stage into a distinct playable layout with route changes and level selection. The wave-6 visual stage currently shares the woodland combat layout.
 4. Add additional boss types and new enemy behaviors. Warlord waves now exist. Coordinate numeric enemy variants in Enemy, WorldAssets, WaveDirector, and SaveGame bounds; add combat and round-trip save tests.
 5. Playtest ranged class balance at higher waves, including piercing damage, enemy pressure, and potion economy.
 6. Add optional aim controls, range feedback, and terrain collision if desired. Current aim follows movement direction and decorative props do not obstruct projectiles.

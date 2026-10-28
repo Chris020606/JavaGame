@@ -8,7 +8,9 @@ public class Menu {
         return new Color().r((byte)r).g((byte)g).b((byte)b).a((byte)255);
     }
     public static void panel(int x, int y, int w, int h) {
-        DrawRectangle(x, y, w, h, PANEL);
+        DrawRectangle(x+3, y+5, w, h, Fade(INK,.45f));
+        DrawRectangle(x, y, w, h, Fade(PANEL,.96f));
+        DrawRectangle(x, y, 3, h, TEAL);
         DrawRectangleLines(x, y, w, h, LINE);
     }
     public static void text(String text, int x, int y, int size, Color color) {

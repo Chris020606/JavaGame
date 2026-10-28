@@ -248,7 +248,13 @@ public class InputSmokeTest {
             check(game.getProgression().weaponTier()==1 && game.getProgression().damage()==33,"Inventory equip failed");for(int i=0;i<3;i++)frame(game);capture("ui-weapon-loot");
             key(game,KEY_ESCAPE);check(game.saveCurrent() && game.loadCurrent(),"Equipment save failed");
             check(game.getProgression().weaponTier()==1,"Equipment did not persist");
-            System.out.println("PASS: name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Highlands",0,8,0,new Progression(HeroClass.MAGE),new WaveDirector.State(6,0,0,8,0,21,0),java.util.List.of()));
+            check(game.loadCurrent(),"Highland save failed");
+            check(game.arena()==Arena.HIGHLANDS,"Wave 6 must restore the second stage");
+            key(game,KEY_ENTER);for(int i=0;i<5;i++)frame(game);capture("ui-highland-ruins");
+            check(game.getPlayer().getAnimationCount()>3,"Hero animation clips missing");
+            check(game.saveCurrent() && game.loadCurrent() && game.arena()==Arena.HIGHLANDS,"Second stage did not persist");
+            System.out.println("PASS: second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

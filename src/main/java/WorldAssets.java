@@ -38,7 +38,28 @@ public final class WorldAssets implements AutoCloseable {
     private void draw(Model model,float x,float z,float angle,float scale) {
         DrawModelEx(model,v(x,0,z),v(0,1,0),angle,v(scale,scale,scale),WHITE);
     }
-    public void drawEnvironment() {
+    public void drawEnvironment(Arena arena) {
+        boolean highland=arena==Arena.HIGHLANDS;
+        // Distant silhouettes frame the arena without blocking combat routes.
+        for (int i=0;i<18;i++) {
+            double a=i*Math.PI*2/18;
+            float x=(float)Math.cos(a)*31,z=(float)Math.sin(a)*31;
+            DrawCylinder(v(x,-.2f,z),0,5,5+i%4,5,
+                highland?Menu.color(63,72,91):Menu.color(39,64,57));
+        }
+        if (highland) {
+            for (int sx:new int[]{-1,1}) for(int sz:new int[]{-1,1}) {
+                float x=sx*12,z=sz*12;
+                Color stone=Menu.color(133,142,160);
+                for(int j=0;j<3;j++) {
+                    float px=x+sx*j*1.7f;
+                    DrawCube(v(px,1.1f+j*.25f,z),.85f,2.2f+j*.5f,.85f,stone);
+                    DrawCube(v(px,2.3f+j*.5f,z),1.1f,.22f,1.1f,Menu.TEXT);
+                }
+                DrawCube(v(x+sx*.85f,2.65f,z),2.7f,.4f,1,stone);
+                DrawSphere(v(x,.8f,z),.2f,Menu.TEAL);
+            }
+        }
         // Stone trails connect the four entry routes to the haven.
         Color earth=Menu.color(94,94,72), stone=Menu.color(125,132,118);
         DrawCube(v(0,-.035f,0),3,.05f,46,earth);
@@ -71,7 +92,8 @@ public final class WorldAssets implements AutoCloseable {
             float x=(float)Math.cos(angle)*radius,z=(float)Math.sin(angle)*radius;
             if (Math.abs(x)<2.5f || Math.abs(z)<2.5f) continue;
             DrawCylinder(v(x,-.01f,z),1.5f,1.5f,.025f,12,Menu.color(39,61,51));
-            draw(pine,x,z,i*37,.85f+(i%4)*.18f);
+            if (highland && i%3!=0) draw(rock,x,z,i*37,1.8f+(i%4)*.4f);
+            else draw(pine,x,z,i*37,.85f+(i%4)*.18f);
             if (i%3==0) draw(rock,x*.92f,z*.92f,i*29,.8f);
         }
         for (int i=0;i<16;i++) {
@@ -93,6 +115,7 @@ public final class WorldAssets implements AutoCloseable {
             }
             DrawCube(v(sx*8.1f,.5f,sz*7),2.3f,.13f,.12f,Menu.color(129,99,62));
         }
+        DrawCylinderWires(v(0,.13f,0),5.7f,5.7f,.03f,64,Menu.TEAL);
         DrawCylinder(v(0,.085f,0),2.4f,2.4f,.025f,24,Menu.color(44,61,55));
         draw(outpost,0,0,0,1);
         draw(crate,-2.4f,-1.8f,12,1); draw(crate,-3.3f,-1.6f,-8,.8f);

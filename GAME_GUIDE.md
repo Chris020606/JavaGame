@@ -135,3 +135,7 @@ For isolated manual testing, Java system property `outpost.dataDir` overrides th
 Gameplay rules are separated from native rendering where practical so JUnit can check them directly. Rendering and input still live together in Game. Enemy variants are numeric: 0 Raider, 1 Scout, 2 Brute, 3 Archer, 4 Shaman, 5 Warlord. Update persistence bounds and rendering together if adding variants. Add class rules in HeroClass and keep equipment rendering consistent in WorldAssets.
 
 Character and weapon assets are from KayKit under CC0. See THIRD_PARTY_NOTICES.md and the included licenses for dependencies. See DEVELOPMENT_NOTES.md for known limits and future work.
+
+## Woodland Haven and Highland Ruins
+
+Waves 1–5 take place in Woodland Haven. Wave 6 changes the arena to Highland Ruins, with stone pillars, rocky borders, and a slate landscape. Waves continue endlessly with the same combat routes. Loading a save restores the stage from its wave number. The teal ground ring marks the healing haven around the outpost.

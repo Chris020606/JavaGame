@@ -104,6 +104,7 @@ public abstract class Entity {
 
     public void loadAnimations(String path) {
 
+        animationIndices.clear(); hasAnimation=false; animationIndex=0; restartAnimation();
         animations = LoadModelAnimations(path, animationCount);
 
         for (int i = 0; i < animationCount[0]; i++) {

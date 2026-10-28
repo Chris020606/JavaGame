@@ -8,7 +8,8 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 
 ## Features
 
-- Choose Warrior, Archer, or Mage with a sword, bow, or staff.
+- Choose Warrior, Archer, or Mage with distinct animated models and a sword, bow, or staff.
+- Defend Woodland Haven, then reach Highland Ruins at wave 6.
 - An inventory with equippable weapon tiers, healing potions, and workshop restocking.
 - Warlord bosses every fifth wave with crystal rewards and weapon loot.
 - Directional sword attacks with a three-hit combo and a heavy cleave.
@@ -18,7 +19,7 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 - A decorated low-poly map with paths, trees, lanterns, fences, rocks, and flowers.
 - Sound effects, a name screen, save/load, and customizable controls.
 
-![Combat feedback](docs/images/combat-feedback.png)
+![Highland Ruins and Mage hero](docs/images/highland-ruins.png)
 
 ## Download and install
 

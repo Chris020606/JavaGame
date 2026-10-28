@@ -60,7 +60,26 @@ public class Game {
         applySettings();
     }
 
+    private HeroClass modelClass=HeroClass.WARRIOR;
+    private void applyHeroModel() {
+        if (modelClass!=selectedClass) {
+            player.dispose();
+            String path=AssetPaths.path(selectedClass==HeroClass.WARRIOR ? "resources/knight.glb" :
+                selectedClass==HeroClass.ARCHER ? "resources/outpost/hero_archer.glb" : "resources/outpost/hero_mage.glb");
+            player.setModel(LoadModel(path)); player.loadAnimations(path);
+            if (player.getModel().meshCount()==0 || player.getAnimationCount()==0)
+                throw new IllegalStateException("Missing hero model or animations: "+path);
+            for (int i=0;i<player.getAnimationCount();i++)
+                if (!IsModelAnimationValid(player.getModel(),new ModelAnimation(player.getAnimation()).position(i)))
+                    throw new IllegalStateException("Hero animation skeleton mismatch: "+path);
+            modelClass=selectedClass;
+        }
+        player.setWeaponStyle(selectedClass.ordinal());
+        player.setMovementSpeed(selectedClass.speed);
+    }
+    Arena arena() { return Arena.forWave(wave); }
     private void start() {
+        applyHeroModel();
         progress = new Progression(selectedClass); player.setMovementSpeed(selectedClass.speed); inventory=false; heroShots.clear(); enemies.clear(); projectiles.clear(); wave = 0; nextWave = 5;
         attackCooldown = slashTime = noticeTime = 0; workshop = false;
         player.getPosition().x(0).y(0).z(4);
@@ -204,7 +223,7 @@ public class Game {
         }
         if (progress.defeated()) { state = GameState.GAME_OVER; return; }
         WaveDirector.Spawn spawn=director.update(dt,enemies.size());
-        if (director.wave()!=wave) { wave=director.wave(); audio.play("wave"); notifyPlayer("WAVE "+wave+(director.bossWave()?" / WARLORD APPROACHING":" / Raiders approaching the trails")); }
+        if (director.wave()!=wave) { wave=director.wave(); audio.play("wave"); notifyPlayer("WAVE "+wave+(director.bossWave()?" / WARLORD APPROACHING":wave==6?" / HIGHLAND RUINS REACHED":" / Raiders approaching the trails")); }
         if (spawn!=null) enemies.add(new Enemy(spawn.x(),spawn.z(),spawn.wave(),spawn.variant(),random.nextFloat()));
         nextWave=director.rest();
     }
@@ -263,9 +282,9 @@ public class Game {
     private Vector3 v(float x, float y, float z) { return new Vector3().x(x).y(y).z(z); }
     private void drawWorld() {
         BeginMode3D(sceneManager.getOpenScene().getCameraController().getCamera());
-        DrawPlane(v(0, -.06f, 0), new Vector2().x(68).y(68), Menu.color(57, 79, 65));
+        DrawPlane(v(0, -.06f, 0), new Vector2().x(68).y(68), arena().ground());
         DrawCylinder(v(0, 0, 0), 5.7f, 5.7f, .08f, 48, Menu.color(70, 92, 82));
-        assets.drawEnvironment();
+        assets.drawEnvironment(arena());
         if (director.warning()) {
             DrawCylinderWires(v(director.x(),.08f,director.z()),1.4f,1.4f,.15f,24,Menu.RED);
             DrawLine3D(v(director.x(),0,director.z()),v(director.x(),3,director.z()),Menu.GOLD);
@@ -327,6 +346,7 @@ public class Game {
         Menu.bar(cx+14,h-111,272,activeAttack.duration()-attackCooldown,activeAttack.duration(),Menu.GOLD);
         Menu.text("Move "+settings.controls.label(FORWARD)+settings.controls.label(LEFT)+settings.controls.label(BACK)+settings.controls.label(RIGHT)+" / "+settings.controls.label(SLASH)+" attack / "+settings.controls.label(HEAVY)+" heavy", 320, h-60, 14, Menu.TEXT);
         drawMinimap(w-180,148);
+        Menu.text(arena().label,36,149,13,Menu.TEXT);
         Menu.text("KILLS "+progress.kills()+"   /   HEAVY "+Math.round(progress.damage()*progress.heroClass().attack(1,true).multiplier())+" DMG",36,131,13,Menu.GOLD);
         Menu.text(!audio.ready()?"Audio unavailable":audio.muted()?settings.controls.label(MUTE)+" / SOUND OFF":settings.controls.label(MUTE)+" / SOUND ON",w-180,320,13,Menu.MUTED);
         Menu.text(settings.controls.label(WORKSHOP)+" shop / "+settings.controls.label(SAVE)+" save / "+settings.controls.label(INVENTORY)+" bag / "+settings.controls.label(POTION)+" potion ("+progress.potions()+")", 320, h-35, 16, Menu.MUTED);
@@ -336,7 +356,7 @@ public class Game {
             Menu.text("WARLORD / "+(int)enemy.health+" HP",bx+14,32,18,Menu.GOLD);
             Menu.bar(bx+14,62,312,enemy.health,enemy.maxHealth,Menu.RED);
         }
-        if (nearBase()) Menu.text("SAFE HAVEN  /  Healing +" + (3+progress.baseLevel()) + " HP/s", 24, 166, 14, Menu.TEAL);
+        if (nearBase()) Menu.text("SAFE HAVEN  /  Healing +" + (3+progress.baseLevel()) + " HP/s", 24, 174, 14, Menu.TEAL);
         if (noticeTime > 0) Menu.text(notice, (w-MeasureText(notice, 20))/2, 196, 20, Menu.GOLD);
     }
     private void drawMinimap(int x,int y) {
@@ -485,7 +505,7 @@ public class Game {
         try {
             SaveGame.Snapshot saved=SaveGame.read(savePath);
             progress=saved.progression();director.restore(saved.wave());enemies.clear();enemies.addAll(saved.enemies());projectiles.clear();heroShots.clear();inventory=false;
-            selectedClass=progress.heroClass();player.setMovementSpeed(selectedClass.speed);
+            selectedClass=progress.heroClass();applyHeroModel();
             player.setName(saved.name());settings.playerName=saved.name();player.getPosition().x(saved.x()).z(saved.z());player.getRotation().y(saved.facing());
             player.resetCombat();feedback.clear();wave=director.wave();nextWave=director.rest();workshop=false;
             combo=0;comboWindow=inputBuffer=attackElapsed=hurtFlash=slashTime=noticeTime=0;attackCooldown=.3f;impactPending=false;

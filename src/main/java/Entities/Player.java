@@ -11,6 +11,8 @@ public class Player extends Entity {
     private Controls controls=new Controls();
     public void setControls(Controls controls) { this.controls=controls; }
     private String name;
+    private int weaponStyle;
+    public void setWeaponStyle(int style) { weaponStyle=style; }
     private float movementSpeed = 5.0f;
     public void setMovementSpeed(float speed) { movementSpeed=speed; }
     private boolean sex; // true = male, false = female
@@ -149,6 +151,8 @@ public class Player extends Entity {
     public void attack(int combo,boolean heavy,float duration) {
         attackDuration=duration; attackTime=duration;
         attackClip=heavy ? PlayerAnimation.ATTACK_CHOP : combo==2 ? PlayerAnimation.ATTACK_DIAGONAL : PlayerAnimation.ATTACK_HORIZONTAL;
+        if (weaponStyle==1) attackClip=PlayerAnimation.BOW_RELEASE;
+        if (weaponStyle==2) attackClip=PlayerAnimation.MAGIC_CAST;
         setAnimation(attackClip);
         restartAnimation(); playAnimationProgress(0);
     }

@@ -1,6 +1,8 @@
 package Entities;
 
 public enum PlayerAnimation {
+    BOW_RELEASE("Ranged_Bow_Release"),
+    MAGIC_CAST("Ranged_Magic_Spellcasting"),
     // Movement
     WALK("Walking_A.001"),
     WALK_BACKWARD("Walking_Backwards"),
