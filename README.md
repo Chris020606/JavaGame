@@ -19,7 +19,7 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 - A decorated low-poly map with paths, trees, lanterns, fences, rocks, and flowers.
 - Sound effects, a name screen, save/load, and customizable controls.
 
-![Highland Ruins and Mage hero](docs/images/highland-ruins.png)
+![Downloaded Nature Kit scenery in Highland Ruins](docs/images/nature-overview.png)
 
 ## Download and install
 
@@ -92,7 +92,7 @@ On Windows, use `gradlew.bat run` instead. The first run downloads the required 
 
 ## Credits
 
-The character, weapon, and animation assets come from KayKit and are included under their CC0 license. The map models and sound effects were made for this project.
+The character, weapon, and animation assets come from KayKit and are included under their CC0 license. Environment trees, rocks, plants, tents, and ruin props come from Kenney’s CC0 Nature Kit. The outpost and sound effects were made for this project.
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the licenses of the game engine and included assets.
 

@@ -1,5 +1,15 @@
 # Development progress and future work
 
+## Environment pack and bow correction
+
+Downloaded Kenney Nature Kit (2.1), CC0, from the creator’s OpenGameArt listing. Integrated 13 selected unmodified OBJ/MTLs: varied pines/oaks, boulders, shrubs, grass, flowers, mushrooms, tents, logs, damaged columns, and obelisks. Woodland gains a layered forest and small camp; Highlands gains rocky borders and imported ruin props. Models load once, validate on startup, and unload at shutdown. Runtime material colors adapt foliage to the forest palette; source OBJ/MTL files stay unchanged. Runtime packaging already includes `outpost/**`, including the license and source/checksum manifest. Reimport with `tools/import_nature.py` and the downloaded archive.
+
+Corrected bow orientation with a 180-degree rotation around its local long axis before applying the animated left-hand slot transform. The shared attachment path fixes player and enemy bows. Archer now uses the bundled bow idle animation rather than the melee idle pose.
+
+Validation: 25 unit tests, the standard-DPI desktop regression (including side-view bow and environment overview captures), and macOS native packaging.
+
+Next: tune terrain and lighting, add bow draw/hold transitions, and build a distinct highland route layout. Environment props remain decorative; they do not provide cover or block movement/projectiles.
+
 ## Current update: heroes and highlands
 
 Implemented distinct Ranger and Mage player meshes with shared locomotion and class-specific bow-release / spellcasting clips. Asset generation is reproducible with the bundled CC0 sources. Switching class replaces and unloads GPU assets, resets animation lookup state, and validates skeleton compatibility.

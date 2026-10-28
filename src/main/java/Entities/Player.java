@@ -139,7 +139,7 @@ public class Player extends Entity {
         } else if (moving) {
             setAnimation(PlayerAnimation.WALK);
         } else {
-            setAnimation(PlayerAnimation.MELEE_IDLE);
+            setAnimation(weaponStyle==1?PlayerAnimation.BOW_IDLE:PlayerAnimation.MELEE_IDLE);
         }
 
         if (attackTime > 0) playAnimationProgress(1-attackTime/attackDuration);
@@ -161,7 +161,7 @@ public class Player extends Entity {
 
     public void resetCombat() {
         attackTime = 0;
-        setAnimation(PlayerAnimation.MELEE_IDLE);
+        setAnimation(weaponStyle==1?PlayerAnimation.BOW_IDLE:PlayerAnimation.MELEE_IDLE);
         restartAnimation();
         updateAnimation(0);
     }

@@ -5,3 +5,5 @@
 The scenery OBJ/MTL files are original geometry created for this project. Rebuild all derived assets from the project root with `python3 tools/prepare_assets.py`. Do not move the derived raider independently of its referenced textures.
 
 `hero_archer.glb` and `hero_mage.glb` use the Ranger and Mage meshes, the full knight movement/melee animation set, and class-specific ranged clips from the same bundled CC0 sources. Their textures remain relative to the Adventurers character directory.
+
+The `nature/` directory contains selected unmodified Kenney Nature Kit (2.1) GLBs downloaded from https://opengameart.org/content/nature-kit under CC0. The original license and source/archive checksum are included. To reimport, run `python3 tools/import_nature.py /path/to/Nature-Kit.zip`. These downloaded models are independent of `prepare_assets.py`.

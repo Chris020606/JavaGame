@@ -40,7 +40,7 @@ for character,output in [('Rogue_Hooded','raider'),('Ranger','archer'),('Mage','
     write_glb(OUT/(output+'.glb'),d,b)
 # Player variants retain the full shared locomotion/combat set plus ranged clips.
 for character, output, clips in [
-    ('Ranger', 'hero_archer', ('Ranged_Bow_Draw', 'Ranged_Bow_Release')),
+    ('Ranger', 'hero_archer', ('Ranged_Bow_Draw', 'Ranged_Bow_Release', 'Ranged_Bow_Idle')),
     ('Mage', 'hero_mage', ('Ranged_Magic_Spellcasting',))]:
     d,b=read_glb(ROOT/('resources/KayKit_Adventurers_2.0_FREE/Characters/gltf/'+character+'.glb'))
     d['animations']=[]

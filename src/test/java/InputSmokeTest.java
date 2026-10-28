@@ -214,6 +214,13 @@ public class InputSmokeTest {
             float targetHp=loadedTarget.health;key(game,KEY_SPACE);
             for(int i=0;i<35;i++)frame(game);
             check(loadedTarget.health<targetHp,"Player arrow failed to hit at range");capture("ui-archer-hero");
+            // Side view makes the bow's grip/string orientation reviewable.
+            Camera3D bowCamera=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+            bowCamera._position().x(4).y(2.6f).z(10);
+            bowCamera.target().x(0).y(1.2f).z(8);
+            for(int i=0;i<3;i++) { BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing(); }
+            capture("ui-bow-side");
+            game.getSceneManager().getOpenScene().getCameraController().update(0);
             game.getProgression().damagePlayer(65);
             key(game,KEY_TAB);float frozen=game.getProgression().health();
             event(KEY_DOWN,KEY_I,0);for(int i=0;i<10;i++)frame(game);event(KEY_UP,KEY_I,0);frame(game);
@@ -254,6 +261,11 @@ public class InputSmokeTest {
             key(game,KEY_ENTER);for(int i=0;i<5;i++)frame(game);capture("ui-highland-ruins");
             check(game.getPlayer().getAnimationCount()>3,"Hero animation clips missing");
             check(game.saveCurrent() && game.loadCurrent() && game.arena()==Arena.HIGHLANDS,"Second stage did not persist");
+            key(game,KEY_ENTER);
+            Camera3D overview=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+            overview._position().x(30).y(30).z(34);overview.target().x(0).y(0).z(0);
+            for(int i=0;i<3;i++) { BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing(); }
+            capture("ui-nature-overview");
             System.out.println("PASS: second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
         } finally {
             if (game != null) game.dispose();
