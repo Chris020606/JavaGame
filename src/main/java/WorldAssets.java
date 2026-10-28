@@ -8,10 +8,6 @@ import static com.raylib.Colors.WHITE;
 public final class WorldAssets implements AutoCloseable {
     private final Model raider = LoadModel(AssetPaths.path("resources/outpost/raider.glb"));
     private final Model sword = LoadModel(AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/sword_1handed.gltf"));
-    private final Model outpost = LoadModel(AssetPaths.path("resources/outpost/outpost.obj"));
-    private final Model pine = LoadModel(AssetPaths.path("resources/outpost/pine.obj"));
-    private final Model rock = LoadModel(AssetPaths.path("resources/outpost/rock.obj"));
-    private final Model crate = LoadModel(AssetPaths.path("resources/outpost/crate.obj"));
     private final Shader daylight=LoadShader(AssetPaths.path("resources/outpost/daylight.vs"),AssetPaths.path("resources/outpost/daylight.fs"));
     private final java.util.Map<String,Model> nature=new java.util.LinkedHashMap<>();
     private final int[] count = new int[1];
@@ -44,7 +40,7 @@ public final class WorldAssets implements AutoCloseable {
             lightModel(model);
             nature.put(name,model);
         }
-        for (Model model : new Model[]{raider,archer,shaman,bow,staff,sword,outpost,pine,rock,crate})
+        for (Model model : new Model[]{raider,archer,shaman,bow,staff,sword})
             if (model.meshCount() == 0) throw new IllegalStateException("Missing world model; run from project directory");
         if (count[0] != 2 || archerCount[0]!=4 || shamanCount[0]!=3) throw new IllegalStateException("Missing raider animation clips");
         for (int i=0;i<count[0];i++) {
@@ -56,83 +52,61 @@ public final class WorldAssets implements AutoCloseable {
         }
     }
     private static Vector3 v(float x,float y,float z) { return new Vector3().x(x).y(y).z(z); }
-    private void draw(Model model,float x,float z,float angle,float scale) {
-        DrawModelEx(model,v(x,0,z),v(0,1,0),angle,v(scale,scale,scale),WHITE);
-    }
     public void lightModel(Model model) {
         for(int i=0;i<model.materialCount();i++) new Material(model.materials()).position(i).shader().put(daylight);
     }
-    public void drawEnvironment(Arena arena) {
-        if (arena==Arena.HIGHLANDS) { drawHighlands(); return; }
-        boolean highland=arena==Arena.HIGHLANDS;
-        // Layer the perimeter with varied silhouettes, leaving the entry trails clear.
-        for (int i=0;i<64;i++) {
-            double a=i*Math.PI*2/64;
-            float radius=25+(i%4)*1.7f;
+    public void drawEnvironment(int chapter,float time) {
+        drawBackdrop(time);
+        drawHighlands(chapter,time);
+        // This radius matches Game.nearBase exactly. Pulsing motes point toward recovery.
+        Color glow=Fade(Menu.TEAL,.65f+.2f*(float)Math.sin(time*2));
+        DrawCylinderWires(v(0,.09f,0),6,6,.035f,96,glow);
+        for(int i=0;i<4;i++) {
+            double a=i*Math.PI/2;float hx=(float)Math.cos(a)*5.5f,hz=(float)Math.sin(a)*5.5f;
+            DrawLine3D(v(hx-.22f,.12f,hz),v(hx+.22f,.12f,hz),Menu.TEAL);
+            DrawLine3D(v(hx,.12f,hz-.22f),v(hx,.12f,hz+.22f),Menu.TEAL);
+        }
+        for(int i=0;i<24;i++) {
+            double a=i*Math.PI/12+time*.07;
+            float y=.15f+(time*.35f+i*.13f)%1.2f;
+            DrawSphere(v((float)Math.cos(a)*5.85f,y,(float)Math.sin(a)*5.85f),.035f,Fade(Menu.TEAL,1-y/1.5f));
+        }
+        // The marker posts form the edge of the playable clearing.
+        for(int sx:new int[]{-1,1}) for(int z=-20;z<=20;z+=4) {
+            scenery("stone_largeA",sx*23,z,z*13,1.5f);
+            scenery("stone_largeA",z,sx*23,z*17,1.5f);
+        }
+    }
+    private void drawBackdrop(float time) {
+        // Surrounding land extends well beyond the movement boundary, hiding the square edge.
+        for(int x=-6;x<=6;x++) for(int z=-6;z<=6;z++) {
+            if(Math.abs(x)<=2 && Math.abs(z)<=2) continue;
+            sceneryAt("ground_grass",x*12,-.25f,z*12,0,12);
+        }
+        for(int x=-2;x<=2;x++) for(int z=-2;z<=2;z++) {
+            if(x==0 && z==0) continue;
+            sceneryAt("ground_grass",x*80,-.4f,z*80,0,80);
+        }
+        for(int i=0;i<100;i++) {
+            double a=i*2.39996;
+            float radius=37+(i%6)*5;
             float x=(float)Math.cos(a)*radius,z=(float)Math.sin(a)*radius;
-            if (Math.abs(x)<3 || Math.abs(z)<3) continue;
-            scenery(highland ? (i%3==0?"tree_pineRoundC":"stone_tallB") :
-                (i%3==0?"tree_oak":"tree_pineTallA_detailed"),x,z,i*137,highland?5+i%3:4+i%3);
+            scenery(i%3==0?"stone_tallB":i%2==0?"tree_oak":"tree_pineTallA_detailed",x,z,i*71,6+i%5);
         }
-        if (highland) for (int sx:new int[]{-1,1}) for(int sz:new int[]{-1,1}) {
-            for(int j=0;j<4;j++) scenery("statue_columnDamaged",sx*(10+j*2),sz*13,j*90,4.5f);
-            scenery("statue_obelisk",sx*17,sz*17,45,5);
-            scenery("stone_largeA",sx*14,sz*10,27,4);
+        // Clouds drift above the distant hills. They are atmosphere, not reachable terrain.
+        for(int i=0;i<10;i++) {
+            float x=-85+(i*19+time*.65f)%170,z=-58+(i%3)*47;
+            for(int j=0;j<3;j++) DrawSphereEx(v(x+j*3,17+i%3*2,z),4-j*.5f,6,8,Fade(Menu.color(224,235,228),.85f));
         }
-        else {
-            scenery("tent_detailedOpen",-9,-9,140,4);
-            scenery("log_stack",-12,-8,20,3);
-            scenery("tent_detailedOpen",10,-10,220,3.5f);
+        for(int i=0;i<6;i++) {
+            float x=(float)Math.sin(time*.11f+i)*38,z=(float)Math.cos(time*.11f+i)*38,y=13+i%3;
+            float wing=.45f+(float)Math.sin(time*4+i)*.25f;
+            DrawLine3D(v(x-.7f,y+wing,z),v(x,y,z),Menu.INK);
+            DrawLine3D(v(x,y,z),v(x+.7f,y+wing,z),Menu.INK);
         }
-        // Stone trails connect the four entry routes to the haven.
-        Color earth=Menu.color(94,94,72), stone=Menu.color(125,132,118);
-        DrawCube(v(0,-.035f,0),3,.05f,46,earth);
-        DrawCube(v(0,-.03f,0),46,.05f,3,earth);
-        for (int i=-14;i<=14;i++) {
-            if (Math.abs(i)<3) continue;
-            float p=i*1.5f;
-            DrawCube(v((i%2)*.2f,.005f,p),1.6f,.06f,.65f,stone);
-            DrawCube(v(p,.005f,(i%2)*.2f),.65f,.06f,1.6f,stone);
-        }
-        // Small garden islands, flowers and stones break up the clearing.
-        for (int i=0;i<32;i++) {
-            double angle=i*2.39996;
-            float radius=8+(i%5)*2.8f;
-            float x=(float)Math.cos(angle)*radius,z=(float)Math.sin(angle)*radius;
-            if (Math.abs(x)<3 || Math.abs(z)<3) continue;
-            DrawCylinder(v(x,-.01f,z),1.3f,1.3f,.035f,9,Menu.color(65,89,67));
-            scenery(i%4==0?"stone_largeA":"plant_bushDetailed",x,z,i*29,i%4==0?2.7f:2.1f);
-            scenery(highland?"grass_large":"flower_purpleC",x+.9f,z+.7f,i*41,1.8f);
-            if (!highland && i%3==0) scenery("mushroom_redGroup",x-.6f,z+.5f,i*17,2);
-
-        }
-        for (int i=0;i<16;i++) {
-            double angle=i*Math.PI/8;
-            float x=(float)Math.cos(angle)*5.8f,z=(float)Math.sin(angle)*5.8f;
-            if (i%4==0) continue;
-            DrawCube(v(x,.04f,z),.45f,.12f,.45f,stone);
-        }
-        for (int sx:new int[]{-1,1}) for (int sz:new int[]{-1,1}) {
-            float x=sx*4.4f,z=sz*4.4f;
-            DrawCylinder(v(x,0,z),.12f,.18f,1.5f,6,Menu.color(78,57,42));
-            DrawCube(v(x,1.65f,z),.35f,.4f,.35f,Menu.GOLD);
-            DrawCube(v(x,1.9f,z),.48f,.1f,.48f,Menu.LINE);
-            DrawCylinder(v(x,.015f,z),.75f,.75f,.02f,16,Menu.color(110,106,66));
-            // Low split fences leave the main trails open.
-            for (int j=0;j<3;j++) {
-                float fx=sx*(7+j*1.1f),fz=sz*7;
-                DrawCube(v(fx,.45f,fz),.13f,.9f,.13f,Menu.color(102,77,49));
-            }
-            DrawCube(v(sx*8.1f,.5f,sz*7),2.3f,.13f,.12f,Menu.color(129,99,62));
-        }
-        DrawCylinderWires(v(0,.13f,0),5.7f,5.7f,.03f,64,Menu.TEAL);
-        DrawCylinder(v(0,.085f,0),2.4f,2.4f,.025f,24,Menu.color(44,61,55));
-        draw(outpost,0,0,0,1);
-        draw(crate,-2.4f,-1.8f,12,1); draw(crate,-3.3f,-1.6f,-8,.8f);
-        draw(crate,2.5f,-2,25,1);
     }
     /** Every visible piece of stage II scenery comes from the downloaded pack. */
-    private void drawHighlands() {
+    private void drawHighlands(int chapter,float time) {
         // A tiled meadow with branching earth tracks replaces the old flat plane/crosswalk.
         for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) {
             String tile=x==0 && z==0?"ground_pathCross":x==0 || z==0?"ground_pathStraight":"ground_grass";
@@ -145,6 +119,15 @@ public final class WorldAssets implements AutoCloseable {
         scenery("tent_detailedOpen",5,-4,230,3.5f);
         scenery("log_stack",-5.5f,-6,25,2.5f);
         scenery("campfire_stones",3,-2,0,2.5f);
+        DrawSphere(v(3,.55f+(float)Math.sin(time*7)*.08f,-2),.16f,Menu.GOLD);
+        for(int i=0;i<7;i++) {
+            float rise=(time*.65f+i*.23f)%2;
+            DrawSphere(v(3+(float)Math.sin(time+i)*.12f,.55f+rise,-2),.025f,Fade(Menu.GOLD,1-rise/2));
+        }
+        for(int j=0;j<chapter*3;j++) {
+            double a=j*Math.PI*2/Math.max(1,chapter*3);
+            scenery("statue_columnDamaged",(float)Math.cos(a)*13,(float)Math.sin(a)*13,j*55,4+chapter*.4f);
+        }
         for(int side:new int[]{-1,1}) {
             scenery("statue_columnDamaged",side*4,5,side*20,4.5f);
             scenery("statue_obelisk",side*7,8,side*15,4);
@@ -169,9 +152,11 @@ public final class WorldAssets implements AutoCloseable {
         }
     }
     private void scenery(String name,float x,float z,float angle,float scale) {
+        sceneryAt(name,x,0,z,angle,scale);
+    }
+    private void sceneryAt(String name,float x,float y,float z,float angle,float scale) {
         Model model=nature.get(name);
-        // OBJ exports sit on the ground plane.
-        DrawModelEx(model,v(x,0,z),v(0,1,0),angle,v(scale,scale,scale),WHITE);
+        DrawModelEx(model,v(x,y,z),v(0,1,0),angle,v(scale,scale,scale),WHITE);
     }
     public void drawEnemy(Enemy enemy) {
         Model character=enemy.variant==3?archer:enemy.variant==4?shaman:raider;
@@ -231,6 +216,6 @@ public final class WorldAssets implements AutoCloseable {
         UnloadShader(daylight);
         UnloadModelAnimations(animations,count[0]);
         UnloadModelAnimations(archerAnimations,archerCount[0]); UnloadModelAnimations(shamanAnimations,shamanCount[0]);
-        for (Model model:new Model[]{raider,archer,shaman,bow,staff,sword,outpost,pine,rock,crate}) UnloadModel(model);
+        for (Model model:new Model[]{raider,archer,shaman,bow,staff,sword}) UnloadModel(model);
     }
 }

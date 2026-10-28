@@ -11,9 +11,10 @@ public final class WaveDirector {
     public Spawn update(float dt, int living) {
         if (remaining == 0) {
             if (living > 0) return null;
+            if (levelCleared(living) || wave>=10) return null;
             rest-=dt;
             if (rest>0) return null;
-            rest=0; wave++; total=remaining=Math.min(36,4+wave*3); schedule();
+            rest=0; wave++; total=remaining=Campaign.enemies(wave); schedule();
             return null;
         }
         arrival-=dt;
@@ -23,6 +24,14 @@ public final class WaveDirector {
         if (remaining>0) schedule(); else rest=8;
         return result;
     }
+    public boolean levelCleared(int living) { return wave>0 && Campaign.boundary(wave) && (total>0 || wave>=10) && remaining==0 && living==0; }
+    public void advanceLevel() {
+        if(wave>=10) return;
+        if(!levelCleared(0)) throw new IllegalStateException("Level is not clear");
+        total=0;rest=5;
+    }
+    public Campaign.Chapter chapter() { return Campaign.chapter(total==0?wave+1:wave); }
+    public int chapterIndex() { return Campaign.index(total==0?wave+1:wave); }
     private void schedule() {
         // Four approach routes, with lateral and distance variation.
         int gate=random.nextInt(4);

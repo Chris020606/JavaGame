@@ -11,7 +11,8 @@ class BossEquipmentTest {
         WaveDirector director=new WaveDirector(new Random(19));
         Map<Integer,Integer> bosses=new HashMap<>(),counts=new HashMap<>();
         boolean resumed=false;
-        for(int i=0;i<20000 && director.wave()<11;i++) {
+        for(int i=0;i<20000;i++) {
+            if(director.levelCleared(0)) { if(director.wave()>=10) break; director.advanceLevel(); }
             WaveDirector.Spawn spawn=director.update(.1f,0);
             if(spawn==null)continue;
             counts.merge(spawn.wave(),1,Integer::sum);
@@ -21,7 +22,7 @@ class BossEquipmentTest {
             }
         }
         assertTrue(resumed);assertEquals(Map.of(5,1,10,1),bosses);
-        for(int wave=1;wave<=10;wave++)assertEquals(Math.min(36,4+wave*3),counts.get(wave));
+        for(int wave=1;wave<=10;wave++)assertEquals(Campaign.enemies(wave),counts.get(wave));
     }
     @Test void bossIsMeleeAndCannotBeStunLockedDuringItsLongTelegraph() {
         Enemy boss=new Enemy(0,2,5,5,.5f),raider=new Enemy(0,2,5);

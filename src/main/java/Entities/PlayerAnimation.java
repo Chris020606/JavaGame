@@ -1,6 +1,7 @@
 package Entities;
 
 public enum PlayerAnimation {
+    BOW_DRAW("Ranged_Bow_Draw"),
     BOW_IDLE("Ranged_Bow_Idle"),
     BOW_RELEASE("Ranged_Bow_Release"),
     MAGIC_CAST("Ranged_Magic_Spellcasting"),
@@ -8,6 +9,7 @@ public enum PlayerAnimation {
     WALK("Walking_A.001"),
     WALK_BACKWARD("Walking_Backwards"),
     RUN("Running_A"),
+    BOW_RUN("Running_HoldingBow"),
     RUN_STRAFE_LEFT("Running_Strafe_Left"),
     RUN_STRAFE_RIGHT("Running_Strafe_Right"),
     SNEAK("Sneaking"),

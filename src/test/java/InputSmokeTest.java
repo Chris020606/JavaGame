@@ -69,7 +69,11 @@ public class InputSmokeTest {
         SetExitKey(KEY_NULL); SetTargetFPS(60);
         Game game = null;
         try {
-            game = new Game();
+            // Desktop pointer events can arrive even when virtual button states are cleared.
+            // Inject only the combat click; menus continue to use native automation events.
+            java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
+            game = new Game(()->combatClick.getAndSet(false));
+            game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
             for (int i = 0; i < 5; i++) frame(game);
             capture("ui-menu-retina");
             // Click the center of the visible Begin Defense button, in window pixels.
@@ -131,9 +135,9 @@ public class InputSmokeTest {
             check(game.getPlayer().isAttacking(), "Sword swing ended too early");
             capture("ui-sword-swing");
             for (int i=0;i<20;i++) frame(game);
-            check(!game.getPlayer().isAttacking(), "Sword swing did not finish");
-            key(game, KEY_SPACE);
-            check(game.getPlayer().isAttacking(), "Repeated sword attack did not restart");
+            check(!game.getPlayer().isAttacking(), "Sword swing did not finish: "+game.getState()+" remaining "+game.getPlayer().attackRemaining()+" clip "+game.getPlayer().getAnimationIndex());
+            combatClick.set(true);frame(game);
+            check(game.getPlayer().isAttacking(), "Mouse combat attack did not restart");
             for (int i=0;i<45;i++) frame(game);
             check(!game.getEnemies().isEmpty(), "Staggered wave did not spawn enemies");
             // Put a living raider in front, with a long cooldown to isolate player impact.
@@ -183,13 +187,14 @@ public class InputSmokeTest {
             check(game.getState()==GameState.SETTING_MENU,"Settings button failed");
             for(int i=0;i<3;i++)frame(game);
             capture("ui-settings");
-            int bx=(GetScreenWidth()-820)/2,by=(GetScreenHeight()-580)/2;
+            int bx=(GetScreenWidth()-820)/2,by=(GetScreenHeight()-650)/2;
             event(MOUSE_POSITION,bx+100,by+230);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
             event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);key(game,KEY_I);
             key(game,KEY_ESCAPE);
             Settings persisted=new Settings();persisted.load(profile.resolve("settings.properties"));
             check(persisted.controls.key(Config.Controls.Action.FORWARD)==KEY_I,"Rebinding did not persist");
             key(game,KEY_ENTER);
+            game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
             float startZ=game.getPlayer().getPosition().z();
             event(KEY_DOWN,KEY_I,0);for(int i=0;i<12;i++)frame(game);event(KEY_UP,KEY_I,0);frame(game);
             check(game.getPlayer().getPosition().z()<startZ-.4f,"Remapped movement failed");
@@ -269,7 +274,73 @@ public class InputSmokeTest {
             overview._position().x(30).y(30).z(34);overview.target().x(0).y(0).z(0);
             for(int i=0;i<3;i++) { BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing(); }
             capture("ui-nature-overview");
-            System.out.println("PASS: second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
+            // Sprint, dodge cooldown, world bounds, and the warrior's distinct attack clips.
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",0,8,180,new Progression(),new WaveDirector.State(1,0,0,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
+            check(game.loadCurrent(),"Movement profile failed");key(game,KEY_ENTER);
+            game.getProgression().damagePlayer(20);game.getPlayer().getPosition().x(0).z(5.8f);
+            float havenHp=game.getProgression().health();for(int i=0;i<30;i++)frame(game);
+            check(game.getProgression().health()>havenHp+1,"Inside the marked healing ring did not heal");
+            game.getPlayer().getPosition().z(6.2f);float outsideHp=game.getProgression().health();
+            for(int i=0;i<30;i++)frame(game);
+            check(game.getProgression().health()==outsideHp,"Healing extended outside the marked six-unit zone");
+            game.getPlayer().getPosition().x(0).z(8);
+            float walkX=game.getPlayer().getPosition().x(),walkZ=game.getPlayer().getPosition().z();
+            event(KEY_DOWN,KEY_I,0);for(int i=0;i<30;i++)frame(game);event(KEY_UP,KEY_I,0);frame(game);
+            float walked=(float)Math.hypot(game.getPlayer().getPosition().x()-walkX,game.getPlayer().getPosition().z()-walkZ);
+            game.getPlayer().getPosition().x(walkX).z(walkZ);game.getPlayer().resetCombat();
+            event(KEY_DOWN,KEY_LEFT_SHIFT,0);event(KEY_DOWN,KEY_I,0);for(int i=0;i<30;i++)frame(game);
+            check(game.getPlayer().isSprinting(),"Sprint state did not engage");
+            check(Math.hypot(game.getPlayer().getPosition().x()-walkX,game.getPlayer().getPosition().z()-walkZ)>walked*1.4f,"Sprint did not increase movement speed");
+            capture("ui-sprint");event(KEY_UP,KEY_I,0);event(KEY_UP,KEY_LEFT_SHIFT,0);frame(game);
+            game.getPlayer().resetCombat();game.getPlayer().getPosition().x(0).z(8);
+            float dodgeX=game.getPlayer().getPosition().x(),dodgeZ=game.getPlayer().getPosition().z();
+            key(game,KEY_LEFT_CONTROL);check(game.getPlayer().isDodging(),"Dodge did not start");
+            for(int i=0;i<8;i++)frame(game);capture("ui-dodge");
+            for(int i=0;i<15;i++)frame(game);
+            check(Math.hypot(game.getPlayer().getPosition().x()-dodgeX,game.getPlayer().getPosition().z()-dodgeZ)>3,"Dodge did not move player");
+            key(game,KEY_LEFT_CONTROL);check(!game.getPlayer().isDodging(),"Dodge ignored its cooldown");
+            for(int i=0;i<100;i++)frame(game);
+            game.getPlayer().getPosition().x(21.9f).z(8);game.getPlayer().getRotation().y(90);
+            key(game,KEY_LEFT_CONTROL);for(int i=0;i<25;i++)frame(game);
+            check(game.getPlayer().getPosition().x()<=22 && game.getPlayer().getPosition().z()<=22,"Dodge escaped the visual-only boundary");
+            game.getPlayer().getPosition().x(0).z(8);game.getPlayer().resetCombat();
+            java.util.Set<Integer> swordClips=new java.util.HashSet<>();
+            for(int combo=1;combo<=3;combo++) {
+                game.getPlayer().attack(combo,false,.5f);swordClips.add(game.getPlayer().getAnimationIndex());
+                for(int i=0;i<11;i++)frame(game);capture("ui-warrior-combo-"+combo);
+                for(int i=0;i<30;i++)frame(game);
+            }
+            check(swordClips.size()==3,"Warrior combo needs three distinct clips");
+            game.getPlayer().attack(1,true,.9f);check(!swordClips.contains(game.getPlayer().getAnimationIndex()),"Heavy cleave should use its own animation");
+            for(int i=0;i<20;i++)frame(game);capture("ui-warrior-heavy");for(int i=0;i<40;i++)frame(game);
+            // Low orbit shows the sky and the terrain outside the movement boundary.
+            Camera3D horizon=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+            horizon._position().x(12).y(5).z(22);horizon.target().x(0).y(5).z(0);
+            for(int i=0;i<3;i++) { BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing(); }
+            capture("ui-living-horizon");
+            // Chapter completion must pause; the next chapter spawns exactly one boss.
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Chapter",0,4,0,new Progression(),new WaveDirector.State(4,0,16,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
+            check(game.loadCurrent() && game.getState()==GameState.LEVEL_COMPLETE,"Chapter-end save did not restore its story screen");
+            for(int i=0;i<3;i++)frame(game);capture("ui-chapter-complete");
+            key(game,KEY_ENTER);check(game.chapterIndex()==1 && game.getState()==GameState.PLAYING,"Continue failed to enter boss chapter");
+            check(game.saveCurrent() && game.loadCurrent(),"Next chapter save failed");key(game,KEY_ENTER);
+            for(int i=0;i<600 && game.getEnemies().isEmpty();i++)frame(game);
+            check(game.getEnemies().size()==1 && game.getEnemies().get(0).boss(),"Boss chapter should contain exactly one boss");
+            for(int i=0;i<4;i++)frame(game);capture("ui-boss-only-level");
+            game.getEnemies().get(0).health=0;frame(game);
+            check(game.getState()==GameState.LEVEL_COMPLETE,"Boss defeat did not finish its chapter");
+            key(game,KEY_ENTER);check(game.chapterIndex()==2,"Second siege did not follow boss chapter");
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Dawn",0,4,0,new Progression(),new WaveDirector.State(10,0,1,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
+            check(game.loadCurrent() && game.getState()==GameState.VICTORY,"Final completion did not restore victory");
+            for(int i=0;i<3;i++)frame(game);capture("ui-campaign-victory");
+            key(game,KEY_ENTER);check(game.getState()==GameState.MAIN_MENU,"Victory did not return to menu");
+            int mx=(GetScreenWidth()-640)/2,my=(GetScreenHeight()-420)/2;
+            event(MOUSE_POSITION,mx+420,my+366);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
+            event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);
+            check(game.getState()==GameState.JOURNAL,"Chronicle button failed");
+            for(int i=0;i<3;i++)frame(game);capture("ui-chronicle");
+            key(game,KEY_ENTER);check(game.getState()==GameState.MAIN_MENU,"Chronicle return failed");
+            System.out.println("PASS: four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

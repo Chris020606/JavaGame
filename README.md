@@ -1,6 +1,6 @@
 # Outpost
 
-![Highland Sanctuary gameplay](docs/images/sanctuary-gameplay.png)
+![The Last Ember campaign](docs/images/campaign-gameplay.png)
 
 **Outpost** is a small 3D wave-defense game about a warden protecting a frontier settlement. Fight through increasingly dangerous raids, collect crystals, and improve your hero and outpost before the next attack arrives.
 
@@ -9,10 +9,14 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 ## Features
 
 - Choose Warrior, Archer, or Mage with distinct animated models and a sword, bow, or staff.
-- Start in Highland Sanctuary, built entirely from imported environment models, or choose Classic Woodland.
+- Play The Last Ember: a four-chapter story campaign with two four-wave sieges and two boss-only duels.
+- Track waves left, read the Chronicle, and save progress between chapters.
+- Sprint and dodge with animated movement; chain three warrior sword swings and a jumping heavy cleave.
+- Explore a bounded clearing framed by distant forest, sky, drifting clouds, birds, and campfire embers.
+- Find healing inside the glowing, six-unit sanctuary ring.
 - Directional sunlight, distance haze, and a redesigned HUD with a combat hotbar.
 - An inventory with equippable weapon tiers, healing potions, and workshop restocking.
-- Warlord bosses every fifth wave with crystal rewards and weapon loot.
+- Boss-only duels against the Ash Warden and Hollow King, with crystal rewards and weapon loot.
 - Directional sword attacks with a three-hit combo and a heavy cleave.
 - Six enemy types with different strengths and attack styles.
 - Archers and shamans that attack from a distance.
@@ -20,7 +24,7 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 - A decorated low-poly map with paths, trees, lanterns, fences, rocks, and flowers.
 - Sound effects, a name screen, save/load, and customizable controls.
 
-![Highland Sanctuary overview](docs/images/nature-overview.png)
+![Living valley and sky](docs/images/living-horizon.png)
 
 ## Download and install
 
@@ -42,6 +46,7 @@ On Windows or macOS, the first launch may show a security confirmation because t
 | Action | Key |
 | --- | --- |
 | Move | `W A S D` |
+| Sprint / dodge | `Left Shift` / `Left Ctrl` |
 | Orbit the camera | Hold the right mouse button |
 | Sword combo | `Space` or left click |
 | Heavy class attack | `Q` |
@@ -65,7 +70,7 @@ Each wave sends enemies toward the outpost at different times, so you can choose
 - **Brutes** are slow, tough, and hit hard.
 - **Archers** keep their distance and fire arrows.
 - **Shamans** cast powerful magic from a safe range.
-- **Warlords** lead every fifth wave and resist interruption. Defeat them for 120 crystals and the next weapon tier, then equip it with `Tab`.
+- **Warlords** guard chapters 2 and 4 in boss-only duels and resist interruption. Defeat them for 120 crystals and the next weapon tier, then equip it with `Tab`.
 
 Red and gold warnings show where an enemy is about to attack. Step away from the warning or interrupt the enemy with your sword. Gold numbers show damage you deal, red numbers show damage you take, and teal text shows rewards.
 

@@ -9,7 +9,7 @@ public class CameraController {
     private Camera3D camera;
     private Entity target;
     private float yaw = 0.0f;
-    private float pitch = 40.0f;
+    private float pitch = 24.0f;
     private float distance = 17.0f;
     private float mouseSensitivity = 0.15f;
 
@@ -21,7 +21,7 @@ public class CameraController {
         camera = new Camera3D()._position(new Vector3() .x(targetPosition.x() + 5.0f)
                                                         .y(targetPosition.y() + 5.0f)
                                                         .z(targetPosition.z() + 6.0f));
-        camera.fovy(55.0f);
+        camera.fovy(60.0f);
         camera.up().x(0.0f).y(1.0f).z(0.0f);
         camera.projection(CAMERA_PERSPECTIVE);
         camera.target(new Vector3() .x(targetPosition.x())

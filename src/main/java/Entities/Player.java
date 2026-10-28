@@ -13,6 +13,12 @@ public class Player extends Entity {
     private String name;
     private int weaponStyle;
     public void setWeaponStyle(int style) { weaponStyle=style; }
+    private float velocityX,velocityZ,dodgeTime,dodgeCooldown,dodgeX,dodgeZ;
+    private boolean sprinting;
+    private PlayerAnimation dodgeClip=PlayerAnimation.DODGE_FORWARD;
+    public boolean isDodging() { return dodgeTime>0; }
+    public float dodgeCooldown() { return dodgeCooldown; }
+    public boolean isSprinting() { return sprinting; }
     private float movementSpeed = 5.0f;
     public void setMovementSpeed(float speed) { movementSpeed=speed; }
     private boolean sex; // true = male, false = female
@@ -121,28 +127,63 @@ public class Player extends Entity {
 
         float moveLength = (float)Math.sqrt(moveX * moveX + moveZ * moveZ);
 
-        if (moveLength > 0.0f) {
-            moveX /= moveLength;
-            moveZ /= moveLength;
-            position.x(Math.max(-22, Math.min(22, position.x() + moveX * movementSpeed * dt * (isAttacking() ? .4f : 1))));
-
-            position.z(Math.max(-22, Math.min(22, position.z() + moveZ * movementSpeed * dt * (isAttacking() ? .4f : 1))));
-            float angle = (float)Math.toDegrees(Math.atan2(moveX, moveZ));
-
-            if (!isAttacking()) setRotation(new Vector3().x(0).y(angle).z(0));}
-
+        dodgeCooldown=Math.max(0,dodgeCooldown-dt);
+        if(moveLength>0) { moveX/=moveLength;moveZ/=moveLength; }
+        if(controls.pressed(DODGE) && dodgeCooldown<=0 && !isAttacking()) {
+            double facing=Math.toRadians(getRotation().y());
+            dodgeX=moveLength>0?moveX:(float)Math.sin(facing);
+            dodgeZ=moveLength>0?moveZ:(float)Math.cos(facing);
+            float forward=dodgeX*(float)Math.sin(facing)+dodgeZ*(float)Math.cos(facing);
+            float side=dodgeX*(float)Math.cos(facing)-dodgeZ*(float)Math.sin(facing);
+            dodgeClip=forward>.5f?PlayerAnimation.DODGE_FORWARD:forward<-.5f?PlayerAnimation.DODGE_BACKWARD:
+                side>0?PlayerAnimation.DODGE_RIGHT:PlayerAnimation.DODGE_LEFT;
+            dodgeTime=.34f;dodgeCooldown=1.5f;restartAnimation();
+        }
+        sprinting=controls.down(SPRINT) && moving && !isAttacking() && !isDodging();
+        float speed=movementSpeed*(sprinting?1.55f:1)*(isAttacking()?.3f:1);
+        float blend=Math.min(1,dt*18);
+        velocityX+=(moveX*speed-velocityX)*blend;
+        velocityZ+=(moveZ*speed-velocityZ)*blend;
+        if(isDodging()) {
+            position.x(position.x()+dodgeX*10*dt).z(position.z()+dodgeZ*10*dt);
+            dodgeTime=Math.max(0,dodgeTime-dt);
+        } else {
+            position.x(position.x()+velocityX*dt).z(position.z()+velocityZ*dt);
+            if(moving && !isAttacking()) {
+                float target=(float)Math.toDegrees(Math.atan2(moveX,moveZ));
+                float delta=(target-getRotation().y()+540)%360-180;
+                getRotation().y((float)Math.IEEEremainder(getRotation().y()+Math.max(-720*dt,Math.min(720*dt,delta)),360));
+            }
+            // Small committed step gives sword swings weight, without changing the hit arc.
+            if(weaponStyle==0 && attackTime>0) {
+                float phase=1-attackTime/attackDuration;
+                if(phase>.22f && phase<.5f) {
+                    double a=Math.toRadians(getRotation().y());
+                    position.x(position.x()+(float)Math.sin(a)*1.6f*dt).z(position.z()+(float)Math.cos(a)*1.6f*dt);
+                }
+            }
+        }
+        position.x(Math.max(-22,Math.min(22,position.x()))).z(Math.max(-22,Math.min(22,position.z())));
         setPosition(position);
 
         attackTime = Math.max(0, attackTime - dt);
-        if (attackTime > 0) {
-            setAnimation(attackClip);
+        if (isDodging()) {
+            setAnimation(dodgeClip);
+        } else if (attackTime > 0) {
+            setAnimation(weaponStyle==1 && 1-attackTime/attackDuration<.28f?PlayerAnimation.BOW_DRAW:attackClip);
         } else if (moving) {
-            setAnimation(PlayerAnimation.WALK);
+            setAnimation(weaponStyle==1?PlayerAnimation.BOW_RUN:sprinting?PlayerAnimation.RUN:PlayerAnimation.WALK);
         } else {
             setAnimation(weaponStyle==1?PlayerAnimation.BOW_IDLE:PlayerAnimation.MELEE_IDLE);
         }
 
-        if (attackTime > 0) playAnimationProgress(1-attackTime/attackDuration);
+        if(isDodging()) playAnimationProgress(1-dodgeTime/.34f);
+        else if (attackTime > 0) {
+            float phase=1-attackTime/attackDuration;
+            // Deliberate windup, fast contact, and a full recovery pose.
+            float pose=phase<.36f?phase/.36f*.42f:phase<.58f?.42f+(phase-.36f)/.22f*.30f:.72f+(phase-.58f)/.42f*.28f;
+            playAnimationProgress(weaponStyle==0?pose:weaponStyle==1?(phase<.28f?phase/.28f:(phase-.28f)/.72f):phase);
+        }
         else updateAnimation(dt);
     }
 
@@ -150,17 +191,18 @@ public class Player extends Entity {
 
     public void attack(int combo,boolean heavy,float duration) {
         attackDuration=duration; attackTime=duration;
-        attackClip=heavy ? PlayerAnimation.ATTACK_CHOP : combo==2 ? PlayerAnimation.ATTACK_DIAGONAL : PlayerAnimation.ATTACK_HORIZONTAL;
+        attackClip=heavy ? PlayerAnimation.ATTACK_JUMP_CHOP : combo==3 ? PlayerAnimation.ATTACK_CHOP : combo==2 ? PlayerAnimation.ATTACK_DIAGONAL : PlayerAnimation.ATTACK_HORIZONTAL;
         if (weaponStyle==1) attackClip=PlayerAnimation.BOW_RELEASE;
         if (weaponStyle==2) attackClip=PlayerAnimation.MAGIC_CAST;
         setAnimation(attackClip);
         restartAnimation(); playAnimationProgress(0);
     }
 
+    public float attackRemaining() { return attackTime; }
     public boolean isAttacking() { return attackTime > 0; }
 
     public void resetCombat() {
-        attackTime = 0;
+        attackTime = dodgeTime = dodgeCooldown = velocityX = velocityZ = 0; sprinting=false;
         setAnimation(weaponStyle==1?PlayerAnimation.BOW_IDLE:PlayerAnimation.MELEE_IDLE);
         restartAnimation();
         updateAnimation(0);

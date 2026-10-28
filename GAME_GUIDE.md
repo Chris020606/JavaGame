@@ -1,8 +1,8 @@
-# Outpost game guide (v1.2.0)
+# Outpost game guide (v1.4.0)
 
 ## Start here
 
-Outpost is a single-player 3D survival game. Protect yourself and the settlement at the center of the map. Either reaching zero health ends the defense. There is currently one arena with endless waves, rather than a campaign or a final victory screen.
+Outpost is a single-player 3D defense game with a finite story campaign, The Last Ember. Protect yourself and the sanctuary. Either reaching zero health ends the defense; defeating the final boss wins the campaign.
 
 Download the archive for your operating system from https://github.com/Chris020606/JavaGame/releases, extract it, and launch Outpost. The release includes Java. Keep the extracted folders together. Source instructions are below.
 
@@ -16,9 +16,9 @@ Select New Game, enter a name (up to 16 characters), click a class, then Begin o
 | Archer | 90 | 6 units/s | Bow, fast arrow, 12-unit range | Power shot, 16-unit range, double damage |
 | Mage | 80 | 5.2 units/s | Staff, piercing bolt, 10-unit range | Arcane surge, 12-unit range, 2.2x damage |
 
-Class is fixed during a defense and saved with it. All heroes use the existing knight character model; their held weapon changes. Ranged attacks currently share the knight's attack animations. Each class starts with two potions. There is no mana, stamina, or ammunition limit.
+Class is fixed during a defense and saved with it. Warrior, Archer, and Mage have distinct models. Archer has bow idle, draw/release, and bow-running animations; Mage has spellcasting gestures. Each class starts with two potions. There is no mana, stamina, or ammunition limit.
 
-Movement sets your facing. Attacks lock that facing until the animation finishes and slow movement to 40%. Move briefly toward your target before attacking. Arrows and bolts travel in that direction without automatic aiming. An arrow stops at the first enemy it hits; a magic bolt can hit multiple enemies, once each. World decorations are visual and do not block movement or shots.
+Movement sets your facing. Attacks lock that facing until the animation finishes and slow movement to 30%. Warrior swings add a short committed step. Move briefly toward your target before attacking. Arrows and bolts travel in that direction without automatic aiming. An arrow stops at the first enemy it hits; a magic bolt can hit multiple enemies, once each. World decorations are visual and do not block movement or shots.
 
 Warrior swings apply damage once, partway through the animation, in a forward arc. Regular attacks deal base damage; the third combo hit deals 1.4x, and heavy cleave deals 1.8x. Press near the end of a swing to queue the next attack. Archer regular arrows deal 0.85x base damage, and Mage regular bolts deal 1.1x. Damage is rounded to a whole number.
 
@@ -27,6 +27,8 @@ Warrior swings apply damage once, partway through the animation, in a forward ar
 | Action | Default |
 | --- | --- |
 | Move | W A S D |
+| Sprint | Left Shift |
+| Directional dodge | Left Ctrl |
 | Orbit camera | Hold right mouse and move |
 | Primary attack | Space or left mouse |
 | Heavy class attack | Q |
@@ -38,7 +40,7 @@ Warrior swings apply damage once, partway through the animation, in a forward ar
 | Pause, close panel, or go back | Escape |
 | Start or resume | Enter |
 
-Settings lets you rebind keyboard actions, adjust camera sensitivity and volume, mute sound, and change fullscreen mode. Mouse buttons stay fixed. Escape and Enter are reserved. Inventory and workshop pause simulation; Escape closes the open panel first. Save/load shortcuts also work while paused. Loading always pauses so you can resume when ready.
+Settings lets you rebind keyboard actions, adjust camera sensitivity and volume, mute sound, and change fullscreen mode. Mouse buttons stay fixed. Escape and Enter are reserved. Inventory and workshop pause simulation; Escape closes the open panel first. Save/load shortcuts also work while paused. Loading pauses active combat; chapter-end and victory saves reopen their story screens.
 
 ## Inventory, crystals, and upgrades
 
@@ -52,17 +54,17 @@ Regular enemies award 15 crystals each; Warlords award 120. Stand within six uni
 | Armor | +2 damage reduction per level after level 1 |
 | Character | +10 base damage, +25 maximum hero HP, and a full heal |
 
-Base damage starts at 25 before weapon bonuses, outpost integrity at 250, and armor reduction at zero. Positive incoming damage to the player is reduced by armor but always deals at least 1 HP. Armor does not protect the outpost. Standing within six units of the center regenerates 3 + outpost level HP per second.
+Base damage starts at 25 before weapon bonuses, outpost integrity at 250, and armor reduction at zero. Positive incoming damage to the player is reduced by armor but always deals at least 1 HP. Armor does not protect the outpost. Standing within six units of the center regenerates 3 + outpost level HP per second. A pulsing teal ring, ground crosses, and rising motes mark that exact radius. The HUD shows the healing rate when inside.
 
 ## Weapon loot and equipment
 
-Every Warlord defeated unlocks the next tier of your class weapon. The first three unlock Forged (+8 damage), Runic (+16), and Legendary (+24). Further Warlords still award 120 crystals but do not add more tiers. Drops go directly into inventory and never disappear on the ground. Starting a new defense resets this progression.
+Every Warlord defeated unlocks the next tier of your class weapon. The two campaign bosses unlock Forged (+8 damage) and Runic (+16). Legendary (+24) remains supported for existing upgraded saves. Drops go directly into inventory and never disappear on the ground. Starting a new defense resets this progression.
 
 Open Tab and click an unlocked weapon to equip it. The `>` marker identifies your current weapon. Locked tiers show what you can earn next. You can switch back to any unlocked tier. Bonuses do not stack: a Legendary weapon adds 24 damage total. Bonuses add to character upgrades and apply before each attack's damage multiplier. The weapon's tint changes with its tier; tiers share the sword, bow, or staff model of your class. Loot does not automatically replace the equipped weapon.
 
 ## Waves and enemies
 
-The first wave begins after five seconds. Each wave queues up to 36 enemies (4 + 3 times the wave number). Arrivals are staggered along four trails. The next wave waits until both the queue and living enemies are empty, followed by eight seconds of rest. Rings and the minimap warn of imminent arrivals. Every fifth wave starts with exactly one Warlord, followed by the usual raiders; the boss replaces one regular arrival. A boss wave banner announces it. A living Warlord has a gold tint, crown marker, gold ground ring, minimap marker, and a large health bar.
+The first wave begins after five seconds. Normal defense waves queue up to 36 enemies (4 + 3 times the global wave number). Arrivals are staggered along four trails. The next wave waits until both the queue and living enemies are empty, followed by eight seconds of rest. Rings and the minimap warn of imminent arrivals. Chapters 2 and 4 contain exactly one boss each, with no regular raiders. A boss has a gold tint, crown marker, gold ground ring, minimap marker, and a large health bar. Chapter boundaries wait for Continue; no eleventh wave is scheduled.
 
 | Enemy | Behavior |
 | --- | --- |
@@ -71,15 +73,15 @@ The first wave begins after five seconds. Each wave queues up to 36 enemies (4 +
 | Brute | More health, slower movement, stronger melee hits |
 | Archer | Appears from wave 2; retreats when close and shoots arrows |
 | Shaman | Appears from wave 3; fires slower, stronger magic |
-| Warlord | One leads every fifth wave; tough melee boss with heavy attacks and weapon loot |
+| Warlord | Ash Warden (chapter 2) and Hollow King (chapter 4); melee duels with weapon loot |
 
-Enemies choose the hero when close enough, otherwise attack the outpost. Melee enemies can flank and crowd around targets. Attack warnings show the direction of a pending strike. Move away before impact, or interrupt regular enemies with a hit. Warlords resist interruption and knockback: hitting them will not cancel their attack. Enemy health and speed increase with waves. Warlords have five times a normal raider’s health, slower movement, and a 1.2-second attack animation with impact after 0.95 seconds. They deal 22 + 3 times the wave number damage to the hero, or 30 + 3 times the wave number to the outpost. Their longer reach is shown by the attack warning. The game still has one arena.
+Enemies choose the hero when close enough, otherwise attack the outpost. Melee enemies can flank and crowd around targets. Attack warnings show the direction of a pending strike. Move away before impact, or interrupt regular enemies with a hit. Warlords resist interruption and knockback: hitting them will not cancel their attack. Enemy health and speed increase with waves. Warlords have five times a normal raider’s health, slower movement, and a 1.2-second attack animation with impact after 0.95 seconds. They deal 22 + 3 times the wave number damage to the hero, or 30 + 3 times the wave number to the outpost. Their longer reach is shown by the attack warning. Chapters share the sanctuary clearing, with additional ruins in later chapters.
 
 Gold numbers show damage dealt, red shows damage taken, and teal shows crystal rewards. The HUD displays health, outpost integrity, crystals, queued enemies, wave, attack recovery, and potion count. The minimap marks your hero, enemies, the outpost, and announced arrivals.
 
 ## Saves and settings
 
-There is one save slot. F5, the pause menu, and Save & Main Menu save the defense. Closing during an active or paused defense also saves. Closing from a defeated run does not overwrite your previous save. Settings are saved separately.
+There is one save slot. F5, the pause menu, and Save & Main Menu save the defense. Chapter completions save automatically. Closing during an active defense, pause, chapter completion, or victory also saves. Closing from a defeated run does not overwrite your previous save. Settings are saved separately.
 
 | OS | Data folder |
 | --- | --- |
@@ -89,7 +91,7 @@ There is one save slot. F5, the pause menu, and Save & Main Menu save the defens
 
 Files are `save.properties` and `settings.properties`. Replacing a file keeps the prior version as `.bak`. You can manually copy that backup over a damaged file while the game is closed. Invalid saves report an error without replacing the active defense. Back up the folder before editing files.
 
-Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, unlocked and equipped weapon tiers, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v1.2 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
+Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, unlocked and equipped weapon tiers, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v1.4 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
 
 ## Build, test, and release
 
@@ -136,10 +138,23 @@ Gameplay rules are separated from native rendering where practical so JUnit can 
 
 Character and weapon assets are from KayKit under CC0. See THIRD_PARTY_NOTICES.md and the included licenses for dependencies. See DEVELOPMENT_NOTES.md for known limits and future work.
 
-## Choosing a level
+## The Last Ember campaign
 
-New games start in Highland Sanctuary at wave 1. Choose **New Sanctuary Expedition** on the main menu, or use **New Game** and select **Highland Sanctuary** or **Classic Woodland** beneath the class buttons. The choice is saved with the defense. Loading an existing save restores its own level; choose a new expedition to see the rebuilt Sanctuary immediately.
+The skyfires died a century ago. One ember beneath the sanctuary still warms the valley. Your warden must wake the beacon, reclaim the northern road, protect a refugee caravan, and confront the power that swallowed the other fires.
 
-Highland Sanctuary uses the downloaded Nature Kit models throughout: meadow tiles, winding dirt tracks, expedition tents, stone ruins, trees and plants. Protect the stone ring at the center and use the workshop near it. The same healing, upgrades, enemies, and combat rules apply. Environment props remain decorative rather than solid cover. Classic Woodland changes to Sanctuary at wave 6; old saves infer their level from their wave.
+| Level | Encounter | Goal |
+| --- | --- | --- |
+| 1 — The Last Ember | Four defense waves | Wake the sanctuary beacon |
+| 2 — The Ash Warden | One boss only | Reclaim the northern road |
+| 3 — Road to Dawn | Four defense waves | Protect the caravan's crossing |
+| 4 — The Hollow King | One final boss only | Bring morning back to the valley |
 
-The new HUD places raid status at the top center, health at top left, crystals and radar at the right, sanctuary integrity at bottom left, and attack/heavy/heal/inventory shortcuts at bottom center. The lower camera angle and directional lighting make the model shapes easier to read.
+The top-center HUD shows the level, wave within that level, and waves left to clear (including the active wave). Boss chapters read BOSS ONLY. Defeat all queued and living enemies to complete a level. Read its aftermath and next briefing, open Inventory if desired, then Continue or Enter to advance. Defeating the Hollow King opens the victory ending. The Chronicle on the title and pause menus collects all chapter briefings. Classic Woodland selection has been removed; old saves use the campaign scenery.
+
+## Movement, attacks, and the living valley
+
+Hold Shift to sprint at 1.55 times your normal speed. Movement accelerates and decelerates smoothly. Ctrl dodges in your movement direction, or forward when standing still, using forward/back/side animations relative to your facing. A dodge lasts .34 seconds, prevents player damage during its animation, and has a 1.5-second cooldown shown on the HUD. It does not protect the sanctuary. You cannot begin a dodge during an attack or begin an attack while dodging.
+
+Warrior's three-hit combo now plays horizontal, diagonal, and chopping swings, while the heavy attack uses a jumping chop. Windup, contact, and recovery have distinct pacing. Archer has running-with-bow and draw/release transitions. Ranged aim still follows facing; there is no mouse aiming or stamina cost.
+
+The imported-model sanctuary is surrounded by distant forest, hills, open sky, drifting clouds, birds, and campfire embers. These background areas are visual scenery. Border stones mark the bounded playable clearing; walking, sprinting, and dodging stop at its edge. Hold right mouse to orbit down toward the horizon or up for a tactical view. Environment props remain decorative rather than solid cover. Button pictograms supplement their text labels.
