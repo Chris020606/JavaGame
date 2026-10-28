@@ -82,6 +82,7 @@ public class InputSmokeTest {
             key(game, KEY_ENTER);
             check(game.getPlayer().getName().equals("Ada"),"Player name not applied");
             check(game.getState() == GameState.PLAYING, "Begin Defense click failed");
+            check(game.arena()==Arena.HIGHLANDS,"New games should show the imported-model sanctuary immediately");
             event(MOUSE_UP, MOUSE_BUTTON_LEFT, 0); frame(game);
             float initialZ = game.getPlayer().getPosition().z();
             event(KEY_DOWN, KEY_W, 0);
@@ -259,6 +260,8 @@ public class InputSmokeTest {
             check(game.loadCurrent(),"Highland save failed");
             check(game.arena()==Arena.HIGHLANDS,"Wave 6 must restore the second stage");
             key(game,KEY_ENTER);for(int i=0;i<5;i++)frame(game);capture("ui-highland-ruins");
+            check(game.saveCurrent() && game.loadCurrent(),"Sanctuary save failed");
+            check(game.arena()==Arena.HIGHLANDS,"Sanctuary selection was lost");key(game,KEY_ENTER);
             check(game.getPlayer().getAnimationCount()>3,"Hero animation clips missing");
             check(game.saveCurrent() && game.loadCurrent() && game.arena()==Arena.HIGHLANDS,"Second stage did not persist");
             key(game,KEY_ENTER);

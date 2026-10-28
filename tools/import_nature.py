@@ -7,7 +7,9 @@ import hashlib, json, sys, zipfile
 names = ('tree_pineTallA_detailed', 'tree_pineRoundC', 'tree_oak',
          'stone_largeA', 'stone_tallB', 'plant_bushDetailed', 'grass_large',
          'statue_columnDamaged', 'statue_obelisk', 'tent_detailedOpen',
-         'log_stack', 'flower_purpleC', 'mushroom_redGroup')
+         'log_stack', 'flower_purpleC', 'mushroom_redGroup',
+         'ground_grass','ground_pathCross','ground_pathStraight','platform_stone',
+         'campfire_stones','fence_simple','statue_ring')
 archive=Path(sys.argv[1])
 out=Path(__file__).resolve().parents[1]/'resources/outpost/nature'
 out.mkdir(parents=True,exist_ok=True)

@@ -17,6 +17,13 @@
     "tent_detailedOpen",
     "log_stack",
     "flower_purpleC",
-    "mushroom_redGroup"
+    "mushroom_redGroup",
+    "ground_grass",
+    "ground_pathCross",
+    "ground_pathStraight",
+    "platform_stone",
+    "campfire_stones",
+    "fence_simple",
+    "statue_ring"
   ]
 }

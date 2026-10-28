@@ -5,7 +5,11 @@ import java.util.*;
 
 /** Versioned, validated data only: never Java object deserialization. */
 public final class SaveGame {
-    public record Snapshot(String name,float x,float z,float facing,Progression progression,WaveDirector.State wave,List<Enemy> enemies) {}
+    public record Snapshot(String name,float x,float z,float facing,Progression progression,WaveDirector.State wave,List<Enemy> enemies,Arena arena) {
+        public Snapshot(String name,float x,float z,float facing,Progression progression,WaveDirector.State wave,List<Enemy> enemies) {
+            this(name,x,z,facing,progression,wave,enemies,Arena.forWave(wave.wave()));
+        }
+    }
     public static int integer(Properties p,String key,int min,int max) {
         int value=Integer.parseInt(p.getProperty(key));
         if (value<min||value>max) throw new IllegalArgumentException("Invalid "+key);
@@ -18,6 +22,7 @@ public final class SaveGame {
     }
     public static void write(Path file,Snapshot s) throws IOException {
         Properties p=new Properties();
+        p.setProperty("arena",s.arena.name());
         p.setProperty("version","2"); p.setProperty("name",Settings.cleanName(s.name));
         p.setProperty("player.x",s.x+""); p.setProperty("player.z",s.z+""); p.setProperty("player.facing",s.facing+"");
         s.progression.store(p);
@@ -56,6 +61,6 @@ public final class SaveGame {
             // Resume with a short grace period; interrupted windups/projectiles are cancelled.
             e.cooldown=Math.max(.6f,number(p,k+"cooldown",0,5)); enemies.add(e);
         }
-        return new Snapshot(Settings.cleanName(p.getProperty("name")),number(p,"player.x",-22,22),number(p,"player.z",-22,22),number(p,"player.facing",-360,360),progress,director,List.copyOf(enemies));
+        return new Snapshot(Settings.cleanName(p.getProperty("name")),number(p,"player.x",-22,22),number(p,"player.z",-22,22),number(p,"player.facing",-360,360),progress,director,List.copyOf(enemies),p.containsKey("arena")?Arena.valueOf(p.getProperty("arena")):Arena.forWave(wave));
     }
 }

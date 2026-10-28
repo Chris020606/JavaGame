@@ -20,6 +20,16 @@ class PersistenceTest {
         assertEquals(8,restored.wave().remaining());assertEquals(1.2f,restored.wave().arrival());assertEquals(3,restored.enemies().get(0).variant);
         assertEquals(25,restored.enemies().get(0).health);assertTrue(restored.enemies().get(0).cooldown>=.6f);
     }
+    @Test void arenaSelectionPersistsAndOlderSavesInferStage() throws Exception {
+        Path file=directory.resolve("arena.properties");
+        SaveGame.Snapshot s=snapshot();
+        SaveGame.write(file,new SaveGame.Snapshot(s.name(),s.x(),s.z(),s.facing(),s.progression(),s.wave(),s.enemies(),Arena.HIGHLANDS));
+        assertEquals(Arena.HIGHLANDS,SaveGame.read(file).arena());
+        Properties p=AppData.read(file);p.remove("arena");AppData.write(file,p);
+        assertEquals(Arena.WOODLAND,SaveGame.read(file).arena());
+        p.setProperty("arena","missing-level");AppData.write(file,p);
+        assertThrows(java.io.IOException.class,()->SaveGame.read(file));
+    }
     @Test void corruptOrFutureSavesAreRejected() throws Exception {
         Path file=directory.resolve("save.properties");SaveGame.write(file,snapshot());Properties p=AppData.read(file);
         p.setProperty("player.x","NaN");AppData.write(file,p);assertThrows(java.io.IOException.class,()->SaveGame.read(file));

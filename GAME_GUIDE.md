@@ -136,6 +136,10 @@ Gameplay rules are separated from native rendering where practical so JUnit can 
 
 Character and weapon assets are from KayKit under CC0. See THIRD_PARTY_NOTICES.md and the included licenses for dependencies. See DEVELOPMENT_NOTES.md for known limits and future work.
 
-## Woodland Haven and Highland Ruins
+## Choosing a level
 
-Waves 1–5 take place in Woodland Haven. Wave 6 changes the arena to Highland Ruins, with stone pillars, rocky borders, and a slate landscape. Waves continue endlessly with the same combat routes. Loading a save restores the stage from its wave number. The teal ground ring marks the healing haven around the outpost.
+New games start in Highland Sanctuary at wave 1. Choose **New Sanctuary Expedition** on the main menu, or use **New Game** and select **Highland Sanctuary** or **Classic Woodland** beneath the class buttons. The choice is saved with the defense. Loading an existing save restores its own level; choose a new expedition to see the rebuilt Sanctuary immediately.
+
+Highland Sanctuary uses the downloaded Nature Kit models throughout: meadow tiles, winding dirt tracks, expedition tents, stone ruins, trees and plants. Protect the stone ring at the center and use the workshop near it. The same healing, upgrades, enemies, and combat rules apply. Environment props remain decorative rather than solid cover. Classic Woodland changes to Sanctuary at wave 6; old saves infer their level from their wave.
+
+The new HUD places raid status at the top center, health at top left, crystals and radar at the right, sanctuary integrity at bottom left, and attack/heavy/heal/inventory shortcuts at bottom center. The lower camera angle and directional lighting make the model shapes easier to read.

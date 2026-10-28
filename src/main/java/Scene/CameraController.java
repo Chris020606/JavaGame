@@ -9,8 +9,8 @@ public class CameraController {
     private Camera3D camera;
     private Entity target;
     private float yaw = 0.0f;
-    private float pitch = 48.0f;
-    private float distance = 15.0f;
+    private float pitch = 40.0f;
+    private float distance = 17.0f;
     private float mouseSensitivity = 0.15f;
 
     public CameraController(Entity entity) {

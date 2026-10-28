@@ -12,6 +12,7 @@ public final class WorldAssets implements AutoCloseable {
     private final Model pine = LoadModel(AssetPaths.path("resources/outpost/pine.obj"));
     private final Model rock = LoadModel(AssetPaths.path("resources/outpost/rock.obj"));
     private final Model crate = LoadModel(AssetPaths.path("resources/outpost/crate.obj"));
+    private final Shader daylight=LoadShader(AssetPaths.path("resources/outpost/daylight.vs"),AssetPaths.path("resources/outpost/daylight.fs"));
     private final java.util.Map<String,Model> nature=new java.util.LinkedHashMap<>();
     private final int[] count = new int[1];
     private final ModelAnimation animations = LoadModelAnimations(AssetPaths.path("resources/outpost/raider.glb"), count);
@@ -26,7 +27,8 @@ public final class WorldAssets implements AutoCloseable {
     public WorldAssets() {
         for (String name : new String[]{"tree_pineTallA_detailed","tree_pineRoundC","tree_oak",
                 "stone_largeA","stone_tallB","plant_bushDetailed","grass_large","statue_columnDamaged",
-                "statue_obelisk","tent_detailedOpen","log_stack","flower_purpleC","mushroom_redGroup"}) {
+                "statue_obelisk","tent_detailedOpen","log_stack","flower_purpleC","mushroom_redGroup","ground_grass","ground_pathCross",
+                "ground_pathStraight","platform_stone","campfire_stones","fence_simple","statue_ring"}) {
             Model model=LoadModel(AssetPaths.path("resources/outpost/nature/"+name+".obj"));
             if (model.meshCount()==0) throw new IllegalStateException("Missing nature model: "+name);
             // Match the imported foliage to Outpost's quieter forest palette.
@@ -39,6 +41,7 @@ public final class WorldAssets implements AutoCloseable {
                 else if (g>r*2 && b>r*2) diffuse.color(Menu.color(76,125,77));
                 else if (r>g*1.5f && g>b*1.2f) diffuse.color(Menu.color(113,78,52));
             }
+            lightModel(model);
             nature.put(name,model);
         }
         for (Model model : new Model[]{raider,archer,shaman,bow,staff,sword,outpost,pine,rock,crate})
@@ -56,7 +59,11 @@ public final class WorldAssets implements AutoCloseable {
     private void draw(Model model,float x,float z,float angle,float scale) {
         DrawModelEx(model,v(x,0,z),v(0,1,0),angle,v(scale,scale,scale),WHITE);
     }
+    public void lightModel(Model model) {
+        for(int i=0;i<model.materialCount();i++) new Material(model.materials()).position(i).shader().put(daylight);
+    }
     public void drawEnvironment(Arena arena) {
+        if (arena==Arena.HIGHLANDS) { drawHighlands(); return; }
         boolean highland=arena==Arena.HIGHLANDS;
         // Layer the perimeter with varied silhouettes, leaving the entry trails clear.
         for (int i=0;i<64;i++) {
@@ -124,6 +131,43 @@ public final class WorldAssets implements AutoCloseable {
         draw(crate,-2.4f,-1.8f,12,1); draw(crate,-3.3f,-1.6f,-8,.8f);
         draw(crate,2.5f,-2,25,1);
     }
+    /** Every visible piece of stage II scenery comes from the downloaded pack. */
+    private void drawHighlands() {
+        // A tiled meadow with branching earth tracks replaces the old flat plane/crosswalk.
+        for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) {
+            String tile=x==0 && z==0?"ground_pathCross":x==0 || z==0?"ground_pathStraight":"ground_grass";
+            scenery(tile,x*4,z*4,z==0?90:0,4);
+        }
+        // The defended landmark is an ancient stone ring, surrounded by a small expedition camp.
+        scenery("platform_stone",0,0,0,5.5f);
+        scenery("statue_ring",0,0,0,5);
+        scenery("tent_detailedOpen",-5,-3,120,4);
+        scenery("tent_detailedOpen",5,-4,230,3.5f);
+        scenery("log_stack",-5.5f,-6,25,2.5f);
+        scenery("campfire_stones",3,-2,0,2.5f);
+        for(int side:new int[]{-1,1}) {
+            scenery("statue_columnDamaged",side*4,5,side*20,4.5f);
+            scenery("statue_obelisk",side*7,8,side*15,4);
+            scenery("fence_simple",side*7,-6,0,3);
+        }
+        for(int i=0;i<60;i++) {
+            double a=i*2.39996;
+            float radius=10+(i%6)*2.1f;
+            float x=(float)Math.cos(a)*radius,z=(float)Math.sin(a)*radius;
+            if(Math.abs(x)<3 || Math.abs(z)<3) continue;
+            scenery(i%5==0?"stone_largeA":i%3==0?"plant_bushDetailed":"grass_large",x,z,i*53,i%5==0?3:2.5f);
+            if(i%4==0) scenery("flower_purpleC",x+.7f,z+.5f,i*23,2);
+            if(i%9==0) scenery("statue_columnDamaged",x,z,i*37,3.5f);
+        }
+        // Tall scenery stays beyond the playable square so the hero remains visible.
+        for(int i=0;i<56;i++) {
+            double a=i*Math.PI*2/56;
+            float radius=26+(i%3)*2;
+            float x=(float)Math.cos(a)*radius,z=(float)Math.sin(a)*radius;
+            if(Math.abs(x)<3 || Math.abs(z)<3) continue;
+            scenery(i%4==0?"stone_tallB":i%3==0?"tree_oak":"tree_pineTallA_detailed",x,z,i*137,i%4==0?5:4.5f+i%2);
+        }
+    }
     private void scenery(String name,float x,float z,float angle,float scale) {
         Model model=nature.get(name);
         // OBJ exports sit on the ground plane.
@@ -141,6 +185,7 @@ public final class WorldAssets implements AutoCloseable {
             frame=Math.min(clip.keyframeCount()-1,(int)(phase*clip.keyframeCount()));
         }
         UpdateModelAnimation(character,clip,frame);
+        lightModel(character);
         Color tint=enemy.hitFlash>0 ? Menu.GOLD : enemy.boss()?Menu.GOLD:enemy.variant==2?Menu.color(220,178,157):enemy.variant==1?Menu.color(185,210,229):WHITE;
         DrawCylinder(v(enemy.x,.025f,enemy.z),.42f,.42f,.015f,12,Menu.color(38,54,47));
         DrawModelEx(character,v(enemy.x,0,enemy.z),v(0,1,0),enemy.facing,v(1,1,1),tint);
@@ -151,6 +196,7 @@ public final class WorldAssets implements AutoCloseable {
         drawWeapon(character,v(enemy.x,0,enemy.z),enemy.facing,enemy.variant==3?bow:enemy.variant==4?staff:sword);
     }
     public void drawPlayerWeapon(Player player,int style,int tier) {
+        lightModel(player.getModel());
         Color tint=tier==3?Menu.GOLD:tier==2?Menu.TEAL:tier==1?Menu.color(190,205,225):WHITE;
         drawWeapon(player.getModel(),player.getPosition(),player.getRotation().y(),style==1?bow:style==2?staff:sword,tint);
     }
@@ -182,6 +228,7 @@ public final class WorldAssets implements AutoCloseable {
     }
     @Override public void close() {
         for (Model model:nature.values()) UnloadModel(model);
+        UnloadShader(daylight);
         UnloadModelAnimations(animations,count[0]);
         UnloadModelAnimations(archerAnimations,archerCount[0]); UnloadModelAnimations(shamanAnimations,shamanCount[0]);
         for (Model model:new Model[]{raider,archer,shaman,bow,staff,sword,outpost,pine,rock,crate}) UnloadModel(model);

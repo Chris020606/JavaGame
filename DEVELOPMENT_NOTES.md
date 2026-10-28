@@ -1,5 +1,17 @@
 # Development progress and future work
 
+## v1.3.0: Highland Sanctuary and interface rebuild
+
+Rebuilt the new level so every scenery mesh is imported from Kenney Nature Kit: tiled grass and branching dirt tracks, a raised stone sanctuary/ring, expedition tents, campfire stones, fences, ruins, vegetation, and a layered tree/rock border. Its render path returns before any classic scenery is drawn. No classic hut, crates, hand-built paths/fences/lanterns, generated ground plane, or haven cylinder is drawn in Highland Sanctuary. Characters, weapons, combat telegraphs, and other gameplay effects remain separate from environment scenery.
+
+New games default to Highland Sanctuary at wave 1. The main menu has a Sanctuary Expedition action, and the name screen offers Sanctuary or Classic Woodland. Arena selection is explicitly saved; older saves without this optional property infer the stage from their wave as before. Woodland still transitions to Sanctuary from wave 6. No save format version bump is needed for the optional compatible property.
+
+Added directional sunlight with cool ambient light and distance haze to imported scenery and characters. Rebuilt the HUD around a central raid header, compact health/resource cards, a bottom combat hotbar, radar, and sanctuary integrity. All menus use a bundled SIL Open Font License Rajdhani font, rounded cards and restyled buttons. Lowered the camera angle for a clearer view of scenery height. Version is 1.3.0.
+
+Validation covers unit tests (including explicit arena round-trip, old-save inference, and rejection of unknown levels), visible high/standard DPI desktop smoke tests, new-game access to Sanctuary, restored stage selection, class combat, boss loot, and macOS packaging. Fresh captures show the actual gameplay view and an overview; screenshots are in docs/images.
+
+Next steps: add collision-aware terrain layouts, light/shadow quality settings, bow draw/hold/release transitions, and higher-wave balance playtests. Imported scenery remains decorative and does not provide cover. Other desktop packages must be verified by CI; local tests only certify this macOS host.
+
 ## Environment pack and bow correction
 
 Downloaded Kenney Nature Kit (2.1), CC0, from the creator’s OpenGameArt listing. Integrated 13 selected unmodified OBJ/MTLs: varied pines/oaks, boulders, shrubs, grass, flowers, mushrooms, tents, logs, damaged columns, and obelisks. Woodland gains a layered forest and small camp; Highlands gains rocky borders and imported ruin props. Models load once, validate on startup, and unload at shutdown. Runtime material colors adapt foliage to the forest palette; source OBJ/MTL files stay unchanged. Runtime packaging already includes `outpost/**`, including the license and source/checksum manifest. Reimport with `tools/import_nature.py` and the downloaded archive.

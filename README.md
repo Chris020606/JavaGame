@@ -1,6 +1,6 @@
 # Outpost
 
-![Outpost gameplay](docs/images/ranged-enemies.png)
+![Highland Sanctuary gameplay](docs/images/sanctuary-gameplay.png)
 
 **Outpost** is a small 3D wave-defense game about a warden protecting a frontier settlement. Fight through increasingly dangerous raids, collect crystals, and improve your hero and outpost before the next attack arrives.
 
@@ -9,7 +9,8 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 ## Features
 
 - Choose Warrior, Archer, or Mage with distinct animated models and a sword, bow, or staff.
-- Defend Woodland Haven, then reach Highland Ruins at wave 6.
+- Start in Highland Sanctuary, built entirely from imported environment models, or choose Classic Woodland.
+- Directional sunlight, distance haze, and a redesigned HUD with a combat hotbar.
 - An inventory with equippable weapon tiers, healing potions, and workshop restocking.
 - Warlord bosses every fifth wave with crystal rewards and weapon loot.
 - Directional sword attacks with a three-hit combo and a heavy cleave.
@@ -19,7 +20,7 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 - A decorated low-poly map with paths, trees, lanterns, fences, rocks, and flowers.
 - Sound effects, a name screen, save/load, and customizable controls.
 
-![Downloaded Nature Kit scenery in Highland Ruins](docs/images/nature-overview.png)
+![Highland Sanctuary overview](docs/images/nature-overview.png)
 
 ## Download and install
 
