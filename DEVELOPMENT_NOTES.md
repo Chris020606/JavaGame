@@ -1,5 +1,19 @@
 # Development progress and future work
 
+## v2.0.0: Weapon materials, equipment browsing, mountains and changing daylight
+
+Fixed the black Dawnblade/Dawnstaff at the material source: the OBJ/MTL reader interpreted shorthand leading-dot color values as zero. Generated materials now use explicit leading-zero decimals, and a native regression checks nonzero colors on every generated weapon/terrain material. Dawn OBJ meshes include UVs; untextured material maps receive a white albedo fallback and the shader handles missing vertex colors. Real thumbnails now make equipment appearance easy to verify before equipping.
+
+EquipmentScreen now renders actual weapon/armor thumbnails, labels equipped slots, and separates selection/comparison from equipping. All/Weapons/Armor filters, arrow-key navigation, Equip/Enter, double-click, matching-slot drag/drop, removal shortcuts, preview zoom/rotation and Best Gear are supported. Selected items show stat changes and ownership/equipped state. Starter weapons and full-health potion actions are labeled/disabled appropriately. Item render targets are cached by class and unloaded with the screen; simulation and the solar clock pause while inventory is open.
+
+Rotated the meadow bridge 90 degrees to cross the east/west stream. Added continuous original low-poly mountain heightfields with foothill/rock/snow bands, plus a snowier pass variant. Terrain starts beyond the clearing and remains decorative; no playable boundary or collision changed. Higher clouds now follow daylight brightness, and the orbit camera can reach a lower horizon angle. Rebuild terrain with tools/create_landscape.py.
+
+DayNightCycle provides an eight-minute active-gameplay solar cycle: moving sun/opposite moon, warm twilight, stars, changing sky/fog/ambient/direct colors, and a matching moving shadow camera. The radar shows phase and a 24-hour clock. Camp/sanctuary lights remain active at night. Time pauses with combat and persists as an optional compatible save-format-2 property; older saves use chapter mood defaults. Continuing a chapter preserves the clock. Playtest Tools can start at morning, noon, sunset or midnight. No existing save or campaign is replaced by playtest data.
+
+Validation: 55 unit tests pass, including solar arc, day/night intensity, wrapping/invalid phases, twilight continuity, phase round-trip/legacy defaults, and bridge orientation. Native review confirms colored Dawn weapons, real inventory thumbnails, mountains and sunrise/moonlight views. Full standard/high-DPI suites pass the changed inventory controls, paused-clock and midnight-preset assertions alongside prior combat/campaign/save checks. Native v2.0.0 completes --playtest --smoke-test from /tmp without warnings; its bundled README images/links are verified. Fresh gallery and day/night captures accompany the player documentation.
+
+Next roadmap remains terrain collision/navigation, longer balance sessions, animation blending/reloads and larger loot/crafting systems. All requested features are implemented and locally verified. Cross-platform packaging remains the pushed workflow check.
+
 ## v1.9.0: Fitted class armor, restored swings, living meadow, and hero welcome
 
 Replaced all rigid box armor with 36 class-specific skinned GLBs. tools/fit_armor.py derives chest/gauntlets, greaves and boots from the corresponding CC0 KayKit character surfaces, preserving each class's skeleton and weights. Head pieces fit the class's bounds: full Warrior helm, open-faced Archer helmet, Mage's armored wizard hat. Covered original surfaces are masked while equipped; displayed armor uses the exact current player clip/frame, including the independent inventory pose. Averaged clearance normals preserve welded seams instead of opening cracks. Removed the old rigid OBJ pieces and kept original Dawn weapons in their separate generator. Updated CC0 attribution and reproduction instructions.

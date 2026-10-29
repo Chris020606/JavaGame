@@ -91,6 +91,20 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--sky-review")) {
+                key(game,KEY_ENTER);key(game,KEY_ENTER);for(int i=0;i<12;i++)frame(game);game.photoMode(true);
+                Camera3D skyCamera=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+                float[] phases={.36f,.68f,.86f};String[] names={"cycle-day","cycle-sunset","cycle-night"};
+                for(int i=0;i<phases.length;i++) {
+                    game.dayPhase(phases[i]);skyCamera._position().x(22).y(16).z(28);skyCamera.target().x(0).y(1).z(-5);
+                    for(int f=0;f<3;f++){BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();}capture(names[i]);
+                }
+                game.dayPhase(.32f);skyCamera._position().x(25).y(6).z(25);skyCamera.target().x(-50).y(30).z(-30);
+                for(int f=0;f<3;f++){BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();}capture("cycle-sunrise");
+                game.dayPhase(.86f);skyCamera._position().x(25).y(6).z(-25);skyCamera.target().x(-50).y(30).z(30);
+                for(int f=0;f<3;f++){BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();}capture("cycle-moon");
+                game.photoMode(false);System.out.println("PASS: moving daylight, sunset, moonlight and mountain review");return;
+            }
             if(java.util.Arrays.asList(args).contains("--gallery")) {
                 key(game,KEY_ENTER);for(int i=0;i<20;i++)frame(game);capture("player-welcome");
                 int loginX=(GetScreenWidth()-940)/2,loginY=(GetScreenHeight()-600)/2;
@@ -182,6 +196,7 @@ public class InputSmokeTest {
                 System.out.println("PASS: modern visual review");return;
             }
             for (int i = 0; i < 5; i++) frame(game);
+            check(game.weaponMaterialsValid(),"Generated weapon materials loaded black");
             check(!game.audio().ready() || game.audio().loadedMusic()==6 && game.audio().musicStreaming(),"Music assets missing or streams not playing");
             check(game.audio().theme()==4,"Title music theme not selected");
             capture("ui-menu-retina");
@@ -337,9 +352,9 @@ public class InputSmokeTest {
             capture("ui-bow-side");
             game.getSceneManager().getOpenScene().getCameraController().update(0);
             game.getProgression().damagePlayer(65);
-            key(game,KEY_TAB);float frozen=game.getProgression().health();
+            key(game,KEY_TAB);float frozen=game.getProgression().health(),frozenPhase=game.dayPhase();
             event(KEY_DOWN,KEY_I,0);for(int i=0;i<10;i++)frame(game);event(KEY_UP,KEY_I,0);frame(game);
-            check(game.getProgression().health()==frozen,"Inventory did not pause simulation");capture("ui-inventory");
+            check(game.getProgression().health()==frozen,"Inventory did not pause simulation");check(game.dayPhase()==frozenPhase,"Inventory did not pause the solar cycle");capture("ui-inventory");
             key(game,KEY_ESCAPE);int potions=game.getProgression().potions();key(game,KEY_H);
             check(game.getProgression().potions()==potions-1,"Potion hotkey failed");
             check(game.saveCurrent() && game.loadCurrent(),"Class/inventory save failed");
@@ -367,6 +382,8 @@ public class InputSmokeTest {
             int ix=(GetScreenWidth()-940)/2,iy=(GetScreenHeight()-600)/2;
             event(MOUSE_POSITION,ix+507,iy+122);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
             event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);
+            check(game.getProgression().weaponTier()==0,"Selecting an item should compare before equipping");
+            click(game,ix+530,iy+430);
             check(game.getProgression().weaponTier()==1 && game.getProgression().damage()==33,"Inventory equip failed");for(int i=0;i<3;i++)frame(game);capture("ui-weapon-loot");
             key(game,KEY_ESCAPE);check(game.saveCurrent() && game.loadCurrent(),"Equipment save failed");
             check(game.getProgression().weaponTier()==1,"Equipment did not persist");
@@ -531,15 +548,20 @@ public class InputSmokeTest {
             click(game,ex+110,ey+282);int beforeRestock=equipment.potions();click(game,ex+520,ey+390);
             check(equipment.potions()==beforeRestock+1,"Supplies sidebar or potion purchase failed");capture("polish-supplies");
             key(game,KEY_ESCAPE);key(game,KEY_TAB);
-            click(game,ex+658,ey+122);check(equipment.weaponTier()==3,"Legendary weapon grid selection failed");
+            click(game,ex+658,ey+122);click(game,ex+530,ey+430);check(equipment.weaponTier()==3,"Legendary weapon grid selection failed");
             // Tier-three helmet: drag from the grid into the head slot.
             event(MOUSE_POSITION,ex+433,ey+274);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
             event(MOUSE_POSITION,ex+332,ey+122);frame(game);event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);
             check(equipment.armorTier(Entities.ArmorSlot.HEAD)==3,"Armor drag did not equip into head slot");
             event(MOUSE_DOWN,MOUSE_BUTTON_RIGHT,0);frame(game);event(MOUSE_UP,MOUSE_BUTTON_RIGHT,0);frame(game);
             check(equipment.armorTier(Entities.ArmorSlot.HEAD)==0,"Right-click did not remove armor");
-            for(int item=12;item<16;item++)click(game,ex+433+(item%6)*75,ey+122+(item/6)*76);
+            for(int item=12;item<16;item++) { click(game,ex+433+(item%6)*75,ey+122+(item/6)*76);key(game,KEY_ENTER); }
             check(equipment.defense()==21,"Armor grid did not equip the complete set");
+            click(game,ex+650,ey+68);click(game,ex+433,ey+122);key(game,KEY_ENTER);check(equipment.weaponTier()==0,"Weapon filter/keyboard equip failed");
+            click(game,ex+658,ey+122);click(game,ex+658,ey+122);check(equipment.weaponTier()==3,"Double-click equip failed");
+            click(game,ex+850,ey+68);click(game,ex+433,ey+122);key(game,KEY_ENTER);check(equipment.armorTier(Entities.ArmorSlot.HEAD)==1,"Armor filter equip failed");
+            click(game,ex+700,ey+507);check(equipment.defense()==21,"Best Gear did not restore the full armor set");
+            click(game,ex+480,ey+68);
             for(int i=0;i<3;i++)frame(game);capture("expansion-inventory");key(game,KEY_ESCAPE);
             game.getPlayer().discipline().stamina(110);check(game.saveCurrent() && game.loadCurrent(),"Expanded equipment save failed");
             check(game.getProgression().difficulty()==Entities.Difficulty.EXTREME && game.getProgression().defense()==21 && game.getProgression().weaponTier()==3,"Difficulty or equipment lost on load");
@@ -574,9 +596,11 @@ public class InputSmokeTest {
             int playMenuX=(GetScreenWidth()-640)/2,playMenuY=(GetScreenHeight()-420)/2;
             click(game,playMenuX+140,playMenuY+424);check(game.getState()==GameState.PLAYTEST_SETUP,"Playtest entry did not open");
             int tx=(GetScreenWidth()-800)/2,ty=(GetScreenHeight()-600)/2;
-            click(game,tx+400,ty+134);click(game,tx+580,ty+314);capture("playtest-setup");
+            click(game,tx+400,ty+134);click(game,tx+580,ty+314);
+            for(int t=0;t<3;t++)click(game,tx+580,ty+442);capture("playtest-setup");
             click(game,tx+180,ty+512);check(game.isPlaytest(),"Playtest did not start");
             check(game.getProgression().heroClass()==HeroClass.ARCHER && game.chapterIndex()==1,"Playtest class/chapter selection failed");
+            check(game.dayPhase()==0,"Playtest midnight preset failed");
             check(game.getProgression().weaponUnlocked()==3 && game.getProgression().armorUnlocked()==3 && game.getProgression().potions()==5,"Playtest gear not unlocked");
             check(game.getProgression().crystals()==100000 && game.getProgression().kills()==0 && game.getPlayer().discipline().maximum()==235,"Playtest resources/training incorrect");
             for(int i=0;i<4;i++)frame(game);capture("playtest-all-gear");

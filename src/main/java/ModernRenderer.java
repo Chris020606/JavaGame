@@ -28,7 +28,8 @@ public final class ModernRenderer implements AutoCloseable {
         if(!IsRenderTextureValid(shadow)) throw new IllegalStateException("Shadow atlas unavailable");
         SetTextureFilter(shadow.texture(),TEXTURE_FILTER_POINT);
     }
-    public void beginShadow(float time) {
+    public void beginShadow(float time,DayNightCycle.Frame light) {
+        sun._position().x(light.lightX()*75).y(light.lightY()*75).z(light.lightZ()*75);
         BeginTextureMode(shadow);ClearBackground(WHITE);BeginMode3D(sun);
         sunVP=MatrixMultiply(rlGetMatrixModelview(),rlGetMatrixProjection());
         values.put(0,time);SetShaderValue(shadowShader,GetShaderLocation(shadowShader,"uTime"),values,SHADER_UNIFORM_FLOAT);

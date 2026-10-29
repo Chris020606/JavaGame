@@ -18,6 +18,11 @@ public final class WorldAssets implements AutoCloseable {
     private final java.util.Map<String,int[][]> baseNatureColors=new java.util.HashMap<>();
     private final java.util.Map<Model,java.util.Map<String,Integer>> humanClips=new java.util.IdentityHashMap<>();
     private int lookIndex=-1;
+    private final Texture whiteAlbedo=whiteAlbedo();
+    private static Texture whiteAlbedo() { Image pixels=GenImageColor(2,2,WHITE);try { return LoadTextureFromImage(pixels); }finally { UnloadImage(pixels); } }
+    private final Model mountains=LoadModel(AssetPaths.path("resources/outpost/landscape/mountains.obj")),frostMountains=LoadModel(AssetPaths.path("resources/outpost/landscape/mountains-frost.obj"));
+    private final Texture skyGlow=LoadTexture(AssetPaths.path("resources/outpost/effects/soft.png"));
+    private float currentDay=1;
     private ChapterLook look=ChapterLook.MEADOW;
     private final Model skeletonMinion=LoadModel(AssetPaths.path("resources/outpost/bosses/Skeleton_Minion.glb"));
     private final Model skeletonRogue=LoadModel(AssetPaths.path("resources/outpost/bosses/Skeleton_Rogue.glb"));
@@ -131,6 +136,8 @@ public final class WorldAssets implements AutoCloseable {
     public void lightModel(Model model) {
         for(int i=0;i<model.materialCount();i++) {
             Material material=new Material(model.materials()).position(i);material.shader().put(passShader);
+            MaterialMap albedo=new MaterialMap(material.maps()).position(MATERIAL_MAP_ALBEDO);
+            if(albedo.texture().id()==0)albedo.texture(whiteAlbedo);
             MaterialMap map=new MaterialMap(material.maps()).position(MATERIAL_MAP_BRDF);
             if(!shadowPass && shadowTexture!=null) map.texture(shadowTexture);else map.texture().id(0);
         }
@@ -140,12 +147,15 @@ public final class WorldAssets implements AutoCloseable {
         for(Model model:nature.values()) lightModel(model);
         for(Model model:graveyard.values()) lightModel(model);
     }
-    public void litPass(ModernRenderer renderer,Camera3D camera,float time,Enemy boss) {
-        shadowTexture=renderer.shadowTexture();pass(daylight,false);
+    public void litPass(ModernRenderer renderer,Camera3D camera,float time,Enemy boss,DayNightCycle.Frame light) {
+        currentDay=light.daylight();shadowTexture=renderer.shadowTexture();pass(daylight,false);
         SetShaderValueMatrix(daylight,GetShaderLocation(daylight,"sunVP"),renderer.sunVP());
         uniforms.put(0,camera._position().x()).put(1,camera._position().y()).put(2,camera._position().z());
         SetShaderValue(daylight,GetShaderLocation(daylight,"viewPos"),uniforms,SHADER_UNIFORM_VEC3);
         uniforms.put(0,time);SetShaderValue(daylight,GetShaderLocation(daylight,"uTime"),uniforms,SHADER_UNIFORM_FLOAT);
+        uniforms.put(0,light.lightX()).put(1,light.lightY()).put(2,light.lightZ());SetShaderValue(daylight,GetShaderLocation(daylight,"lightDir"),uniforms,SHADER_UNIFORM_VEC3);
+        uniforms.put(0,light.light().r()).put(1,light.light().g()).put(2,light.light().b());SetShaderValue(daylight,GetShaderLocation(daylight,"lightColor"),uniforms,SHADER_UNIFORM_VEC3);
+        uniforms.put(0,light.daylight());SetShaderValue(daylight,GetShaderLocation(daylight,"dayAmount"),uniforms,SHADER_UNIFORM_FLOAT);
         uniforms.put(0,lookIndex);SetShaderValue(daylight,GetShaderLocation(daylight,"environment"),uniforms,SHADER_UNIFORM_FLOAT);
         uniforms.put(0,renderer.shadowSize());SetShaderValue(daylight,GetShaderLocation(daylight,"shadowSize"),uniforms,SHADER_UNIFORM_FLOAT);
         uniforms.put(0,boss==null?0:boss.x).put(1,2).put(2,boss==null?0:boss.z);
@@ -175,7 +185,24 @@ public final class WorldAssets implements AutoCloseable {
             DrawSphere(v((float)Math.cos(a)*5.85f,y,(float)Math.sin(a)*5.85f),.035f,Fade(Menu.TEAL,1-y/1.5f));
         }
     }
+    public void drawSky(Camera3D camera,DayNightCycle.Frame light) {
+        Vector3 eye=camera._position();
+        Vector3 sun=v(eye.x()+light.sunX()*180,eye.y()+light.sunY()*180,eye.z()+light.sunZ()*180);
+        Vector3 moon=v(eye.x()-light.sunX()*180,eye.y()-light.sunY()*180,eye.z()-light.sunZ()*180);
+        if(light.sunY()>-.08f) {
+            DrawSphereEx(sun,5.5f,16,24,Menu.color(255,229,170));BeginBlendMode(BLEND_ADDITIVE);rlDisableDepthMask();DrawBillboard(camera,skyGlow,sun,30,Fade(Menu.GOLD,.42f));rlEnableDepthMask();EndBlendMode();
+        }
+        if(light.sunY()<.08f) {
+            DrawSphereEx(moon,4.2f,16,24,Menu.color(200,215,236));BeginBlendMode(BLEND_ADDITIVE);rlDisableDepthMask();DrawBillboard(camera,skyGlow,moon,16,Fade(Menu.color(155,184,229),.18f));rlEnableDepthMask();EndBlendMode();
+        }
+        if(light.daylight()<.7f)for(int i=0;i<85;i++) {
+            double a=i*2.399963,alt=.12+(i%13)*.058;float r=(float)Math.sqrt(1-alt*alt);
+            DrawSphere(v(eye.x()+(float)Math.cos(a)*r*175,eye.y()+(float)alt*175,eye.z()+(float)Math.sin(a)*r*175),.10f+(i%3)*.04f,Fade(WHITE,(1-light.daylight())*.8f));
+        }
+    }
     private void drawBackdrop(float time) {
+        Model ridge=lookIndex==2?frostMountains:mountains;lightModel(ridge);
+        DrawModel(ridge,v(0,-.4f,0),1,WHITE);
         // Surrounding land extends well beyond the movement boundary, hiding the square edge.
         for(int x=-6;x<=6;x++) for(int z=-6;z<=6;z++) {
             if(Math.abs(x)<=2 && Math.abs(z)<=2) continue;
@@ -189,7 +216,7 @@ public final class WorldAssets implements AutoCloseable {
         // Clouds drift above the distant hills. They are atmosphere, not reachable terrain.
         for(int i=0;i<10;i++) {
             float x=-85+(i*19+time*.65f)%170,z=-58+(i%3)*47;
-            for(int j=0;j<3;j++) DrawSphereEx(v(x+j*3,17+i%3*2,z),4-j*.5f,6,8,Fade(Menu.color(224,235,228),.85f));
+            for(int j=0;j<3;j++) DrawSphereEx(v(x+j*3,55+i%3*7,z),4-j*.5f,6,8,Fade(Menu.color((int)(48+176*currentDay),(int)(61+174*currentDay),(int)(88+140*currentDay)),.85f));
         }
         for(int i=0;i<6;i++) {
             float x=(float)Math.sin(time*.11f+i)*38,z=(float)Math.cos(time*.11f+i)*38,y=13+i%3;
@@ -356,12 +383,26 @@ public final class WorldAssets implements AutoCloseable {
         try { DrawModelEx(model,player.getPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),tint); }
         finally { for(int i=0;i<hidden.length;i++)new Mesh(model.meshes()).position(hidden[i]).triangleCount(triangles[i]).vertexCount(vertices[i]); }
     }
+    private Model weaponModel(int style,int tier) { return style==1?(tier==0?bow:tier==1?stringBow:crossbow):style==2?(tier==0?staff:tier==1?wand:tier==2?bossStaff:equipment.get("dawnstaff")):(tier==0?sword:tier==1?longsword:tier==2?waraxe:equipment.get("dawnblade")); }
+    boolean weaponMaterialsValid() {
+        for(Model model:new Model[]{equipment.get("dawnblade"),equipment.get("dawnstaff"),mountains,frostMountains}) {
+            for(int i=0;i<model.materialCount();i++) {
+                Color c=new Material(model.materials()).position(i).maps().color();
+                if(Byte.toUnsignedInt(c.r())==0 || Byte.toUnsignedInt(c.g())==0 || Byte.toUnsignedInt(c.b())==0)return false;
+            }
+        }
+        return true;
+    }
+    public void drawInventoryItem(Player player,Progression progress,int item) {
+        Model model;
+        if(item<4)model=weaponModel(progress.heroClass().ordinal(),item);
+        else { ArmorSlot slot=ArmorSlot.values()[(item-4)%4];model=equipment.get(progress.heroClass().name().toLowerCase(java.util.Locale.ROOT)+"-"+slot.icon()+"-"+(1+(item-4)/4));player.copyPoseTo(model); }
+        Matrix original=new Matrix().put(model.transform());model.transform(MatrixIdentity());lightModel(model);
+        boolean bow=item<2 && progress.heroClass()==HeroClass.ARCHER;
+        DrawModelEx(model,v(0,0,0),v(1,0,0),bow?90:0,v(1,1,1),WHITE);model.transform(original);
+    }
     public void drawPlayerWeapon(Player player,int style,int tier) {
-        lightModel(player.getModel());
-        Color tint=tier==3?Menu.GOLD:tier==2?Menu.TEAL:tier==1?Menu.color(190,205,225):WHITE;
-        Model weapon=style==1?(tier==0?bow:tier==1?stringBow:crossbow):style==2?(tier==0?staff:tier==1?wand:tier==2?bossStaff:equipment.get("dawnstaff")):(tier==0?sword:tier==1?longsword:tier==2?waraxe:equipment.get("dawnblade"));
-        if(weapon==equipment.get("dawnblade") || weapon==equipment.get("dawnstaff"))tint=WHITE;
-        drawWeapon(player.getModel(),player.getPosition(),player.getRotation().y(),weapon,tint);
+        Model weapon=weaponModel(style,tier);drawWeapon(player.getModel(),player.getPosition(),player.getRotation().y(),weapon,WHITE);
     }
     private void drawWeapon(Model character,Vector3 position,float facing,Model weapon) {
         drawWeapon(character,position,facing,weapon,WHITE);
@@ -408,6 +449,6 @@ public final class WorldAssets implements AutoCloseable {
         UnloadModelAnimations(archerAnimations,archerCount[0]); UnloadModelAnimations(shamanAnimations,shamanCount[0]);
         for (Model model:new Model[]{raider,archer,shaman,bow,staff,sword,bossWarrior,bossKing,bossAxe,bossStaff}) UnloadModel(model);
         UnloadModelAnimations(bossAnimations,bossCount[0]);UnloadModelAnimations(kingAnimations,kingCount[0]);
-        UnloadShader(daylight);UnloadShader(silhouette);uniforms.close();
+        UnloadModel(mountains);UnloadModel(frostMountains);UnloadTexture(skyGlow);UnloadShader(daylight);UnloadShader(silhouette);UnloadTexture(whiteAlbedo);uniforms.close();
     }
 }

@@ -56,7 +56,7 @@ public class CameraController {
             yaw -= mouseDelta.x() * mouseSensitivity;
             pitch -= mouseDelta.y() * mouseSensitivity;
         }
-        pitch = Math.max(15.0f, Math.min(70.0f, pitch));
+        pitch = Math.max(5.0f, Math.min(70.0f, pitch));
 
         Vector3 playerPosition = target.getPosition();
 

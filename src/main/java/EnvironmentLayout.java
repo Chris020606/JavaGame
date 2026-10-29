@@ -21,7 +21,7 @@ public final class EnvironmentLayout {
             n(p,"fence_simple",-17,-8,17,2.4f);n(p,"fence_simple",-17,-11,7,2.2f);
             n(p,"statue_columnDamaged",9,14,11,3.4f);n(p,"statue_columnDamaged",13,16,82,2.5f);
             n(p,"statue_obelisk",11,19,-9,3.1f);
-            n(p,"bridge_wood",-4,-28,0,4.2f);
+            n(p,"bridge_wood",-4,-28,90,4.2f);
             n(p,"tree_oak",-19,6,110,3.2f);n(p,"tree_pineRoundC",18,-15,35,3.7f);n(p,"tree_oak",20,15,210,3.3f);
             n(p,"stump_old",-15,12,16,2.3f);n(p,"log_large",-17,15,58,2.1f);
             for(int i=0;i<72;i++) {

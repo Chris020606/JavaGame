@@ -1,0 +1,6 @@
+newmtl foothill
+Kd 0.24 0.32 0.25
+newmtl rock
+Kd 0.32 0.37 0.40
+newmtl snow
+Kd 0.79 0.85 0.88

@@ -32,6 +32,10 @@ Your journey starts in a meadow camp among wildflowers, fallen logs, and a windi
 
 Hold the sanctuary through two four-wave sieges, then face the **Ash Warden** and **Hollow King** in their own boss-only chapters. Slams, rushes, expanding shockwaves, and delayed spell seals keep those duels moving. Below half health, the bosses become more dangerous.
 
+Mountains rise beyond the clearing. Over an eight-minute cycle, the sun crosses the sky, daylight warms into sunset, and the moon and stars take over. Light and shadows change with them. The clock beside the radar shows the time, and your save remembers it.
+
+![Moonlight and stars over the mountains](docs/images/player-moonlight.png)
+
 The HUD tells you how many waves remain. Chapter endings give you a moment to read the story, change equipment, and prepare for what comes next. The Chronicle keeps the valley's story close at hand.
 
 ## Make the warden your own
@@ -40,7 +44,7 @@ Earn crystals from defeated enemies and spend them at the sanctuary workshop. Im
 
 Forge **Iron, Runic, and Dawnsteel armor**, then mix helmets, chest armor, greaves, and boots. Equipment visibly fits each class: a full Warrior helm, an open-faced Archer helmet, and an armored Mage hat. Change your sword, longsword, axe, bow, crossbow, wand, or staff and see it on your hero.
 
-Open your inventory for a rotatable character preview. Click an item to equip it, drag it into its slot, or right-click armor to remove it. Combat pauses while you choose.
+Open your inventory for a rotatable, zoomable character preview and real equipment thumbnails. Select an item to compare its stats, then press Equip or Enter. Double-clicking or dragging into a matching slot also equips it. Filter weapons or armor, or choose Best Gear to put on your strongest set. Right-click a slot to remove armor. Combat pauses while you choose.
 
 ![The Mage wearing fitted armor and an armored wizard hat](docs/images/player-mage.png)
 
@@ -55,7 +59,7 @@ Choose **PLAYTEST / ALL GEAR** on the title screen to start with:
 - Any class, difficulty, or chapter—including either boss duel.
 - Maxed upgrades, or starter stats if you'd rather experiment with your build.
 
-The inventory opens immediately. **Pause → Playtest Tools** lets you switch class/chapter or reset your kit. The playtest has its own save, so your campaign stays safe.
+The inventory opens immediately. **Pause → Playtest Tools** lets you switch class/chapter, choose morning, noon, sunset, or midnight, or reset your kit. The playtest has its own save, so your campaign stays safe.
 
 ## Pick up and play
 
@@ -80,11 +84,12 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features and actual in-game screenshots on this page show the latest development version, **v1.9.0**. For that version, follow the [current-version instructions in the game guide](GAME_GUIDE.md#build-test-and-release). Packages are also available from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml).
+**Published downloads currently contain v1.2.0.** The newer features and actual in-game screenshots on this page show the latest development version, **v2.0.0**. For that version, follow the [current-version instructions in the game guide](GAME_GUIDE.md#build-test-and-release). Packages are also available from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml).
 
 <details>
 <summary>What's changed?</summary>
 
+- **2.0:** corrected Dawn weapon colors, real inventory thumbnails and comparisons, a bridge that crosses the stream, mountain scenery, and a saved day/night cycle.
 - **1.9:** fitted armor for every class, restored Warrior swing animations, a livelier meadow, animated hero selection, and a refreshed player guide.
 - **1.8:** instant all-gear playtest with class/chapter selection and a separate save.
 - **1.7:** chapter music, richer sound effects, redesigned workshop, natural scenery layouts, and new attack effects.
@@ -96,7 +101,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–1.9 are development updates rather than published releases.
+Versions 1.3–2.0 are development updates rather than published releases.
 
 </details>
 

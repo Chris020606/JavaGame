@@ -23,7 +23,12 @@ public class Game {
     private final Path settingsPath=AppData.directory().resolve("settings.properties"), savePath=AppData.directory().resolve("save.properties");
     private final Path playtestSavePath=AppData.directory().resolve("playtest-save.properties");
     private boolean playtest,maxPlaytestTraining=true;
-    private int playtestChapter;
+    private int playtestChapter,playtestTime;
+    private final DayNightCycle dayNight=new DayNightCycle();
+    private static final float[] PLAYTEST_TIMES={.36f,.5f,.73f,0};
+    private static final String[] TIME_LABELS={"MORNING","NOON","SUNSET","MIDNIGHT"};
+    void dayPhase(float phase) { dayNight.phase(phase); }
+    float dayPhase() { return dayNight.phase(); }
     private GameState playtestReturn=GameState.MAIN_MENU;
     private GameState settingsReturn=GameState.MAIN_MENU;
     private Controls.Action rebinding;
@@ -112,6 +117,7 @@ public class Game {
         player.resetCombat();
         director.reset();director.difficulty(progress.difficulty());
         if(playtest) { director.restore(new WaveDirector.State(Campaign.CHAPTERS[playtestChapter].first()-1,0,0,5,0,0,21));wave=director.wave();inventory=true; }
+        dayNight.phase(playtest?PLAYTEST_TIMES[playtestTime]:DayNightCycle.initial(0));
         applyProgression();lastHeroX=0;lastHeroZ=4; feedback.clear();vfx.clear(); combo=0;
         comboWindow=inputBuffer=attackElapsed=hurtFlash=0; impactPending=false;
         player.setName(settings.playerName); menuMessage="";
@@ -191,7 +197,7 @@ public class Game {
         hurtFlash=Math.max(0,hurtFlash-dt);
         comboWindow=Math.max(0,comboWindow-dt);
         inputBuffer=Math.max(0,inputBuffer-dt);
-        feedback.update(dt);vfx.update(dt);
+        feedback.update(dt);vfx.update(dt);dayNight.update(dt);
         boolean wasDodging=player.isDodging();
         sceneManager.getOpenScene().updatesEntities(dt);
         if(!wasDodging && player.isDodging())audio.play("dash");
@@ -433,16 +439,18 @@ public class Game {
         }
     }
     private Vector3 v(float x, float y, float z) { return new Vector3().x(x).y(y).z(z); }
+    private static Color skyColor(DayNightCycle.Rgb c) { return Menu.color(Math.round(c.r()*255),Math.round(c.g()*255),Math.round(c.b()*255)); }
     private void drawWorld() {
         float time=(float)GetTime();Camera3D camera=sceneManager.getOpenScene().getCameraController().getCamera();
-        renderer.beginShadow(time);assets.pass(renderer.shadowShader,true);
+        DayNightCycle.Frame light=dayNight.frame();
+        renderer.beginShadow(time,light);assets.pass(renderer.shadowShader,true);
         assets.drawEnvironment(chapterIndex(),time);drawActors();renderer.endShadow();
         renderer.beginScene();
-        DrawRectangleGradientV(0,0,renderer.width(),renderer.height(),ChapterLook.at(chapterIndex()).skyTop(),ChapterLook.at(chapterIndex()).skyBottom());
-        if(chapterIndex()==1 || chapterIndex()==3) DrawCircle(renderer.width()*3/4,renderer.height()/12,renderer.height()/35f,Menu.color(185,191,217));
+        DrawRectangleGradientV(0,0,renderer.width(),renderer.height(),skyColor(light.top()),skyColor(light.horizon()));
         BeginMode3D(camera);
         Enemy boss=enemies.stream().filter(e->e.boss() && e.health>0).findFirst().orElse(null);
-        assets.litPass(renderer,camera,time,boss);assets.drawEnvironment(chapterIndex(),time);drawActors();
+        assets.drawSky(camera,light);
+        assets.litPass(renderer,camera,time,boss,light);assets.drawEnvironment(chapterIndex(),time);drawActors();
         if(boss!=null) {
             float hx=player.getPosition().x(),hz=player.getPosition().z(),cx=camera._position().x()-hx,cz=camera._position().z()-hz;
             float t=((boss.x-hx)*cx+(boss.z-hz)*cz)/Math.max(.001f,cx*cx+cz*cz);
@@ -535,6 +543,7 @@ public class Game {
     private void drawMinimap(int x,int y) {
         Menu.panel(x,y,160,160);
         Menu.text("RADAR",x+12,y+10,12,Menu.MUTED);
+        Menu.text(dayNight.frame().label()+" / "+dayNight.frame().clock(),x+12,y+143,11,Menu.GOLD);
         int cx=x+80,cy=y+90;
         DrawCircleLines(cx,cy,59,Menu.LINE);
         DrawLine(cx-59,cy,cx+59,cy,Menu.LINE); DrawLine(cx,cy-59,cx,cy+59,Menu.LINE);
@@ -632,7 +641,7 @@ public class Game {
         Menu.text("JUMP TO CHAPTER",x+24,y+270,12,Menu.MUTED);
         for(int i=0;i<4;i++)if(Menu.button((playtestChapter==i?"> ":"")+(i+1)+" / "+Campaign.CHAPTERS[i].title(),x+24+(i%2)*388,y+292+(i/2)*56,364,true))playtestChapter=i;
         if(Menu.button(maxPlaytestTraining?"TRAINING / MAXED":"TRAINING / STARTER STATS",x+24,y+420,364,true))maxPlaytestTraining=!maxPlaytestTraining;
-        Menu.text("Gear stays unlocked with either option.",x+412,y+435,16,Menu.MUTED);
+        if(Menu.button("TIME / "+TIME_LABELS[playtestTime],x+412,y+420,364,true))playtestTime=(playtestTime+1)%4;
         if(Menu.button("START / RESET PLAYTEST [ENTER]",x+24,y+490,364,true))startPlaytest();
         if(Menu.button("BACK [ESC]",x+412,y+490,176,true))state=playtestReturn;
         if(Menu.button("LOAD PLAYTEST",x+608,y+490,168,Files.exists(playtestSavePath)))loadFrom(playtestSavePath,true);
@@ -706,7 +715,7 @@ public class Game {
     boolean saveCurrent() {
         if (progress.defeated()) return false;
         try {
-            SaveGame.write(playtest?playtestSavePath:savePath,new SaveGame.Snapshot(player.getName(),player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),progress,director.snapshot(),enemies.stream().filter(e->e.health>0).toList(),Arena.HIGHLANDS,player.discipline().stamina()));
+            SaveGame.write(playtest?playtestSavePath:savePath,new SaveGame.Snapshot(player.getName(),player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),progress,director.snapshot(),enemies.stream().filter(e->e.health>0).toList(),Arena.HIGHLANDS,player.discipline().stamina(),dayNight.phase()));
             menuMessage=playtest?"Playtest saved separately.":"Game saved."; notifyPlayer(menuMessage); return true;
         } catch (IOException e) { menuMessage="Save failed. Previous save was kept.";notifyPlayer(menuMessage);System.err.println(e.getMessage());return false; }
     }
@@ -721,7 +730,7 @@ public class Game {
             if(playtest) { playtestChapter=director.chapterIndex();maxPlaytestTraining=progress.level(Progression.Upgrade.VITALITY)==10; }
             applyHeroModel();
             player.setName(saved.name());settings.playerName=saved.name();player.getPosition().x(saved.x()).z(saved.z());player.getRotation().y(saved.facing());
-            applyProgression();player.resetCombat();player.discipline().stamina(saved.stamina());lastHeroX=saved.x();lastHeroZ=saved.z();heavyCharge=0;bossHazards.clear();feedback.clear();vfx.clear();wave=director.wave();nextWave=director.rest();workshop=false;
+            applyProgression();player.resetCombat();player.discipline().stamina(saved.stamina());dayNight.phase(saved.dayPhase());lastHeroX=saved.x();lastHeroZ=saved.z();heavyCharge=0;bossHazards.clear();feedback.clear();vfx.clear();wave=director.wave();nextWave=director.rest();workshop=false;
             combo=0;comboWindow=inputBuffer=attackElapsed=hurtFlash=slashTime=noticeTime=0;attackCooldown=.3f;impactPending=false;
             sceneManager.getOpenScene().getCameraController().update(0);
             state=director.levelCleared(enemies.size())?(wave>=10?GameState.VICTORY:GameState.LEVEL_COMPLETE):GameState.PAUSED;menuMessage="Game loaded. Press Enter to resume.";return true;
@@ -729,6 +738,7 @@ public class Game {
     }
     Combat.Attack currentAttack() { return activeAttack; }
     java.util.List<BossHazard> getBossHazards() { return java.util.Collections.unmodifiableList(bossHazards); }
+    boolean weaponMaterialsValid() { return assets.weaponMaterialsValid(); }
     boolean shadowAtlasValid() { return renderer.shadowAtlasValid(); }
     java.util.List<Enemy> getEnemies() { return java.util.Collections.unmodifiableList(enemies); }
     Progression getProgression() { return progress; }

@@ -5,7 +5,10 @@ import java.util.*;
 
 /** Versioned, validated data only: never Java object deserialization. */
 public final class SaveGame {
-    public record Snapshot(String name,float x,float z,float facing,Progression progression,WaveDirector.State wave,List<Enemy> enemies,Arena arena,float stamina) {
+    public record Snapshot(String name,float x,float z,float facing,Progression progression,WaveDirector.State wave,List<Enemy> enemies,Arena arena,float stamina,float dayPhase) {
+        public Snapshot(String name,float x,float z,float facing,Progression progression,WaveDirector.State wave,List<Enemy> enemies,Arena arena,float stamina) {
+            this(name,x,z,facing,progression,wave,enemies,arena,stamina,DayNightCycle.initial(Campaign.index(wave.total()==0?wave.wave()+1:wave.wave())));
+        }
         public Snapshot(String name,float x,float z,float facing,Progression progression,WaveDirector.State wave,List<Enemy> enemies,Arena arena) {
             this(name,x,z,facing,progression,wave,enemies,arena,100);
         }
@@ -26,6 +29,7 @@ public final class SaveGame {
     public static void write(Path file,Snapshot s) throws IOException {
         Properties p=new Properties();
         p.setProperty("arena",s.arena.name());p.setProperty("stamina",s.stamina+"");
+        p.setProperty("dayPhase",s.dayPhase+"");
         p.setProperty("version","2"); p.setProperty("name",Settings.cleanName(s.name));
         p.setProperty("player.x",s.x+""); p.setProperty("player.z",s.z+""); p.setProperty("player.facing",s.facing+"");
         s.progression.store(p);
@@ -64,6 +68,6 @@ public final class SaveGame {
             // Resume with a short grace period; interrupted windups/projectiles are cancelled.
             e.cooldown=Math.max(.6f,number(p,k+"cooldown",0,5)); enemies.add(e);
         }
-        return new Snapshot(Settings.cleanName(p.getProperty("name")),number(p,"player.x",-22,22),number(p,"player.z",-22,22),number(p,"player.facing",-360,360),progress,director,List.copyOf(enemies),p.containsKey("arena")?Arena.valueOf(p.getProperty("arena")):Arena.forWave(wave),p.containsKey("stamina")?number(p,"stamina",0,progress.maxStamina()):100);
+        return new Snapshot(Settings.cleanName(p.getProperty("name")),number(p,"player.x",-22,22),number(p,"player.z",-22,22),number(p,"player.facing",-360,360),progress,director,List.copyOf(enemies),p.containsKey("arena")?Arena.valueOf(p.getProperty("arena")):Arena.forWave(wave),p.containsKey("stamina")?number(p,"stamina",0,progress.maxStamina()):100,p.containsKey("dayPhase")?number(p,"dayPhase",0,Math.nextDown(1f)):DayNightCycle.initial(Campaign.index(total==0?wave+1:wave)));
     }
 }

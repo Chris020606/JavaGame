@@ -1,4 +1,4 @@
-# Outpost game guide (v1.9.0)
+# Outpost game guide (v2.0.0)
 
 ## Start here
 
@@ -45,7 +45,7 @@ Settings lets you rebind keyboard actions, adjust camera sensitivity and volume,
 
 ## Inventory, crystals, and upgrades
 
-Tab opens an equipment grid with a rotatable 3D player preview, five equipped slots, stat comparisons, and potion storage. Click an owned item to equip it, or drag it into its matching slot. Right-click an equipped armor slot to remove that piece. Drag the preview to rotate the character. Armor and weapons are visible on the animated hero during play.
+Tab opens an equipment grid with a rotatable 3D player preview, five equipped slots, stat comparisons, and potion storage. Select an owned item to compare its stats, then use Equip/Enter, double-click it, or drag it into the matching slot. Right-click an equipped armor slot to remove that piece. Drag the preview to rotate the character. Armor and weapons are visible on the animated hero during play.
 
 Potions restore up to 60 HP, capped at maximum health. Click Use Potion or press H during play. You can carry five and buy more for 30 crystals in the workshop's Supplies tab. Full-health heroes do not consume potions.
 
@@ -119,7 +119,7 @@ There is one save slot. F5, the pause menu, and Save & Main Menu save the defens
 
 Files are `save.properties` and `settings.properties`. Replacing a file keeps the prior version as `.bak`. You can manually copy that backup over a damaged file while the game is closed. Invalid saves report an error without replacing the active defense. Back up the folder before editing files.
 
-Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, difficulty, independent stat training, unlocked armor sets, equipped armor pieces, upgraded stamina, unlocked and equipped weapon tiers, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v1.9 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
+Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, difficulty, independent stat training, unlocked armor sets, equipped armor pieces, upgraded stamina, unlocked and equipped weapon tiers, wave queue, time of day, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v2.0 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
 
 ## Build, test, and release
 
@@ -240,3 +240,11 @@ The name screen now shows an animated preview of your selected class. Enter a na
 Armor fits the Warrior, Archer, and Mage rather than floating over their bodies. The Warrior wears a full helm, the Archer an open-faced helmet, and the Mage a fitted armored hat. Chest armor includes fitted gauntlets; greaves and boots bend with movement and attacks. The inventory and game use the same fit. Iron, Runic, and Dawnsteel can still be mixed by slot.
 
 The starting meadow now has flower and mushroom colonies, closer trees, fallen logs, and a winding stream crossed by a wooden bridge. Normal sword swings now play correctly, including the horizontal opener, and a final enemy's defeat lets your swing finish before the chapter ending appears.
+
+## Inventory and changing daylight (v2.0)
+
+The inventory shows 3D item thumbnails, labeled equipped slots, All Items/Weapons/Armor filters, ownership and equipped markers, and the selected item's stat change. A single click selects; Equip, Enter, double-click, or a matching-slot drop equips. Arrow keys move the selection. Backspace/Delete or right-clicking a slot removes equipment. Best Gear equips the highest owned weapon and complete armor set. Drag the hero preview to rotate, and scroll over it to zoom. Full health disables potion use. Inventory, workshop and pause screens stop the solar clock as well as combat.
+
+A complete day lasts eight minutes of active gameplay. The moving sun and opposite moon control the sky, directional lighting, and shadows, with warm twilight and stars at night. The radar clock and DAY/DAWN/DUSK/NIGHT label identify the phase. Camp and sanctuary lights remain visible after dark. Saved games preserve the phase; older saves use an appropriate chapter mood. Continuing a chapter preserves the cycle. Playtest Tools offers morning/noon/sunset/midnight starting presets.
+
+The mountains form a continuous low-poly landscape beyond the playable clearing, with a snowy variant for the pass. They are scenery, not additional playable terrain. The meadow bridge now runs across its east/west stream. Generated Dawn weapons have explicit material colors and texture coordinates, fixing their black appearance in game and preview.

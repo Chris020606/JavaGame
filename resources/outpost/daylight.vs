@@ -18,6 +18,6 @@ void main() {
     if(foliage) p.x+=sin(uTime*1.3+p.y*2.0+p.z+matModel[3].x*.3)*max(0.0,p.y-.15)*.035;
     uv=vertexTexCoord;
     normal=normalize(vec3(matNormal*vec4(vertexNormal,0.0)));
-    world=vec3(matModel*vec4(p,1.0));tint=vertexColor;
+    world=vec3(matModel*vec4(p,1.0));tint=dot(vertexColor.rgb,vertexColor.rgb)<.00001?vec4(1.0):vertexColor;
     gl_Position=mvp*vec4(p,1.0);
 }
