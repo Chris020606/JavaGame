@@ -1,4 +1,4 @@
-# Outpost game guide (v1.6.0)
+# Outpost game guide (v1.7.0)
 
 ## Start here
 
@@ -49,7 +49,7 @@ Tab opens an equipment grid with a rotatable 3D player preview, five equipped sl
 
 Potions restore up to 60 HP, capped at maximum health. Click Use Potion or press H during play. You can carry five and buy more for 30 crystals in the workshop's Supplies tab. Full-health heroes do not consume potions.
 
-Regular enemies award 15 crystals; bosses award 120. Stand within six units of the sanctuary and press E. Time pauses in the workshop. Training cards show the current level, exact improvement, and price. New stat training starts at 45 crystals; the next price is `45 × current level + 10 × (current level − 1)²`. Resilience and Sanctuary cost `45 × current level`. All seven tracks cap at level 10. Previous saves retain their older combined character upgrades.
+Regular enemies award 15 crystals; bosses award 120. Stand within six units of the sanctuary and press E. Time pauses in the workshop. The workshop sidebar switches between Training, Equipment Forge, and Supplies. Training rows align each attribute, level, exact improvement, and price. Your core stats remain visible beside them. New stat training starts at 45 crystals; the next price is `45 × current level + 10 × (current level − 1)²`. Resilience and Sanctuary cost `45 × current level`. All seven tracks cap at level 10. Previous saves retain their older combined character upgrades.
 
 | Training | Effect per purchase |
 | --- | --- |
@@ -119,7 +119,7 @@ There is one save slot. F5, the pause menu, and Save & Main Menu save the defens
 
 Files are `save.properties` and `settings.properties`. Replacing a file keeps the prior version as `.bak`. You can manually copy that backup over a damaged file while the game is closed. Invalid saves report an error without replacing the active defense. Back up the folder before editing files.
 
-Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, difficulty, independent stat training, unlocked armor sets, equipped armor pieces, upgraded stamina, unlocked and equipped weapon tiers, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v1.6 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
+Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, difficulty, independent stat training, unlocked armor sets, equipped armor pieces, upgraded stamina, unlocked and equipped weapon tiers, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v1.7 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
 
 ## Build, test, and release
 
@@ -216,3 +216,13 @@ At half health, the boss becomes ENRAGED: windups shorten and sigils expand from
 ## Graphics quality
 
 Settings offers High (2048 shadow atlas, scene width up to 1920) or Balanced (1024 shadows, scene width up to 1440 and less bloom). Both retain material lighting, filtered shadows, anti-aliasing, tone mapping, fog, and wind effects. The UI is drawn after post-processing at native display resolution. Choose Balanced if the effects cost too much performance on your computer.
+
+## Soundtrack and presentation (v1.7)
+
+The title screen and each of the four chapters have an original stereo music theme. All loops share a 24-second musical grid, allowing the percussion stem to fade in during combat. Chapter/title transitions crossfade; pausing or opening inventory/workshop keeps the chapter music playing while the combat layer fades out. Settings master audio and M mute apply to both streamed music and sound effects. Audio is optional when no output device is available.
+
+Swings and impacts have multiple variations. Bows, magic, parries, dodges, boss slams, healing channels, and workshop purchases have distinct sounds. Original offline synthesis mixes tonal instruments, noise-based Foley, and short stereo reflections; it uses no third-party recordings.
+
+Enemy attacks now use soft additive weapon ribbons and particles, spell rune decals, animated charge-lane motes, magical projectile trails, and modeled arrow shafts/tips. Slams emit dust and expanding shockwave rings; healing channels send wisps toward their target. Visual effects do not change collision, damage, warning duration, or parry rules. Red/purple boss attacks remain unblockable. Gold cleaves and rushes can be parried.
+
+Chapter scenery uses authored camps, grave plots, ruins and mountain outcrops with winding paths and stable seeded groves. Large scenery stays outside the sanctuary center. Decorative props still do not provide collision or cover. Layout generation is deterministic and does not change save data.

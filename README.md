@@ -1,103 +1,110 @@
 # Outpost
 
-![Cemetery chapter](docs/images/expansion-chapter-1.png)
+**Outpost** is a 3D action and wave-defense game about the last warden of a dying valley. Protect the sanctuary, master stamina-based combat, build your character, and carry the last ember through a four-chapter campaign.
 
-**Outpost** is a small 3D wave-defense game about a warden protecting a frontier settlement. Fight through increasingly dangerous raids, collect crystals, and improve your hero and outpost before the next attack arrives.
+**Current source version: 1.7.0.** The latest published download is **v1.2.0** and contains the older game. The features and screenshots below describe the current source. Build it locally or get packages from a successful [desktop build workflow](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml).
 
-See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, and [DEVELOPMENT_NOTES.md](DEVELOPMENT_NOTES.md) for future work.
+![Ash Cemetery with grouped burial plots and a winding approach](docs/images/polish-cemetery.png)
 
-## Features
+## The campaign
 
-- Choose Warrior, Archer, or Mage with distinct animated models and a sword, bow, or staff.
-- Play The Last Ember: a four-chapter story campaign with two four-wave sieges and two boss-only duels.
-- Track waves left, read the Chronicle, and save progress between chapters.
-- Sprint and dodge with animated movement; chain three warrior sword swings and a jumping heavy cleave.
-- Explore a bounded clearing framed by distant forest, sky, drifting clouds, birds, and campfire embers.
-- Find healing inside the glowing, six-unit sanctuary ring.
-- Filtered cast shadows, material lighting, bloom, anti-aliasing, and a native-DPI combat HUD.
-- Stamina management, timed attack chains, charged heavies, parry/riposte, and lunging strikes.
-- Towering skeletal bosses with slams, rushes, sigils, and enraged phases.
-- Easy, Normal, Hard, and Extreme campaigns with coordinated enemy squads.
-- Four distinct chapter environments: meadow, cemetery, snowy pass, and necropolis.
-- Skeleton squads with flanking scouts, retreating archers, and allied-healing hexers.
-- Independent health, damage, stamina, recovery, speed, defense, and sanctuary training.
-- A drag-and-drop equipment grid with a rotatable 3D hero preview.
-- Visible swords, axe, bows/crossbows, staves, and four modular armor slots.
-- Boss-only duels against the Ash Warden and Hollow King, with crystal rewards and weapon loot.
-- Directional sword attacks with a three-hit combo and a heavy cleave.
-- Six enemy types with different strengths and attack styles.
-- Archers and shamans that attack from a distance.
-- Enemy attack warnings, floating damage numbers, health bars, and a minimap.
-- A decorated low-poly map with paths, trees, lanterns, fences, rocks, and flowers.
-- Sound effects, a name screen, save/load, and customizable controls.
+| Chapter | Environment and encounters | Objective |
+| --- | --- | --- |
+| The Last Ember | Meadow expedition camp; four waves of human raiders | Wake the sanctuary beacon |
+| The Ash Warden | Cemetery, graves, crypts; one skeletal boss | Reclaim the northern road |
+| Road to Dawn | Snowy mountain pass; four waves of skeleton squads | Protect the refugee caravan |
+| The Hollow King | Moonlit necropolis; one final skeleton boss | Bring morning back to the valley |
 
-![Frozen Pass](docs/images/expansion-chapter-2.png)
+Each chapter changes its scenery, sky, lighting, fog, and enemy roster. Authored landmarks, winding routes, clustered vegetation, varied burial plots, broken walls, and uneven mountain outcrops replace repeated rings of props. Distant groves, clouds, birds, snowfall, and fire embers frame the arena. Scenery remains decorative; the hero stays inside the playable boundary.
 
-![Equipment inventory and character preview](docs/images/expansion-inventory.png)
+The HUD tracks the active chapter, waves left, queued enemies, health, stamina, sanctuary integrity, resources, and enemy arrivals. Read the Chronicle for the story, save between chapters, and continue to the final ending. Boss chapters contain exactly one boss.
 
-## Download and install
+## Combat and enemies
 
-Open the [Releases page](https://github.com/Chris020606/JavaGame/releases) and download the file for your computer:
+- **Warrior, Archer, Mage:** distinct animated characters with melee combos, arrows/crossbows, or piercing magic. Each has a charged heavy attack.
+- **Stamina and timing:** sprint, directional dodge, late-input attack chains, charged heavies, forward lunges, directional parries, and a rewarded riposte. Dodge invulnerability covers only part of its animation.
+- **Tactical squads:** scouts flank, melee enemies recover and coordinate attacks, brutes press forward, ranged enemies retreat/strafe and lead moving targets, and shamans or frost hexers heal wounded allies through interruptible channels.
+- **Four difficulties:** Easy, Normal, Hard, Extreme change strength, speed, numbers, attack cadence, and melee squad pressure. The choice persists with each campaign.
+- **Skeletal bosses:** the Ash Warden and Hollow King use committed cleaves, rushes, ground slams, expanding shockwaves, delayed sigils, and enraged phases.
+- **Readable effects:** glowing weapon ribbons, textured spell seals, impact sparks, healing wisps, physical arrowheads, and trailing magic replace plain attack wireframes. Gold boss attacks can be parried; red/purple attacks must be evaded. Effects preserve the underlying damage areas and timing.
 
-| Computer | File |
+![Warned spell seals and textured combat effects](docs/images/polish-sigil-warning.png)
+
+Filtered shadows, material lighting, bloom, anti-aliasing, and native-DPI UI support High and Balanced graphics modes. A pulsing six-unit sanctuary ring shows where healing is active.
+
+## Build your warden
+
+Spend crystals at the sanctuary workshop. Its sidebar separates **Training**, **Equipment Forge**, and **Supplies**. Aligned training rows compare current values, next improvements, levels, and costs; the sidebar keeps your main stats visible.
+
+| Training track | Benefit per purchase |
 | --- | --- |
-| Windows 64-bit | `Outpost-windows-x64.zip` |
-| Mac with Apple Silicon | `Outpost-macos-arm64.tar.gz` |
-| Mac with Intel processor | `Outpost-macos-x64.tar.gz` |
-| Linux 64-bit | `Outpost-linux-x64.tar.gz` |
+| Vitality | +20 maximum/current HP |
+| Power | +5 damage |
+| Endurance | +15 maximum stamina |
+| Recovery | +3 stamina regenerated per second |
+| Agility | +4% of starting class movement speed |
+| Resilience | +2 damage reduction |
+| Sanctuary | +100 integrity and full repair |
 
-Extract the downloaded file somewhere on your computer. Keep the folders inside the archive together, then launch the Outpost application inside the extracted folder. Java is already included, so you do not need to install it separately.
+![Redesigned workshop with aligned upgrades and persistent stats](docs/images/polish-workshop.png)
 
-On Windows or macOS, the first launch may show a security confirmation because the game is not digitally signed. Choose the option to open it if you downloaded it from the project’s GitHub Releases page. Linux requires a normal desktop session with working graphics and audio support.
+Forge three weapon tiers and Iron, Runic, or Dawnsteel armor. Equipped items visibly follow the animated player: swords, a longsword, waraxe, Dawnblade, bows/crossbows, wands, and staves; helmets, chest/shoulder armor, greaves, and boots. Boss rewards also unlock weapon tiers.
+
+Open the inventory for a **rotatable 3D player preview**, an equipment grid, owned/locked markers, stat comparisons, and potion storage. Click gear to equip it, drag it into its matching slot, or right-click equipped armor to remove it. The inventory and workshop pause combat. Potions restore up to 60 HP; carry five and restock at the workshop.
+
+![Equipment grid with visible player armor and weapon](docs/images/expansion-inventory.png)
+
+## Music and sound
+
+An original stereo soundtrack has separate title, meadow, cemetery, frozen-pass, and necropolis themes. A synchronized percussion layer fades in during combat. Scene transitions crossfade; music continues through paused menus while combat intensity fades out.
+
+Layered weapon swings, varied metal impacts, bow releases, magic casts, parries, dodges, boss slams, healing wards, and upgrade chimes replace the earlier short tones. Master audio volume and mute control both music and effects. The game also runs when no audio device is available. The score and effects are generated reproducibly by [prepare_audio.py](https://github.com/Chris020606/JavaGame/blob/master/tools/prepare_audio.py), without external recordings or samples.
 
 ## Controls
 
-| Action | Key |
+| Action | Default input |
 | --- | --- |
-| Move | `W A S D` |
-| Sprint / dodge | `Left Shift` / `Left Ctrl` |
-| Orbit the camera | Hold the right mouse button |
-| Sword combo | `Space` or left click |
-| Charged heavy attack | Hold / release `Q` |
-| Parry / lunge | `F` / `R` |
-| Inventory / use potion | `Tab` / `H` |
-| Open the workshop | `E` near the outpost |
-| Save / load | `F5` / `F9` |
-| Mute sound | `M` |
-| Pause or go back | `Escape` |
-| Confirm a choice | `Enter` |
+| Move | W A S D |
+| Sprint / dodge | Left Shift / Left Ctrl |
+| Orbit camera | Hold right mouse button |
+| Light attack | Space / left mouse button |
+| Charged heavy | Hold and release Q |
+| Parry / lunge | F / R |
+| Inventory / potion | Tab / H |
+| Workshop near sanctuary | E |
+| Save / load | F5 / F9 |
+| Mute / pause | M / Escape |
+| Confirm / continue | Enter |
 
-Choose your class on the name screen before beginning. Face an enemy before attacking. Arrows stop at the first enemy; magic bolts pierce enemies. Each class has a stronger charged attack on Q. Attacks, sprinting, and dodging consume stamina; watch the gold meter. Face an incoming gold attack and tap F just before impact to parry, then counterattack for a riposte. Red and purple boss areas must be evaded.
+Keyboard bindings, camera sensitivity, audio, fullscreen, and graphics quality are configurable. Saves retain the campaign, difficulty, class, upgrades, equipment, stamina, living enemies, and queued arrivals. Older saves migrate with defaults for newer features.
 
- Sword swings hit in the direction your warden is facing. Press again near the end of a swing to continue the combo. The third attack is stronger, while the heavy cleave does more damage but takes longer to recover.
+## Downloads and version history
 
-## Enemies
+The [latest published release, v1.2.0](https://github.com/Chris020606/JavaGame/releases/tag/v1.2.0), includes these standalone packages with Java bundled:
 
-Each wave sends enemies toward the outpost at different times, so you can choose which threat to handle first.
+| Platform | File |
+| --- | --- |
+| Windows x64 | Outpost-windows-x64.zip |
+| macOS Apple Silicon | Outpost-macos-arm64.tar.gz |
+| macOS Intel | Outpost-macos-x64.tar.gz |
+| Linux x64 | Outpost-linux-x64.tar.gz |
 
-- **Raiders** are the standard melee enemy.
-- **Scouts** move quickly and chase you from farther away.
-- **Brutes** are slow, tough, and hit hard.
-- **Archers** keep their distance and fire arrows.
-- **Shamans** cast powerful magic from a safe range.
-- **Warlords** guard chapters 2 and 4 in boss-only duels and resist interruption. Defeat them for 120 crystals and the next weapon tier, then equip it with `Tab`.
+Extract the archive and keep its folders together. These packages are unsigned. The matching `.sha256` files are available on the release page. For current features, build the source below or use the artifacts from a successful workflow run; a source push does not create a tagged release.
 
-Red and gold warnings show where an enemy is about to attack. Step away from the warning or interrupt the enemy with your sword. Gold numbers show damage you deal, red numbers show damage you take, and teal text shows rewards.
+| Version | Availability | Main additions |
+| --- | --- | --- |
+| 1.7.0 | Current source | Natural scenery composition, redesigned workshop, chapter soundtrack, layered Foley, textured combat effects |
+| [1.6.0](https://github.com/Chris020606/JavaGame/commit/3cdadad) | Source update | Tactical AI, four difficulties, chapter biomes, training/forge, modular armor and preview inventory |
+| [1.5.0](https://github.com/Chris020606/JavaGame/commit/f5908ed) | Source update | Combat discipline, skeletal bosses, modern lighting and post-processing |
+| [1.4.0](https://github.com/Chris020606/JavaGame/commit/bbad0ff) | Source update | Four-chapter story, boss-only levels, sprint/dodge, living sky, healing indicators |
+| [1.3.0](https://github.com/Chris020606/JavaGame/commit/16c4539) | Source update | Imported Kenney environments, bow correction, redesigned HUD |
+| [1.2.0](https://github.com/Chris020606/JavaGame/releases/tag/v1.2.0) | Published packages | Warlords and weapon loot |
+| [1.1.0](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0) | Published packages | Hero classes, potions, inventory |
+| [1.0.3](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3) | Published packages | Earlier standalone desktop release |
 
-## Upgrades
+## Build and test
 
-Defeated enemies drop crystals. Spend them at the workshop near the outpost:
-
-- **Outpost:** increases its maximum integrity and repairs it completely.
-- **Training:** improve health, damage, stamina capacity/recovery, movement, and damage reduction independently.
-- **Equipment Forge:** unlock visible weapon upgrades and Iron, Runic, or Dawnsteel armor sets.
-- **Supplies:** restock healing potions.
-
-Stay near the outpost when you need to recover. The safe area heals your warden over time.
-
-## Playing from the source code
-
-If you want to run the project from source, install JDK 25 or newer, clone the repository, and run the Gradle wrapper from the project folder:
+Install **JDK 25 or newer** and run:
 
 ```sh
 git clone https://github.com/Chris020606/JavaGame.git
@@ -105,12 +112,15 @@ cd JavaGame
 ./gradlew run
 ```
 
-On Windows, use `gradlew.bat run` instead. The first run downloads the required dependencies. To run the checks used by the project, use `./gradlew test`.
+On Windows use `gradlew.bat`. The first build downloads dependencies. Other useful commands:
 
-## Credits
+```sh
+./gradlew test
+./gradlew inputSmokeTest
+./gradlew inputSmokeTest --args=--standard-dpi
+./gradlew packageGame
+```
 
-The character, weapon, and animation assets come from KayKit and are included under their CC0 license. Environment trees, rocks, plants, tents, and ruin props come from Kenney’s CC0 Nature Kit. The outpost and sound effects were made for this project.
+Desktop smoke tests require a graphical session and use an isolated temporary profile. Native packaging uses `jpackage`, embeds Java, and builds for the host platform. CI builds Windows x64, Linux x64, and both macOS architectures. Look in `build/native` for a locally packaged application.
 
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the licenses of the game engine and included assets.
-
-Have fun defending the outpost.
+See [GAME_GUIDE.md](GAME_GUIDE.md) for detailed rules, [DEVELOPMENT_NOTES.md](DEVELOPMENT_NOTES.md) for progress and next steps, and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for licenses. Characters, animation, and most weapons use CC0 KayKit packs; scenery uses Kenney Nature Kit and Graveyard Kit. Modular equipment, Dawn weapons, effect textures, music, and Foley were created for this project.

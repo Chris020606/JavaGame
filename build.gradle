@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'outpost'
-version = '1.6.0'
+version = '1.7.0'
 repositories { mavenCentral() }
 
 dependencies {
@@ -33,12 +33,18 @@ def runtimeAssets = copySpec {
         include 'KayKit_Adventurers_2.0_FREE/License.txt', 'KayKit_Character_Animations_1.1/License.txt'
     }
 }
+def guideImages = copySpec {
+    from('docs/images') {
+        include 'polish-cemetery.png', 'polish-sigil-warning.png', 'polish-workshop.png', 'expansion-inventory.png'
+    }
+}
 distributions {
     main {
         contents {
             into('resources') { with runtimeAssets }
             from('README.md', 'GAME_GUIDE.md', 'DEVELOPMENT_NOTES.md', 'THIRD_PARTY_NOTICES.md')
             into('licenses') { from 'licenses' }
+            into('docs/images') { with guideImages }
         }
     }
 }
@@ -52,6 +58,7 @@ tasks.register('stagePackage', Sync) {
     from('README.md', 'GAME_GUIDE.md', 'DEVELOPMENT_NOTES.md', 'THIRD_PARTY_NOTICES.md')
     into('licenses') { from 'licenses' }
     into('icons') { from 'packaging/icons' }
+    into('docs/images') { with guideImages }
 }
 // Build on each target OS: jpackage embeds a matching Java runtime and native launcher.
 tasks.register('packageGame', Exec) {

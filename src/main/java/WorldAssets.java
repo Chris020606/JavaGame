@@ -170,11 +170,6 @@ public final class WorldAssets implements AutoCloseable {
             float y=.15f+(time*.35f+i*.13f)%1.2f;
             DrawSphere(v((float)Math.cos(a)*5.85f,y,(float)Math.sin(a)*5.85f),.035f,Fade(Menu.TEAL,1-y/1.5f));
         }
-        // The marker posts form the edge of the playable clearing.
-        for(int sx:new int[]{-1,1}) for(int z=-20;z<=20;z+=4) {
-            scenery("stone_largeA",sx*23,z,z*13,1.5f);
-            scenery("stone_largeA",z,sx*23,z*17,1.5f);
-        }
     }
     private void drawBackdrop(float time) {
         // Surrounding land extends well beyond the movement boundary, hiding the square edge.
@@ -185,13 +180,6 @@ public final class WorldAssets implements AutoCloseable {
         for(int x=-2;x<=2;x++) for(int z=-2;z<=2;z++) {
             if(x==0 && z==0) continue;
             sceneryAt("ground_grass",x*80,-.4f,z*80,0,80);
-        }
-        for(int i=0;i<100;i++) {
-            double a=i*2.39996;
-            float radius=37+(i%6)*5;
-            float x=(float)Math.cos(a)*radius,z=(float)Math.sin(a)*radius;
-            if(lookIndex==1 || lookIndex==3) grave(i%3==0?"rocks-tall":"pine-crooked",x,z,i*71,5+i%4);
-            else scenery(i%3==0?"stone_tallB":i%2==0?"tree_oak":"tree_pineTallA_detailed",x,z,i*71,6+i%5);
         }
         if(shadowPass) return;
         // Clouds drift above the distant hills. They are atmosphere, not reachable terrain.
@@ -206,90 +194,37 @@ public final class WorldAssets implements AutoCloseable {
             DrawLine3D(v(x,y,z),v(x+.7f,y+wing,z),Menu.INK);
         }
     }
-    /** Every visible piece of campaign scenery comes from the downloaded pack. */
-    private void drawHighlands(int chapter,float time) {
-        // A tiled meadow with branching earth tracks replaces the old flat plane/crosswalk.
-        for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) {
-            String tile=x==0 && z==0?"ground_pathCross":x==0 || z==0?"ground_pathStraight":"ground_grass";
-            scenery(tile,x*4,z*4,z==0?90:0,4);
-        }
-        // The defended landmark is an ancient stone ring, surrounded by a small expedition camp.
-        scenery("platform_stone",0,0,0,5.5f);
-        scenery("statue_ring",0,0,0,5);
-        scenery("tent_detailedOpen",-5,-3,120,4);
-        scenery("tent_detailedOpen",5,-4,230,3.5f);
-        scenery("log_stack",-5.5f,-6,25,2.5f);
-        scenery("campfire_stones",3,-2,0,2.5f);
-        if(!shadowPass) {
-        DrawSphere(v(3,.55f+(float)Math.sin(time*7)*.08f,-2),.16f,Menu.GOLD);
-        for(int i=0;i<7;i++) {
-            float rise=(time*.65f+i*.23f)%2;
-            DrawSphere(v(3+(float)Math.sin(time+i)*.12f,.55f+rise,-2),.025f,Fade(Menu.GOLD,1-rise/2));
-        }
-        }
-        for(int j=0;j<chapter*3;j++) {
-            double a=j*Math.PI*2/Math.max(1,chapter*3);
-            scenery("statue_columnDamaged",(float)Math.cos(a)*13,(float)Math.sin(a)*13,j*55,4+chapter*.4f);
-        }
-        for(int side:new int[]{-1,1}) {
-            scenery("statue_columnDamaged",side*4,5,side*20,4.5f);
-            scenery("statue_obelisk",side*7,8,side*15,4);
-            scenery("fence_simple",side*7,-6,0,3);
-        }
-        for(int i=0;i<60;i++) {
-            double a=i*2.39996;
-            float radius=10+(i%6)*2.1f;
-            float x=(float)Math.cos(a)*radius,z=(float)Math.sin(a)*radius;
-            if(Math.abs(x)<3 || Math.abs(z)<3) continue;
-            scenery(i%5==0?"stone_largeA":i%3==0?"plant_bushDetailed":"grass_large",x,z,i*53,i%5==0?3:2.5f);
-            if(i%4==0) scenery("flower_purpleC",x+.7f,z+.5f,i*23,2);
-            if(i%9==0) scenery("statue_columnDamaged",x,z,i*37,3.5f);
-        }
-        // Tall scenery stays beyond the playable square so the hero remains visible.
-        for(int i=0;i<56;i++) {
-            double a=i*Math.PI*2/56;
-            float radius=26+(i%3)*2;
-            float x=(float)Math.cos(a)*radius,z=(float)Math.sin(a)*radius;
-            if(Math.abs(x)<3 || Math.abs(z)<3) continue;
-            scenery(i%4==0?"stone_tallB":i%3==0?"tree_oak":"tree_pineTallA_detailed",x,z,i*137,i%4==0?5:4.5f+i%2);
-        }
-    }
-    private void drawCemetery(boolean necropolis,float time) {
+    private void drawHighlands(int chapter,float time) { drawAuthoredLayout(0,time); }
+    private void drawCemetery(boolean necropolis,float time) { drawAuthoredLayout(necropolis?3:1,time); }
+    private void drawFrozen(float time) { drawAuthoredLayout(2,time); }
+    private void drawAuthoredLayout(int chapter,float time) {
         for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) scenery("ground_grass",x*4,z*4,0,4);
-        for(int z=-5;z<=5;z++) grave("road",0,z*4,0,4);
-        if(necropolis) {
-            grave("altar-stone",0,0,0,5);scenery("statue_ring",0,0,0,4);
-            for(int i=0;i<8;i++) {
-                double a=i*Math.PI/4;float x=(float)Math.cos(a)*29,z=(float)Math.sin(a)*29;
-                grave("crypt-large",x,z,-i*45,4);graveAt("crypt-large-roof",x,4,z,-i*45,4);
-                if(i%2!=0) grave("pillar-obelisk",x*.65f,z*.65f,i*30,5);
-                if(!shadowPass) DrawSphere(v(x*.7f,3,z*.7f),.14f,Menu.color(170,85,255));
-            }
-        } else {
-            grave("altar-stone",0,0,0,4);scenery("statue_ring",0,0,0,4);
-            grave("crypt",-9,-14,0,7);grave("crypt",9,-14,0,7);
-            for(int side:new int[]{-1,1}) for(int row=-3;row<=3;row++) for(int column=0;column<3;column++) {
-                float x=side*(6+column*4),z=row*5;
-                grave("grave",x,z,0,3);grave((row+column)%3==0?"gravestone-cross":"gravestone-round",x,z-1.2f,row*4,1.7f);
-                if(row%2==0) grave("lantern-candle",x+1.3f,z-1,0,3);
+        var path=EnvironmentLayout.path(chapter);
+        for(int i=1;i<path.size();i++) {
+            var from=path.get(i-1);var to=path.get(i);float dx=to.x()-from.x(),dz=to.z()-from.z();
+            int steps=Math.max(1,(int)Math.ceil(Math.hypot(dx,dz)/3.5));float angle=(float)Math.toDegrees(Math.atan2(dx,dz));
+            for(int j=0;j<steps;j++) {
+                float t=(j+.5f)/steps,x=from.x()+dx*t,z=from.z()+dz*t;
+                if(chapter==1 || chapter==3)graveAt("road",x,-.265f,z,angle,3.6f);
+                else sceneryAt("ground_pathStraight",x,.012f,z,angle,3.8f);
             }
         }
-        for(int side:new int[]{-1,1}) for(int i=-5;i<=5;i++) {
-            grave("stone-wall",side*24,i*4,90,4);grave("stone-wall",i*4,side*24,0,4);
+        if(chapter==0 || chapter==2)scenery("platform_stone",0,0,0,5.2f);
+        else grave("altar-stone",0,0,0,4);
+        scenery("statue_ring",0,0,0,4.5f);
+        for(var prop:EnvironmentLayout.props(chapter)) {
+            if(prop.graveyard())graveAt(prop.model(),prop.x(),prop.y(),prop.z(),prop.yaw(),prop.scale());
+            else sceneryAt(prop.model(),prop.x(),prop.y(),prop.z(),prop.yaw(),prop.scale());
         }
-        grave("iron-fence-border-gate",0,-21,0,6);grave("iron-fence-border-gate",0,21,180,6);
-        for(int side:new int[]{-1,1}) { grave("lightpost-single",side*4,5,0,4);grave("fire-basket",side*4,-5,0,3); }
-    }
-    private void drawFrozen(float time) {
-        for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) scenery(x==0?"ground_pathStraight":"ground_grass",x*4,z*4,0,4);
-        scenery("platform_stone",0,0,0,5);scenery("statue_ring",0,0,0,4.5f);
-        scenery("bridge_stone",0,-12,0,4);
-        for(int side:new int[]{-1,1}) for(int i=-5;i<=5;i++) {
-            scenery("cliff_half_stone",side*(17+(i%2)*2),i*4,side*90,6);
-            scenery("stone_tallB",side*(11+(i%3)*2),i*4+1,i*23,3+(i%2));
+        if(shadowPass)return;
+        if(chapter==0 || chapter==2) {
+            float fx=-9,fz=chapter==0?-8:8;
+            for(int i=0;i<12;i++) {
+                float rise=(time*.8f+i*.17f)%1.7f;
+                DrawSphere(v(fx+(float)Math.sin(time*3+i)*.12f,.35f+rise,fz+(float)Math.cos(time*2+i)*.1f),.10f*(1-rise/2),Fade(Menu.GOLD,1-rise/1.7f));
+            }
         }
-        scenery("tent_detailedOpen",-6,3,90,3.5f);scenery("log_stack",-6,7,30,3);
-        if(!shadowPass) for(int i=0;i<55;i++) {
+        if(chapter==2)for(int i=0;i<55;i++) {
             float x=-24+(i*7.13f+time*1.5f)%48,z=-24+(i*11.71f)%48,y=12-(time*.8f+i*.34f)%12;
             DrawSphere(v(x,y,z),.035f,Menu.TEXT);
         }
@@ -299,7 +234,8 @@ public final class WorldAssets implements AutoCloseable {
     }
     private void graveAt(String name,float x,float y,float z,float angle,float scale) {
         Model model=graveyard.get(name);lightModel(model);
-        DrawModelEx(model,v(x,y,z),v(0,1,0),angle,v(scale,scale,scale),WHITE);
+        Color tint=name.equals("grave")?Menu.color(132,142,126):name.equals("pine-crooked")?Menu.color(118,142,128):WHITE;
+        DrawModelEx(model,v(x,y,z),v(0,1,0),angle,v(scale,scale,scale),tint);
     }
     private void scenery(String name,float x,float z,float angle,float scale) {
         sceneryAt(name,x,0,z,angle,scale);

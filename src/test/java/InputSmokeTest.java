@@ -111,6 +111,8 @@ public class InputSmokeTest {
                 gear.purchase(Progression.Upgrade.ENDURANCE);gear.purchase(Progression.Upgrade.VITALITY);
                 key(game,KEY_TAB);for(int i=0;i<4;i++)frame(game);capture("expansion-inventory");
                 key(game,KEY_ESCAPE);game.getPlayer().getPosition().x(0).z(4);key(game,KEY_E);for(int i=0;i<4;i++)frame(game);capture("expansion-workshop");
+                int wx=(GetScreenWidth()-940)/2,wy=(GetScreenHeight()-600)/2;
+                click(game,wx+110,wy+202);capture("polish-forge");click(game,wx+110,wy+262);capture("polish-supplies");
                 key(game,KEY_ESCAPE);
                 for(HeroClass hero:HeroClass.values()) {
                     Progression dressed=new Progression(hero,Entities.Difficulty.HARD);for(int i=0;i<300;i++)dressed.rewardKill();
@@ -120,9 +122,27 @@ public class InputSmokeTest {
                     check(game.loadCurrent(),"Class gear preview load failed");key(game,KEY_ENTER);key(game,KEY_TAB);
                     for(int i=0;i<3;i++)frame(game);capture("expansion-gear-"+hero.name().toLowerCase());key(game,KEY_ESCAPE);
                 }
+                Entities.Enemy effectsBoss=new Entities.Enemy(4,12,10,5,.5f);
+                SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",-2,8,50,new Progression(),new WaveDirector.State(10,0,1,8,0,21,0),java.util.List.of(effectsBoss),Arena.HIGHLANDS));
+                check(game.loadCurrent(),"Combat effects review load failed");key(game,KEY_ENTER);
+                effectsBoss=game.getEnemies().get(0);effectsBoss.cooldown=100;effectsBoss.beginAttack(-2,8,true);
+                while(effectsBoss.bossMove!=Entities.BossMove.CHARGE)effectsBoss.beginAttack(-2,8,true);
+                effectsBoss.attackTime=0;effectsBoss.impactPending=false;effectsBoss.cooldown=0;frame(game);
+                check(!game.getBossHazards().isEmpty(),"Boss did not create its visual-review sigils");
+                Camera3D effectsCamera=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+                effectsCamera._position().x(-12).y(9).z(18);effectsCamera.target().x(1).y(1).z(10);
+                for(int i=0;i<3;i++){BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();}
+                capture("polish-sigil-warning");
+                int detonationFrames=(int)Math.ceil((game.getBossHazards().get(0).delay+.08f)*60);
+                for(int i=0;i<detonationFrames;i++)frame(game);
+                effectsCamera._position().x(-12).y(9).z(18);effectsCamera.target().x(1).y(1).z(10);
+                for(int i=0;i<3;i++){BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();}
+                capture("polish-sigil-impact");
                 System.out.println("PASS: modern visual review");return;
             }
             for (int i = 0; i < 5; i++) frame(game);
+            check(!game.audio().ready() || game.audio().loadedMusic()==6 && game.audio().musicStreaming(),"Music assets missing or streams not playing");
+            check(game.audio().theme()==4,"Title music theme not selected");
             capture("ui-menu-retina");
             // Click the center of the visible Begin Defense button, in window pixels.
             event(MOUSE_POSITION, (GetScreenWidth()-640)/2+140, (GetScreenHeight()-420)/2+307);
@@ -214,7 +234,7 @@ public class InputSmokeTest {
             for (int i=0;i<30;i++) frame(game);
             check(game.getProgression().health()<hp, "Telegraphed enemy attack did not deal damage");
             capture("ui-damage-taken");
-            key(game,KEY_M);
+            key(game,KEY_M);check(game.audio().muted(),"Mute did not affect the music/effects mixer");
             // Save/load restores state, and corrupted files do not replace a live defense.
             target.health=target.maxHealth;
             for (Entities.Enemy enemy:game.getEnemies()) enemy.cooldown=1;
@@ -312,7 +332,7 @@ public class InputSmokeTest {
             SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Highlands",0,8,0,new Progression(HeroClass.MAGE),new WaveDirector.State(6,0,0,8,0,21,0),java.util.List.of()));
             check(game.loadCurrent(),"Highland save failed");
             check(game.arena()==Arena.HIGHLANDS,"Wave 6 must restore the second stage");
-            key(game,KEY_ENTER);for(int i=0;i<5;i++)frame(game);capture("ui-highland-ruins");
+            key(game,KEY_ENTER);for(int i=0;i<5;i++)frame(game);check(game.audio().theme()==2,"Frozen Pass music did not follow restored chapter");capture("ui-highland-ruins");
             check(game.saveCurrent() && game.loadCurrent(),"Sanctuary save failed");
             check(game.arena()==Arena.HIGHLANDS,"Sanctuary selection was lost");key(game,KEY_ENTER);
             check(game.getPlayer().getAnimationCount()>3,"Hero animation clips missing");
@@ -461,10 +481,12 @@ public class InputSmokeTest {
             Progression equipment=game.getProgression();for(int i=0;i<300;i++)equipment.rewardKill();
             game.getPlayer().getPosition().x(0).z(4);key(game,KEY_E);check(game.isWorkshopOpen(),"Workshop did not open");
             int ex=(GetScreenWidth()-940)/2,ey=(GetScreenHeight()-600)/2;
-            click(game,ex+100,ey+275);click(game,ex+326,ey+275);click(game,ex+552,ey+275);
+            click(game,ex+830,ey+162);click(game,ex+830,ey+214);click(game,ex+830,ey+266);
             check(equipment.maxHealth()==120 && equipment.damage()==30 && equipment.maxStamina()==115,"Training cards did not independently upgrade HP, damage and stamina");
-            click(game,ex+410,ey+85);click(game,ex+700,ey+305);click(game,ex+700,ey+430);
+            click(game,ex+110,ey+202);click(game,ex+820,ey+335);click(game,ex+820,ey+477);
             check(equipment.weaponUnlocked()==3 && equipment.armorUnlocked()==3,"Forge purchase failed");capture("expansion-forge");
+            click(game,ex+110,ey+282);int beforeRestock=equipment.potions();click(game,ex+520,ey+390);
+            check(equipment.potions()==beforeRestock+1,"Supplies sidebar or potion purchase failed");capture("polish-supplies");
             key(game,KEY_ESCAPE);key(game,KEY_TAB);
             click(game,ex+658,ey+122);check(equipment.weaponTier()==3,"Legendary weapon grid selection failed");
             // Tier-three helmet: drag from the grid into the head slot.
@@ -496,7 +518,7 @@ public class InputSmokeTest {
             hexer.attackTime=0;hexer.healCooldown=0;frame(game);check(hexer.healingTarget==patient,"Second ward did not begin");
             hexer.hit(1,0,0,0);patientHp=patient.health;for(int i=0;i<45;i++)frame(game);
             check(patient.health==patientHp && hexer.healingTarget==null,"Interrupted hexer still healed ally");
-            System.out.println("PASS: crossbow impact and interruptible allied healing; four difficulty selections, independent training, forge purchases, armor click/drag/remove, equipment preview and expanded save state; stamina/parry/riposte, timed chains, charged heavies, lunges, boss slams/charges/sigils/enrage, four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
+            System.out.println("PASS: streamed title/chapter music, mixer mute, redesigned workshop and textured combat effects; crossbow impact and interruptible allied healing; four difficulty selections, independent training, forge purchases, armor click/drag/remove, equipment preview and expanded save state; stamina/parry/riposte, timed chains, charged heavies, lunges, boss slams/charges/sigils/enrage, four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

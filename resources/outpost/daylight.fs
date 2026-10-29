@@ -43,7 +43,8 @@ void main() {
     vec3 hemi=mix(vec3(.16,.19,.12),environment>2.5?vec3(.20,.22,.43):environment>1.5?vec3(.53,.65,.82):environment>.5?vec3(.35,.30,.41):vec3(.43,.57,.72),n.y*.5+.5);
     vec3 color=albedo*hemi*.75+sun;
     // Local emissive sources illuminate the camp, sanctuary, and boss silhouette.
-    color+=albedo*vec3(2.4,.65,.12)/(1.0+dot(world-vec3(3,.7,-2),world-vec3(3,.7,-2))*.6);
+    vec3 camp=environment<.5?vec3(-9,.7,-8):environment>1.5 && environment<2.5?vec3(-9,.7,8):vec3(0,.7,-18);
+    color+=albedo*vec3(2.4,.65,.12)/(1.0+dot(world-camp,world-camp)*.6);
     color+=albedo*vec3(.08,.6,.5)/(1.0+dot(world-vec3(0,1.5,0),world-vec3(0,1.5,0))*.14);
     color+=albedo*vec3(.75,.12,1.4)*bossGlow/(1.0+dot(world-bossPos,world-bossPos)*.3);
     color+=pow(1.0-nv,4.0)*vec3(.025,.05,.065);
