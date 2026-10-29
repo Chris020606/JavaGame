@@ -12,6 +12,7 @@ public abstract class Entity {
     private boolean hasAnimation = false;
     private int animationIndex = 0;
     private int currentFrame = 0;
+    private int posedAnimation,posedFrame;
     private int[] animationCount = new int[1];
     private float animationTimer = 0.0f;
     private float animationFPS = 24.0f;
@@ -65,7 +66,12 @@ public abstract class Entity {
 
     private final HashMap<String, Integer> animationIndices = new HashMap<>();
 
-    protected Integer getAnimationIndex(String name) { return animationIndices.get(name);}
+    protected Integer getAnimationIndex(String name) {
+        // raylib stores ModelAnimation.name in 32 bytes including its terminator.
+        // The imported horizontal-slice name is 32 characters and loses its final letter.
+        Integer index=animationIndices.get(name);
+        return index!=null?index:animationIndices.get(name.substring(0,Math.min(31,name.length())));
+    }
 
     public void setAnimation(int index) {
         if (!hasAnimation) {
@@ -95,9 +101,17 @@ public abstract class Entity {
         if (!hasAnimation || model == null) return;
         ModelAnimation clip = new ModelAnimation(animations).position(animationIndex);
         currentFrame = Math.min(clip.keyframeCount()-1, (int)(Math.max(0, progress)*clip.keyframeCount()));
-        UpdateModelAnimation(model, clip, currentFrame);
+        poseForDisplay(animationIndex,currentFrame);
     }
 
+    protected void poseForDisplay(int index,int frame) {
+        posedAnimation=index;posedFrame=frame;
+        UpdateModelAnimation(model,new ModelAnimation(animations).position(index),frame);
+    }
+    public void copyPoseTo(Model equipment) {
+        UpdateModelAnimation(equipment,new ModelAnimation(animations).position(posedAnimation),posedFrame);
+    }
+    public int posedFrame() { return posedFrame; }
     public ModelAnimation getAnimation() {
         return animations;
     }
@@ -140,7 +154,7 @@ public abstract class Entity {
             }
         }
 
-        UpdateModelAnimation(model, animation, currentFrame);
+        poseForDisplay(animationIndex,currentFrame);
     }
 
     public int getAnimationIndex() {

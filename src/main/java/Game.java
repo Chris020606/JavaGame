@@ -36,6 +36,7 @@ public class Game {
     private float lastHeroX,lastHeroZ;
     private final WorkshopScreen workshopScreen=new WorkshopScreen();
     private final EquipmentScreen equipmentScreen=new EquipmentScreen();
+    private final HeroPortrait heroPortrait=new HeroPortrait();
     private HeroClass selectedClass=HeroClass.WARRIOR;
     private boolean inventory;
     private final ArrayList<HeroShot> heroShots=new ArrayList<>();
@@ -60,6 +61,8 @@ public class Game {
     private String notice = "";
     private boolean workshop;
     private boolean quitRequested;
+    private boolean photoMode;
+    void photoMode(boolean enabled) { photoMode=enabled; }
     private final Camera2D uiCamera = new Camera2D().zoom(1);
 
     public Game() { this(()->IsMouseButtonPressed(MOUSE_BUTTON_LEFT)); }
@@ -201,21 +204,23 @@ public class Game {
             attackElapsed+=dt;
             if (attackElapsed>=activeAttack.impact()) { resolvePlayerHit(px,pz); impactPending=false; }
         }
+        boolean finishingChapter=director.levelCleared(0) && enemies.stream().noneMatch(e->e.health>0);
+        if(finishingChapter) { inputBuffer=0;heavyCharge=0;player.setCharging(false); }
         if(player.isDodging()) { inputBuffer=0;comboWindow=0;combo=0;heavyCharge=0;player.setCharging(false); }
-        if(settings.controls.down(HEAVY) && attackCooldown<=0 && !player.isDodging() && player.discipline().recovery()<=0) {
+        if(!finishingChapter && settings.controls.down(HEAVY) && attackCooldown<=0 && !player.isDodging() && player.discipline().recovery()<=0) {
             heavyCharge=Math.min(1.4f,heavyCharge+dt);player.setCharging(true);
         } else if(heavyCharge>0 && !settings.controls.down(HEAVY)) {
             releasedCharge=heavyCharge;heavyCharge=0;player.setCharging(false);
             bufferedHeavy=true;bufferedLunge=false;inputBuffer=.14f;
         }
         boolean lightInput=settings.controls.pressed(SLASH);lightInput|=mouseAttack.getAsBoolean();
-        if(lightInput && heavyCharge<=0) {
+        if(lightInput && !finishingChapter && heavyCharge<=0) {
             bufferedHeavy=bufferedLunge=false;
             bufferedTimed=combo>0 && comboWindow>0 && attackCooldown<=.14f;
             if(attackCooldown>.14f) { combo=0;comboWindow=0; }
             inputBuffer=.14f;
         }
-        if(settings.controls.pressed(LUNGE) && heavyCharge<=0) {
+        if(!finishingChapter && settings.controls.pressed(LUNGE) && heavyCharge<=0) {
             bufferedLunge=true;bufferedHeavy=false;inputBuffer=.14f;
         }
         if(inputBuffer>0 && attackCooldown<=0 && !player.isDodging() && heavyCharge<=0 && player.discipline().recovery()<=0) {
@@ -342,7 +347,7 @@ public class Game {
         if (director.wave()!=wave) { wave=director.wave(); audio.play("wave"); notifyPlayer(chapter().bossOnly()?chapter().title()+" / BOSS DUEL":"WAVE "+(wave-chapter().first()+1)+" OF "+chapter().waves()+" / "+chapter().title()); }
         if (spawn!=null) enemies.add(new Enemy(spawn.x(),spawn.z(),spawn.wave(),spawn.variant(),random.nextFloat(),progress.difficulty()));
         nextWave=director.rest();
-        if(director.levelCleared(enemies.size())) {
+        if(director.levelCleared(enemies.size()) && !player.isAttacking()) {
             heroShots.clear();projectiles.clear();bossHazards.clear();heavyCharge=0;player.resetCombat();impactPending=false;attackCooldown=0;
             state=wave>=10?GameState.VICTORY:GameState.LEVEL_COMPLETE;
             saveCurrent();
@@ -393,12 +398,14 @@ public class Game {
     public void render() {
         drawWorld();
         if(inventory) equipmentScreen.prepare(assets,player,progress);
+        if(state==GameState.LOGIN)heroPortrait.prepare(assets,selectedClass);
         // Jaylib 6.0.1-0's SDL backend restores a framebuffer-pixel projection
         // after 3D. Scale the overlay to window pixels, matching GetMousePosition.
         // Recompute each frame for resizing and moving between Retina/1x displays.
         uiCamera.zoom((float)GetRenderWidth() / Math.max(1, GetScreenWidth()));
         BeginMode2D(uiCamera);
         try {
+            if(photoMode)return;
             drawEnemyHealth();
             if (state == GameState.MAIN_MENU) { drawMainMenu(); return; }
             if (state == GameState.LOGIN) { drawNameEntry(); return; }
@@ -632,21 +639,30 @@ public class Game {
         Menu.text("Tab changes equipment. Pause > Playtest Tools switches class/chapter or resets the kit.",x+24,y+556,15,Menu.MUTED);
     }
     private void drawNameEntry() {
-        dim(); int x=(GetScreenWidth()-560)/2,y=(GetScreenHeight()-450)/2;
-        Menu.text("NAME YOUR WARDEN",x,y,34,Menu.TEXT);
-        Menu.text("Letters, numbers, spaces, - or _ (up to 16)",x,y+55,18,Menu.MUTED);
-        Menu.panel(x,y+100,560,60);
-        Menu.text(nameDraft.isEmpty()?"Type a name...":nameDraft+"_",x+16,y+118,24,nameDraft.isEmpty()?Menu.MUTED:Menu.TEXT);
-        for (HeroClass hero:HeroClass.values()) {
-            if (Menu.button((selectedClass==hero?"> ":"")+hero.label,x+hero.ordinal()*190,y+185,180,true)) selectedClass=hero;
+        dim();int x=(GetScreenWidth()-940)/2,y=(GetScreenHeight()-600)/2;
+        Menu.panel(x,y,940,600);
+        Color accent=selectedClass==HeroClass.WARRIOR?Menu.GOLD:selectedClass==HeroClass.ARCHER?Menu.TEAL:Menu.color(182,149,237);
+        heroPortrait.draw(x+610,y+65,306,408);
+        Menu.text("THE LAST EMBER",x+24,y+22,16,accent);
+        Menu.text("CHOOSE YOUR WARDEN",x+24,y+53,35,Menu.TEXT);
+        Menu.text("A valley without dawn is waiting for your light.",x+24,y+102,18,Menu.MUTED);
+        Menu.panel(x+24,y+137,560,58);
+        Menu.text(nameDraft.isEmpty()?"Your legend starts with a name":nameDraft+((int)(GetTime()*2)%2==0?"_":""),x+40,y+153,24,nameDraft.isEmpty()?Menu.MUTED:Menu.TEXT);
+        for(HeroClass hero:HeroClass.values())if(Menu.button((selectedClass==hero?"> ":"")+hero.label,x+24+hero.ordinal()*190,y+216,180,true))selectedClass=hero;
+        Menu.text(switch(selectedClass) { case WARRIOR -> "Stand against the dark. Make every swing count.";case ARCHER -> "Find the opening. Let the next arrow bring dawn.";case MAGE -> "Shape the ember. Turn the cold into light.";},x+24,y+278,18,accent);
+        Menu.text("CHOOSE YOUR CHALLENGE",x+24,y+326,13,Menu.GOLD);
+        for(Difficulty choice:Difficulty.values())if(Menu.button((choice==selectedDifficulty?"> ":"")+choice.label,x+24+choice.ordinal()*142,y+350,134,true))selectedDifficulty=choice;
+        Menu.wrapped(selectedDifficulty.description,x+24,y+411,548,17,Menu.MUTED);
+        if(Menu.button("LIGHT THE BEACON [ENTER]",x+24,y+482,286,true))confirmName();
+        if(Menu.button("CLEAR NAME",x+326,y+482,118,true))nameDraft="";
+        if(Menu.button("BACK",x+462,y+482,122,true))state=GameState.MAIN_MENU;
+        Menu.center(selectedClass.label.toUpperCase(),x+763,y+489,28,accent);
+        Menu.center(selectedClass.health+" HEALTH / "+(selectedClass==HeroClass.WARRIOR?"CLOSE COMBAT":selectedClass==HeroClass.ARCHER?"PRECISION":"ARCANE POWER"),x+763,y+530,13,Menu.MUTED);
+        Menu.text("One ember. One last watch. Your story begins here.",x+24,y+556,17,accent);
+        for(int i=0;i<9;i++) {
+            float rise=((float)GetTime()*.18f+i*.13f)%1;
+            DrawCircle(x+630+i*29+(int)(Math.sin(GetTime()+i)*5),y+460-(int)(rise*365),1.5f,Fade(accent,(1-rise)*.6f));
         }
-        Menu.text(selectedClass.description,x,y+248,18,Menu.TEAL);
-        if (Menu.button("BEGIN [ENTER]",x,y+300,270,true)) confirmName();
-        if (Menu.button("CLEAR",x+290,y+300,130,true)) nameDraft="";
-        if (Menu.button("BACK",x+440,y+300,120,true)) state=GameState.MAIN_MENU;
-        Menu.text("CAMPAIGN DIFFICULTY",x,y+348,14,Menu.GOLD);
-        for(Difficulty choice:Difficulty.values()) if(Menu.button((choice==selectedDifficulty?"> ":"")+choice.label,x+choice.ordinal()*142,y+374,134,true)) selectedDifficulty=choice;
-        Menu.text(selectedDifficulty.description,x,y+431,16,Menu.MUTED);
     }
     private void openSettings() { settingsReturn=state; state=GameState.SETTING_MENU; menuMessage=""; rebinding=null; }
     private void closeSettings() { persistSettings(); rebinding=null; state=settingsReturn; }
@@ -719,7 +735,7 @@ public class Game {
     GameAudio audio() { return audio; }
     boolean isWorkshopOpen() { return workshop; }
     public boolean shouldQuit() { return quitRequested; }
-    public void dispose() { persistSettings(); if (state==GameState.PLAYING||state==GameState.PAUSED||state==GameState.LEVEL_COMPLETE||state==GameState.VICTORY||state==GameState.JOURNAL&&journalReturn==GameState.PAUSED||state==GameState.SETTING_MENU&&settingsReturn==GameState.PAUSED||state==GameState.PLAYTEST_SETUP&&playtestReturn==GameState.PAUSED) saveCurrent(); audio.close();vfx.close(); assets.close();renderer.close();equipmentScreen.close(); player.dispose(); Menu.close(); }
+    public void dispose() { persistSettings(); if (state==GameState.PLAYING||state==GameState.PAUSED||state==GameState.LEVEL_COMPLETE||state==GameState.VICTORY||state==GameState.JOURNAL&&journalReturn==GameState.PAUSED||state==GameState.SETTING_MENU&&settingsReturn==GameState.PAUSED||state==GameState.PLAYTEST_SETUP&&playtestReturn==GameState.PAUSED) saveCurrent(); audio.close();vfx.close(); assets.close();renderer.close();equipmentScreen.close();heroPortrait.close(); player.dispose(); Menu.close(); }
     public GameState getState() { return state; }
     public void setState(GameState state) { this.state = state; }
     public SceneManager getSceneManager() { return sceneManager; }

@@ -9,7 +9,7 @@ names = ('tree_pineTallA_detailed', 'tree_pineRoundC', 'tree_oak',
          'statue_columnDamaged', 'statue_obelisk', 'tent_detailedOpen',
          'log_stack', 'flower_purpleC', 'mushroom_redGroup',
          'ground_grass','ground_pathCross','ground_pathStraight','platform_stone',
-         'campfire_stones','fence_simple','statue_ring','bridge_stone','cliff_half_stone')
+         'campfire_stones','fence_simple','statue_ring','bridge_stone','cliff_half_stone','ground_riverStraight','ground_riverBend','ground_riverRocks','bridge_wood','lily_small','flower_redB','flower_yellowC','grass_leafsLarge','stump_old','log_large')
 archive=Path(sys.argv[1])
 out=Path(__file__).resolve().parents[1]/'resources/outpost/nature'
 out.mkdir(parents=True,exist_ok=True)

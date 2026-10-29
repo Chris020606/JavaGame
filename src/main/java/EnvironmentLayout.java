@@ -21,6 +21,17 @@ public final class EnvironmentLayout {
             n(p,"fence_simple",-17,-8,17,2.4f);n(p,"fence_simple",-17,-11,7,2.2f);
             n(p,"statue_columnDamaged",9,14,11,3.4f);n(p,"statue_columnDamaged",13,16,82,2.5f);
             n(p,"statue_obelisk",11,19,-9,3.1f);
+            n(p,"bridge_wood",-4,-28,0,4.2f);
+            n(p,"tree_oak",-19,6,110,3.2f);n(p,"tree_pineRoundC",18,-15,35,3.7f);n(p,"tree_oak",20,15,210,3.3f);
+            n(p,"stump_old",-15,12,16,2.3f);n(p,"log_large",-17,15,58,2.1f);
+            for(int i=0;i<72;i++) {
+                boolean bank=i<24;float cx=bank?-14:i<48?13:-12,cz=bank?-21:i<48?-7:15;
+                float x=cx+(float)random.nextGaussian()*2.8f,z=cz+(float)random.nextGaussian()*2;
+                if(Math.hypot(x,z)<8)continue;
+                n(p,i%6==0?"plant_bushDetailed":i%3==0?"grass_leafsLarge":i%2==0?"flower_redB":"flower_yellowC",x,z,random.nextFloat()*360,1.2f+random.nextFloat()*1.2f);
+                if(i%8==0)n(p,"mushroom_redGroup",x+.4f,z,random.nextFloat()*360,1.3f);
+            }
+            for(float[] lily:new float[][]{{-24,-20},{-8,-28},{0,-28},{16,-20},{24,-20}})p.add(new Prop(false,"lily_small",lily[0],-.18f,lily[1],35,1.1f));
             cluster(p,random,12,-13,7);cluster(p,random,-15,12,9);cluster(p,random,17,5,5);
         } else if(chapter==1) {
             burialPlot(p,random,-13,-11,9,3,3);burialPlot(p,random,13,11,-12,3,3);
@@ -91,6 +102,16 @@ public final class EnvironmentLayout {
             n(p,i%4==0?"plant_bushDetailed":"grass_large",x,z,r.nextFloat()*360,1.2f+r.nextFloat());
             if(i%3==0)n(p,"flower_purpleC",x+.4f,z+.2f,r.nextFloat()*360,.8f+r.nextFloat()*.5f);
         }
+    }
+    public record RiverTile(String model,int yaw) {}
+    public static RiverTile riverTile(int x,int z) {
+        if(z==-5 && (x<-4 || x>3) || z==-7 && x>-4 && x<3)return new RiverTile("ground_riverStraight",90);
+        if(z==-6 && (x==-4 || x==3))return new RiverTile("ground_riverStraight",0);
+        if(x==-4 && z==-5)return new RiverTile("ground_riverBend",0);
+        if(x==-4 && z==-7)return new RiverTile("ground_riverBend",180);
+        if(x==3 && z==-7)return new RiverTile("ground_riverBend",90);
+        if(x==3 && z==-5)return new RiverTile("ground_riverBend",270);
+        return null;
     }
     public static List<Prop> props(int chapter) { return CHAPTERS.get(Math.max(0,Math.min(3,chapter))); }
     public static List<Point> path(int chapter) { return PATHS.get(Math.max(0,Math.min(3,chapter))); }

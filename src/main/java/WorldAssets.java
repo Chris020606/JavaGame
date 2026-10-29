@@ -64,7 +64,7 @@ public final class WorldAssets implements AutoCloseable {
         for (String name : new String[]{"tree_pineTallA_detailed","tree_pineRoundC","tree_oak",
                 "stone_largeA","stone_tallB","plant_bushDetailed","grass_large","statue_columnDamaged",
                 "statue_obelisk","tent_detailedOpen","log_stack","flower_purpleC","mushroom_redGroup","ground_grass","ground_pathCross",
-                "ground_pathStraight","platform_stone","campfire_stones","fence_simple","statue_ring","bridge_stone","cliff_half_stone"}) {
+                "ground_pathStraight","platform_stone","campfire_stones","fence_simple","statue_ring","bridge_stone","cliff_half_stone","ground_riverStraight","ground_riverBend","ground_riverRocks","bridge_wood","lily_small","flower_redB","flower_yellowC","grass_leafsLarge","stump_old","log_large"}) {
             Model model=LoadModel(AssetPaths.path("resources/outpost/nature/"+name+".obj"));
             if (model.meshCount()==0) throw new IllegalStateException("Missing nature model: "+name);
             // Match the imported foliage to Outpost's quieter forest palette.
@@ -74,6 +74,7 @@ public final class WorldAssets implements AutoCloseable {
                 int r=Byte.toUnsignedInt(c.r()),g=Byte.toUnsignedInt(c.g()),b=Byte.toUnsignedInt(c.b());
                 if (name.startsWith("stone_") || name.startsWith("statue_")) diffuse.color(Menu.color(135+r/5,140+r/5,145+r/5));
                 else if (name.startsWith("tent_") && r>g*1.5f) diffuse.color(Menu.color(148,91,57));
+                else if(name.startsWith("ground_river") && b>=g && b>r*1.2f) diffuse.color(Menu.color(37,111,137));
                 else if (g>r*2 && b>r*2) diffuse.color(Menu.color(76,125,77));
                 else if (r>g*1.5f && g>b*1.2f) diffuse.color(Menu.color(113,78,52));
             }
@@ -94,7 +95,10 @@ public final class WorldAssets implements AutoCloseable {
             Model model=LoadModel(AssetPaths.path("resources/outpost/graveyard/"+name+".obj"));
             if(model.meshCount()==0) throw new IllegalStateException("Missing cemetery model: "+name);graveyard.put(name,model);
         }
-        for(int tier=1;tier<=3;tier++) for(String slot:new String[]{"head","chest","shoulder","legs","boots"}) loadEquipment(slot+"-"+tier);
+        for(String hero:new String[]{"warrior","archer","mage"})for(int tier=1;tier<=3;tier++)for(String slot:new String[]{"head","chest","legs","boots"}) {
+            String name=hero+"-"+slot+"-"+tier;Model armor=LoadModel(AssetPaths.path("resources/outpost/equipment/"+name+".glb"));
+            if(armor.meshCount()==0)throw new IllegalStateException("Missing fitted armor: "+name);equipment.put(name,armor);
+        }
         loadEquipment("dawnblade");loadEquipment("dawnstaff");
 
     }
@@ -198,13 +202,18 @@ public final class WorldAssets implements AutoCloseable {
     private void drawCemetery(boolean necropolis,float time) { drawAuthoredLayout(necropolis?3:1,time); }
     private void drawFrozen(float time) { drawAuthoredLayout(2,time); }
     private void drawAuthoredLayout(int chapter,float time) {
-        for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) scenery("ground_grass",x*4,z*4,0,4);
+        for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) {
+            var river=chapter==0?EnvironmentLayout.riverTile(x,z):null;
+            if(river!=null) { surface(.26f,.1f);scenery(river.model(),x*4,z*4,river.yaw(),4);surface(.82f,.02f); }
+            else scenery("ground_grass",x*4,z*4,0,4);
+        }
         var path=EnvironmentLayout.path(chapter);
         for(int i=1;i<path.size();i++) {
             var from=path.get(i-1);var to=path.get(i);float dx=to.x()-from.x(),dz=to.z()-from.z();
             int steps=Math.max(1,(int)Math.ceil(Math.hypot(dx,dz)/3.5));float angle=(float)Math.toDegrees(Math.atan2(dx,dz));
             for(int j=0;j<steps;j++) {
                 float t=(j+.5f)/steps,x=from.x()+dx*t,z=from.z()+dz*t;
+                if(chapter==0 && EnvironmentLayout.riverTile(Math.round(x/4),Math.round(z/4))!=null)continue;
                 if(chapter==1 || chapter==3)graveAt("road",x,-.265f,z,angle,3.6f);
                 else sceneryAt("ground_pathStraight",x,.012f,z,angle,3.8f);
             }
@@ -223,6 +232,12 @@ public final class WorldAssets implements AutoCloseable {
                 float rise=(time*.8f+i*.17f)%1.7f;
                 DrawSphere(v(fx+(float)Math.sin(time*3+i)*.12f,.35f+rise,fz+(float)Math.cos(time*2+i)*.1f),.10f*(1-rise/2),Fade(Menu.GOLD,1-rise/1.7f));
             }
+        }
+        if(chapter==0)for(int i=0;i<9;i++) {
+            float t=time*.6f+i*1.7f,bx=(i<5?13:-12)+(float)Math.sin(t)*2.6f,bz=(i<5?-7:15)+(float)Math.cos(t*.8f)*2,by=.9f+(float)Math.sin(t*2)*.3f;
+            float wing=.05f+(float)Math.sin(time*17+i)*.13f;Color butterfly=i%2==0?Menu.GOLD:Menu.color(116,178,231);
+            Vector3 a=v(bx,by,bz),b=v(bx-.16f,by+wing,bz+.12f),c=v(bx-.12f,by+wing,bz-.10f),d=v(bx+.16f,by-wing,bz+.12f),e=v(bx+.12f,by-wing,bz-.10f);
+            DrawTriangle3D(a,b,c,butterfly);DrawTriangle3D(a,c,b,butterfly);DrawTriangle3D(a,d,e,butterfly);DrawTriangle3D(a,e,d,butterfly);
         }
         if(chapter==2)for(int i=0;i<55;i++) {
             float x=-24+(i*7.13f+time*1.5f)%48,z=-24+(i*11.71f)%48,y=12-(time*.8f+i*.34f)%12;
@@ -306,15 +321,13 @@ public final class WorldAssets implements AutoCloseable {
     public void drawArmor(Player player,Progression progress) {
         surface(.35f,.55f);
         for(ArmorSlot slot:ArmorSlot.values()) {
-            int tier=progress.armorTier(slot);if(tier==0) continue;
-            Model armor=equipment.get(slot.icon()+"-"+tier);
-            String bone=switch(slot) { case HEAD -> "head";case CHEST -> "chest";case LEGS -> "lowerleg.l";case BOOTS -> "foot.l"; };
-            attach(armor,player,bone);
-            if(slot==ArmorSlot.LEGS || slot==ArmorSlot.BOOTS) attach(armor,player,slot==ArmorSlot.LEGS?"lowerleg.r":"foot.r");
-            if(slot==ArmorSlot.CHEST) { attach(equipment.get("shoulder-"+tier),player,"upperarm.l");attach(equipment.get("shoulder-"+tier),player,"upperarm.r"); }
+            int tier=progress.armorTier(slot);if(tier==0)continue;
+            Model armor=equipment.get(progress.heroClass().name().toLowerCase(java.util.Locale.ROOT)+"-"+slot.icon()+"-"+tier);
+            if(!IsModelAnimationValid(armor,new ModelAnimation(player.getAnimation()).position(player.getAnimationIndex())))throw new IllegalStateException("Fitted armor rig mismatch");
+            player.copyPoseTo(armor);lightModel(armor);
+            DrawModelEx(armor,player.getPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),WHITE);
         }
     }
-    private void attach(Model armor,Player player,String bone) { drawAttached(player.getModel(),player.getPosition(),player.getRotation().y(),armor,WHITE,1,bone,false); }
     public void drawHeroSilhouette(Player player) {
         Model model=player.getModel();
         for(int i=0;i<model.materialCount();i++) new Material(model.materials()).position(i).shader().put(silhouette);
@@ -324,11 +337,17 @@ public final class WorldAssets implements AutoCloseable {
     }
     public void preparePlayer(Player player) { lightModel(player.getModel());surface(.48f,.15f); }
     public void drawPlayerBody(Player player,Progression progress,Color tint) {
-        // These bundled rigs keep each named headwear mesh separate, in source order.
-        // Suppress original headwear while an equipped helmet is drawn over the head.
-        int[] hidden=progress.armorTier(Entities.ArmorSlot.HEAD)==0?new int[0]:switch(progress.heroClass()) {
-            case WARRIOR -> new int[]{5,6};case MAGE -> new int[]{4};case ARCHER -> new int[0];
-        };
+        java.util.ArrayList<Integer> masks=new java.util.ArrayList<>();
+        if(progress.armorTier(ArmorSlot.HEAD)>0) {
+            if(progress.heroClass()==HeroClass.WARRIOR) { masks.add(5);masks.add(6); }
+            else if(progress.heroClass()==HeroClass.MAGE)masks.add(4);
+        }
+        // Covered original surfaces are replaced, not drawn through the fitted shell.
+        if(progress.armorTier(ArmorSlot.CHEST)>0) { masks.add(0);masks.add(1);masks.add(2); }
+        if(progress.armorTier(ArmorSlot.LEGS)>0 && progress.armorTier(ArmorSlot.BOOTS)>0) {
+            int leg=progress.heroClass()==HeroClass.WARRIOR?7:progress.heroClass()==HeroClass.ARCHER?5:6;masks.add(leg);masks.add(leg+1);
+        }
+        int[] hidden=masks.stream().mapToInt(Integer::intValue).toArray();
         int[] triangles=new int[hidden.length],vertices=new int[hidden.length];Model model=player.getModel();
         for(int i=0;i<hidden.length;i++) {
             Mesh mesh=new Mesh(model.meshes()).position(hidden[i]);triangles[i]=mesh.triangleCount();vertices[i]=mesh.vertexCount();
@@ -340,7 +359,9 @@ public final class WorldAssets implements AutoCloseable {
     public void drawPlayerWeapon(Player player,int style,int tier) {
         lightModel(player.getModel());
         Color tint=tier==3?Menu.GOLD:tier==2?Menu.TEAL:tier==1?Menu.color(190,205,225):WHITE;
-        drawWeapon(player.getModel(),player.getPosition(),player.getRotation().y(),style==1?(tier==0?bow:tier==1?stringBow:crossbow):style==2?(tier==0?staff:tier==1?wand:tier==2?bossStaff:equipment.get("dawnstaff")):(tier==0?sword:tier==1?longsword:tier==2?waraxe:equipment.get("dawnblade")),tint);
+        Model weapon=style==1?(tier==0?bow:tier==1?stringBow:crossbow):style==2?(tier==0?staff:tier==1?wand:tier==2?bossStaff:equipment.get("dawnstaff")):(tier==0?sword:tier==1?longsword:tier==2?waraxe:equipment.get("dawnblade"));
+        if(weapon==equipment.get("dawnblade") || weapon==equipment.get("dawnstaff"))tint=WHITE;
+        drawWeapon(player.getModel(),player.getPosition(),player.getRotation().y(),weapon,tint);
     }
     private void drawWeapon(Model character,Vector3 position,float facing,Model weapon) {
         drawWeapon(character,position,facing,weapon,WHITE);

@@ -26,6 +26,16 @@
     "fence_simple",
     "statue_ring",
     "bridge_stone",
-    "cliff_half_stone"
+    "cliff_half_stone",
+    "ground_riverStraight",
+    "ground_riverBend",
+    "ground_riverRocks",
+    "bridge_wood",
+    "lily_small",
+    "flower_redB",
+    "flower_yellowC",
+    "grass_leafsLarge",
+    "stump_old",
+    "log_large"
   ]
 }

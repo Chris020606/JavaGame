@@ -51,6 +51,13 @@ public class InputSmokeTest {
         }
         throw new AssertionError("Sword attachment bone missing");
     }
+    private static float[] handPose(Game game) {
+        Model model=game.getPlayer().getModel();
+        for(int i=0;i<model.skeleton().boneCount();i++)if(new BoneInfo(model.skeleton().bones()).position(i).name().getString().equals("handslot.r")) {
+            Vector3 p=new Transform(model.currentPose()).position(i).translation();return new float[]{p.x(),p.y(),p.z()};
+        }
+        throw new AssertionError("Right-hand pose missing");
+    }
     private static void capture(String name) {
         Image image = LoadImageFromScreen();
         try {
@@ -84,6 +91,40 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--gallery")) {
+                key(game,KEY_ENTER);for(int i=0;i<20;i++)frame(game);capture("player-welcome");
+                int loginX=(GetScreenWidth()-940)/2,loginY=(GetScreenHeight()-600)/2;
+                click(game,loginX+304,loginY+238);for(int i=0;i<5;i++)frame(game);capture("player-ranger-choice");
+                for(HeroClass hero:HeroClass.values()) {
+                    Progression kit=Progression.playtest(hero,Entities.Difficulty.NORMAL,false);
+                    var foes=java.util.List.of(new Entities.Enemy(-5,12,1,0,.5f),new Entities.Enemy(7,9,1,1,.8f),new Entities.Enemy(-9,-4,1,2,.3f));
+                    SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Ember",0,7,15,kit,new WaveDirector.State(1,0,3,8,0,21,0),foes,Arena.HIGHLANDS));
+                    check(game.loadCurrent(),"Gallery hero did not load");kit=game.getProgression();key(game,KEY_ENTER);for(int i=0;i<10;i++)frame(game);
+                    Camera3D view=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+                    game.photoMode(true);view._position().x(14).y(12).z(22);view.target().x(-2).y(.5f).z(-5);
+                    for(int i=0;i<3;i++){BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();}
+                    capture("player-meadow-"+hero.name().toLowerCase());
+                    game.getPlayer().getPosition().x(-7).z(-6);game.getPlayer().getRotation().y(35);
+                    for(int tier=1;tier<=3;tier++) {
+                        for(Entities.ArmorSlot slot:Entities.ArmorSlot.values())kit.equipArmor(slot,tier);
+                        for(Entities.PlayerAnimation pose:new Entities.PlayerAnimation[]{Entities.PlayerAnimation.UNARMED_IDLE,Entities.PlayerAnimation.RUN,Entities.PlayerAnimation.DODGE_FORWARD}) {
+                            game.getPlayer().setAnimation(pose);game.getPlayer().playAnimationProgress(.42f);
+                            view._position().x(-3).y(3).z(-1);view.target().x(-7).y(1.2f).z(-6);
+                            for(int i=0;i<3;i++){BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();}
+                        }
+                        game.getPlayer().setAnimation(hero==HeroClass.ARCHER?Entities.PlayerAnimation.CROSSBOW_IDLE:Entities.PlayerAnimation.UNARMED_IDLE);game.getPlayer().playAnimationProgress(.15f);
+                        for(int i=0;i<3;i++){BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();}
+                        capture("player-armor-"+hero.name().toLowerCase()+"-"+tier);
+                    }
+                    if(hero==HeroClass.WARRIOR) {
+                        game.getPlayer().attack(2,false,.5f);for(int i=0;i<11;i++)frame(game);
+                        view._position().x(-2).y(3.2f).z(-1);view.target().x(-7).y(1.1f).z(-6);
+                        for(int i=0;i<3;i++){BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();}capture("player-warrior-swing");
+                    }
+                    game.photoMode(false);
+                }
+                System.out.println("PASS: class-fitted armor across all tiers, running, dodging, and player gallery");return;
+            }
             if(java.util.Arrays.asList(args).contains("--visual-only")) {
                 key(game,KEY_ENTER);key(game,KEY_ENTER);for(int i=0;i<12;i++)frame(game);capture("modern-materials");check(game.shadowAtlasValid(),"Shadow atlas did not capture the sanctuary caster");
                 for(int bossWave:new int[]{5,10}) {
@@ -275,8 +316,8 @@ public class InputSmokeTest {
             capture("ui-projectiles");
             // Exercise class selection, ranged impact, and inventory through real UI/input.
             game.setState(GameState.MAIN_MENU);key(game,KEY_ENTER);
-            int hx=(GetScreenWidth()-560)/2,hy=(GetScreenHeight()-450)/2;
-            event(MOUSE_POSITION,hx+280,hy+207);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
+            int hx=(GetScreenWidth()-940)/2+24,hy=(GetScreenHeight()-600)/2;
+            event(MOUSE_POSITION,hx+280,hy+238);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
             event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);key(game,KEY_ENTER);
             check(game.getProgression().heroClass()==HeroClass.ARCHER,"Archer selection failed");
             game.getPlayer().getPosition().x(0).z(8);game.getPlayer().getRotation().y(0);
@@ -375,7 +416,9 @@ public class InputSmokeTest {
             java.util.Set<Integer> swordClips=new java.util.HashSet<>();
             for(int combo=1;combo<=3;combo++) {
                 game.getPlayer().attack(combo,false,.5f);swordClips.add(game.getPlayer().getAnimationIndex());
-                for(int i=0;i<11;i++)frame(game);capture("ui-warrior-combo-"+combo);
+                float[] beforeHand=handPose(game);for(int i=0;i<11;i++)frame(game);float[] afterHand=handPose(game);
+                check(Math.abs(beforeHand[0]-afterHand[0])+Math.abs(beforeHand[1]-afterHand[1])+Math.abs(beforeHand[2]-afterHand[2])>.08f,"Warrior swing "+combo+" did not animate its weapon hand");
+                capture("ui-warrior-combo-"+combo);
                 for(int i=0;i<30;i++)frame(game);
             }
             check(swordClips.size()==3,"Warrior combo needs three distinct clips");
@@ -472,8 +515,8 @@ public class InputSmokeTest {
             // New-game difficulty controls, independent training, forge and slot interactions.
             for(Entities.Difficulty difficulty:Entities.Difficulty.values()) {
                 game.setState(GameState.MAIN_MENU);key(game,KEY_ENTER);
-                int dx=(GetScreenWidth()-560)/2,dy=(GetScreenHeight()-450)/2;
-                click(game,dx+difficulty.ordinal()*142+60,dy+394);key(game,KEY_ENTER);
+                int dx=(GetScreenWidth()-940)/2+24,dy=(GetScreenHeight()-600)/2;
+                click(game,dx+difficulty.ordinal()*142+60,dy+372);key(game,KEY_ENTER);
                 check(game.getProgression().difficulty()==difficulty,"Difficulty button failed: "+difficulty);
                 Settings chosen=new Settings();chosen.load(profile.resolve("settings.properties"));
                 check(chosen.difficulty==difficulty,"Difficulty preference did not persist");
@@ -501,6 +544,11 @@ public class InputSmokeTest {
             game.getPlayer().discipline().stamina(110);check(game.saveCurrent() && game.loadCurrent(),"Expanded equipment save failed");
             check(game.getProgression().difficulty()==Entities.Difficulty.EXTREME && game.getProgression().defense()==21 && game.getProgression().weaponTier()==3,"Difficulty or equipment lost on load");
             check(game.getPlayer().discipline().maximum()==115 && game.getPlayer().discipline().stamina()==110,"Upgraded stamina failed to restore");
+            // A final hit must finish its visible swing before the chapter screen interrupts it.
+            Entities.Enemy finalSwing=encounter(game,profile,5,5,10);finalSwing.health=1;
+            key(game,KEY_SPACE);for(int i=0;i<14;i++)frame(game);
+            check(finalSwing.health==0 && game.getPlayer().isAttacking() && game.getState()==GameState.PLAYING,"Chapter completion cut off the finishing swing");
+            for(int i=0;i<30;i++)frame(game);check(game.getState()==GameState.LEVEL_COMPLETE,"Chapter did not complete after the swing finished");
             // Exercise the crossbow clip/socket through a real ranged hit.
             Progression crossbowHero=new Progression(HeroClass.ARCHER);for(int i=0;i<100;i++)crossbowHero.rewardKill();crossbowHero.buyWeapon(3);crossbowHero.equipWeapon(3);
             SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Archer",0,8,0,crossbowHero,new WaveDirector.State(6,0,1,8,0,21,0),java.util.List.of(new Entities.Enemy(0,14,6)),Arena.HIGHLANDS));

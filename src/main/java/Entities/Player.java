@@ -21,7 +21,7 @@ public class Player extends Entity {
     public CombatDiscipline discipline() { return discipline; }
     public void setCharging(boolean value) { charging=value; }
     public boolean invulnerable() { return dodgeTime>.10f && dodgeTime<.31f; }
-    public void lunge(float duration) { attack(1,false,duration);lungeAttack=true;if(weaponStyle==0) attackClip=PlayerAnimation.ATTACK_STAB;setAnimation(attackClip); }
+    public void lunge(float duration) { attack(1,false,duration);lungeAttack=true;if(weaponStyle==0) attackClip=PlayerAnimation.ATTACK_STAB;setAnimation(attackClip);restartAnimation();playAnimationProgress(0); }
     private float velocityX,velocityZ,dodgeTime,dodgeCooldown,dodgeX,dodgeZ;
     private boolean sprinting;
     private PlayerAnimation dodgeClip=PlayerAnimation.DODGE_FORWARD;
@@ -79,8 +79,7 @@ public class Player extends Entity {
         Integer index = getAnimationIndex(animation.getAnimationName());
 
         if (index == null) {
-            // Some imported models omit optional animation clips.
-            return;
+            throw new IllegalStateException("Missing required player animation: "+animation.getAnimationName());
         }
 
         setAnimation(index);
@@ -217,7 +216,7 @@ public class Player extends Entity {
 
     public void poseForInventory() {
         Integer index=getAnimationIndex((weaponStyle==1?rangedIdle():PlayerAnimation.UNARMED_IDLE).getAnimationName());
-        if(index!=null) UpdateModelAnimation(getModel(),new ModelAnimation(getAnimation()).position(index),0);
+        if(index!=null)poseForDisplay(index,0);
     }
     public void resetCombat() {
         attackTime = dodgeTime = dodgeCooldown = velocityX = velocityZ = 0; sprinting=charging=lungeAttack=false;discipline.reset();

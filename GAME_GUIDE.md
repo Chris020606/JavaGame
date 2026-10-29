@@ -1,4 +1,4 @@
-# Outpost game guide (v1.8.0)
+# Outpost game guide (v1.9.0)
 
 ## Start here
 
@@ -119,7 +119,7 @@ There is one save slot. F5, the pause menu, and Save & Main Menu save the defens
 
 Files are `save.properties` and `settings.properties`. Replacing a file keeps the prior version as `.bak`. You can manually copy that backup over a damaged file while the game is closed. Invalid saves report an error without replacing the active defense. Back up the folder before editing files.
 
-Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, difficulty, independent stat training, unlocked armor sets, equipped armor pieces, upgraded stamina, unlocked and equipped weapon tiers, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v1.7 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
+Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, difficulty, independent stat training, unlocked armor sets, equipped armor pieces, upgraded stamina, unlocked and equipped weapon tiers, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v1.9 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
 
 ## Build, test, and release
 
@@ -232,3 +232,11 @@ Chapter scenery uses authored camps, grave plots, ruins and mountain outcrops wi
 Title screen → PLAYTEST / ALL GEAR opens a class, difficulty, and chapter selector. Start with every weapon and armor tier owned, Dawnsteel equipped, five potions, 100,000 crystals, full health/stamina, and zero fabricated kills. Maxed Training starts all seven training tracks at level 10. Starter Stats keeps those tracks at level 1 while leaving all gear and crystals available. The inventory opens on entry; Tab or Escape closes it.
 
 Pause → Playtest Tools reopens the selector. Starting again resets the kit and jumps directly to the chosen chapter's preparation period. Boss chapters still contain one boss. Use Tab to mix equipment and visit the workshop to test purchases with starter stats. Save/load and automatic saves use `playtest-save.properties`; the regular `save.properties` campaign is preserved. Load Game on the title screen always loads the campaign. Load Playtest resumes the sandbox. `--playtest` launches directly into a fully equipped Warrior playtest.
+
+## Your warden and the meadow (v1.9)
+
+The name screen now shows an animated preview of your selected class. Enter a name, pick a hero and difficulty, then choose Light the Beacon. Changing the preview does not change an active campaign character.
+
+Armor fits the Warrior, Archer, and Mage rather than floating over their bodies. The Warrior wears a full helm, the Archer an open-faced helmet, and the Mage a fitted armored hat. Chest armor includes fitted gauntlets; greaves and boots bend with movement and attacks. The inventory and game use the same fit. Iron, Runic, and Dawnsteel can still be mixed by slot.
+
+The starting meadow now has flower and mushroom colonies, closer trees, fallen logs, and a winding stream crossed by a wooden bridge. Normal sword swings now play correctly, including the horizontal opener, and a final enemy's defeat lets your swing finish before the chapter ending appears.
