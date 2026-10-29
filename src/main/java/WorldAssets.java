@@ -1,6 +1,8 @@
 import assets.AssetPaths;
 import Entities.Enemy;
 import Entities.Player;
+import Entities.BossMove;
+import org.bytedeco.javacpp.FloatPointer;
 import static com.raylib.Raylib.*;
 import static com.raylib.Colors.WHITE;
 
@@ -8,6 +10,7 @@ import static com.raylib.Colors.WHITE;
 public final class WorldAssets implements AutoCloseable {
     private final Model raider = LoadModel(AssetPaths.path("resources/outpost/raider.glb"));
     private final Model sword = LoadModel(AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/sword_1handed.gltf"));
+    private final Shader silhouette=LoadShader(null,AssetPaths.path("resources/outpost/silhouette.fs"));
     private final Shader daylight=LoadShader(AssetPaths.path("resources/outpost/daylight.vs"),AssetPaths.path("resources/outpost/daylight.fs"));
     private final java.util.Map<String,Model> nature=new java.util.LinkedHashMap<>();
     private final int[] count = new int[1];
@@ -19,8 +22,31 @@ public final class WorldAssets implements AutoCloseable {
     private final int[] archerCount=new int[1], shamanCount=new int[1];
     private final ModelAnimation archerAnimations=LoadModelAnimations(AssetPaths.path("resources/outpost/archer.glb"),archerCount);
     private final ModelAnimation shamanAnimations=LoadModelAnimations(AssetPaths.path("resources/outpost/shaman.glb"),shamanCount);
+    private final Model bossWarrior=LoadModel(AssetPaths.path("resources/outpost/bosses/Skeleton_Warrior.glb"));
+    private final Model bossKing=LoadModel(AssetPaths.path("resources/outpost/bosses/Hollow_King.glb"));
+    private final Model bossAxe=LoadModel(AssetPaths.path("resources/outpost/bosses/Skeleton_Axe.gltf"));
+    private final Model bossStaff=LoadModel(AssetPaths.path("resources/outpost/bosses/Skeleton_Staff.gltf"));
+    private final int[] bossCount=new int[1],kingCount=new int[1];
+    private final ModelAnimation bossAnimations=LoadModelAnimations(AssetPaths.path("resources/outpost/bosses/Skeleton_Warrior.glb"),bossCount);
+    private final ModelAnimation kingAnimations=LoadModelAnimations(AssetPaths.path("resources/outpost/bosses/Hollow_King.glb"),kingCount);
+    private final java.util.Map<String,Integer> bossClips=new java.util.HashMap<>();
+    private Shader passShader=daylight;
+    private Texture shadowTexture;
+    private boolean shadowPass;
+    private final FloatPointer uniforms=new FloatPointer(4);
+    private final int surfaceLoc=GetShaderLocation(daylight,"material");
     private int run, chop;
     public WorldAssets() {
+        if(!IsShaderValid(daylight)) throw new IllegalStateException("Surface shader did not compile");
+        daylight.locs().put(SHADER_LOC_MAP_BRDF,GetShaderLocation(daylight,"shadowMap"));
+        for(Model model:new Model[]{bossWarrior,bossKing,bossAxe,bossStaff})
+            if(model.meshCount()==0) throw new IllegalStateException("Missing skeleton boss asset");
+        if(bossCount[0]==0 || kingCount[0]!=bossCount[0]) throw new IllegalStateException("Boss animation clips missing");
+        for(int i=0;i<bossCount[0];i++) {
+            ModelAnimation a=new ModelAnimation(bossAnimations).position(i),b=new ModelAnimation(kingAnimations).position(i);
+            if(!IsModelAnimationValid(bossWarrior,a)||!IsModelAnimationValid(bossKing,b)) throw new IllegalStateException("Boss skeleton mismatch");
+            bossClips.put(a.name().getString(),i);
+        }
         for (String name : new String[]{"tree_pineTallA_detailed","tree_pineRoundC","tree_oak",
                 "stone_largeA","stone_tallB","plant_bushDetailed","grass_large","statue_columnDamaged",
                 "statue_obelisk","tent_detailedOpen","log_stack","flower_purpleC","mushroom_redGroup","ground_grass","ground_pathCross",
@@ -53,11 +79,37 @@ public final class WorldAssets implements AutoCloseable {
     }
     private static Vector3 v(float x,float y,float z) { return new Vector3().x(x).y(y).z(z); }
     public void lightModel(Model model) {
-        for(int i=0;i<model.materialCount();i++) new Material(model.materials()).position(i).shader().put(daylight);
+        for(int i=0;i<model.materialCount();i++) {
+            Material material=new Material(model.materials()).position(i);material.shader().put(passShader);
+            MaterialMap map=new MaterialMap(material.maps()).position(MATERIAL_MAP_BRDF);
+            if(!shadowPass && shadowTexture!=null) map.texture(shadowTexture);else map.texture().id(0);
+        }
+    }
+    public void pass(Shader shader,boolean shadow) {
+        passShader=shader;shadowPass=shadow;
+        for(Model model:nature.values()) lightModel(model);
+    }
+    public void litPass(ModernRenderer renderer,Camera3D camera,float time,Enemy boss) {
+        shadowTexture=renderer.shadowTexture();pass(daylight,false);
+        SetShaderValueMatrix(daylight,GetShaderLocation(daylight,"sunVP"),renderer.sunVP());
+        uniforms.put(0,camera._position().x()).put(1,camera._position().y()).put(2,camera._position().z());
+        SetShaderValue(daylight,GetShaderLocation(daylight,"viewPos"),uniforms,SHADER_UNIFORM_VEC3);
+        uniforms.put(0,time);SetShaderValue(daylight,GetShaderLocation(daylight,"uTime"),uniforms,SHADER_UNIFORM_FLOAT);
+        uniforms.put(0,renderer.shadowSize());SetShaderValue(daylight,GetShaderLocation(daylight,"shadowSize"),uniforms,SHADER_UNIFORM_FLOAT);
+        uniforms.put(0,boss==null?0:boss.x).put(1,2).put(2,boss==null?0:boss.z);
+        SetShaderValue(daylight,GetShaderLocation(daylight,"bossPos"),uniforms,SHADER_UNIFORM_VEC3);
+        uniforms.put(0,boss==null?0:boss.enraged()?1.2f:.5f);SetShaderValue(daylight,GetShaderLocation(daylight,"bossGlow"),uniforms,SHADER_UNIFORM_FLOAT);
+    }
+    public void finishLitPass() { rlActiveTextureSlot(10);rlDisableTexture();rlActiveTextureSlot(0); }
+    private void surface(float rough,float metal) {
+        if(shadowPass) return;
+        uniforms.put(0,rough).put(1,metal);SetShaderValue(daylight,surfaceLoc,uniforms,SHADER_UNIFORM_VEC2);
     }
     public void drawEnvironment(int chapter,float time) {
+        surface(.82f,.02f);
         drawBackdrop(time);
         drawHighlands(chapter,time);
+        if(shadowPass) return;
         // This radius matches Game.nearBase exactly. Pulsing motes point toward recovery.
         Color glow=Fade(Menu.TEAL,.65f+.2f*(float)Math.sin(time*2));
         DrawCylinderWires(v(0,.09f,0),6,6,.035f,96,glow);
@@ -93,6 +145,7 @@ public final class WorldAssets implements AutoCloseable {
             float x=(float)Math.cos(a)*radius,z=(float)Math.sin(a)*radius;
             scenery(i%3==0?"stone_tallB":i%2==0?"tree_oak":"tree_pineTallA_detailed",x,z,i*71,6+i%5);
         }
+        if(shadowPass) return;
         // Clouds drift above the distant hills. They are atmosphere, not reachable terrain.
         for(int i=0;i<10;i++) {
             float x=-85+(i*19+time*.65f)%170,z=-58+(i%3)*47;
@@ -105,7 +158,7 @@ public final class WorldAssets implements AutoCloseable {
             DrawLine3D(v(x,y,z),v(x+.7f,y+wing,z),Menu.INK);
         }
     }
-    /** Every visible piece of stage II scenery comes from the downloaded pack. */
+    /** Every visible piece of campaign scenery comes from the downloaded pack. */
     private void drawHighlands(int chapter,float time) {
         // A tiled meadow with branching earth tracks replaces the old flat plane/crosswalk.
         for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) {
@@ -119,10 +172,12 @@ public final class WorldAssets implements AutoCloseable {
         scenery("tent_detailedOpen",5,-4,230,3.5f);
         scenery("log_stack",-5.5f,-6,25,2.5f);
         scenery("campfire_stones",3,-2,0,2.5f);
+        if(!shadowPass) {
         DrawSphere(v(3,.55f+(float)Math.sin(time*7)*.08f,-2),.16f,Menu.GOLD);
         for(int i=0;i<7;i++) {
             float rise=(time*.65f+i*.23f)%2;
             DrawSphere(v(3+(float)Math.sin(time+i)*.12f,.55f+rise,-2),.025f,Fade(Menu.GOLD,1-rise/2));
+        }
         }
         for(int j=0;j<chapter*3;j++) {
             double a=j*Math.PI*2/Math.max(1,chapter*3);
@@ -158,7 +213,45 @@ public final class WorldAssets implements AutoCloseable {
         Model model=nature.get(name);
         DrawModelEx(model,v(x,y,z),v(0,1,0),angle,v(scale,scale,scale),WHITE);
     }
+    private void drawBoss(Enemy enemy) {
+        Model model=enemy.king?bossKing:bossWarrior;
+        ModelAnimation animations=enemy.king?kingAnimations:bossAnimations;
+        String name=enemy.stun>0?"Hit_A":enemy.chargeTime>0?"Running_A":enemy.attackTime>0?
+            switch(enemy.bossMove) { case CLEAVE -> "2H_Melee_Attack_Slice";case SLAM -> "2H_Melee_Attack_Chop";case CHARGE -> "Taunt";case SIGILS -> "Spellcast_Raise"; }:"Walking_D_Skeletons";
+        ModelAnimation clip=new ModelAnimation(animations).position(bossClips.get(name));
+        int frame=enemy.attackTime>0?Math.min(clip.keyframeCount()-1,(int)((1-enemy.attackTime/enemy.attackDuration())*clip.keyframeCount())):
+            (int)(enemy.animationTime*45)%Math.max(1,clip.keyframeCount());
+        UpdateModelAnimation(model,clip,frame);lightModel(model);surface(.38f,.25f);
+        float scale=enemy.king?2.45f:2.1f;
+        Color tint=enemy.hitFlash>0?Menu.TEXT:enemy.king?Menu.color(190,190,215):Menu.color(210,184,151);
+        DrawModelEx(model,v(enemy.x,0,enemy.z),v(0,1,0),enemy.facing,v(scale,scale,scale),tint);
+        drawWeapon(model,v(enemy.x,0,enemy.z),enemy.facing,enemy.king?bossStaff:bossAxe,WHITE,scale);
+        if(shadowPass) return;
+        Color energy=enemy.enraged()?Menu.RED:enemy.king?Menu.color(185,105,255):Menu.GOLD;
+        DrawCylinderWires(v(enemy.x,.08f,enemy.z),1.35f,1.35f,.1f,32,energy);
+        // Eye lights follow the animated head rather than floating over the character.
+        for(int i=0;i<model.skeleton().boneCount();i++) if(new BoneInfo(model.skeleton().bones()).position(i).name().getString().equals("head")) {
+            Vector3 head=new Transform(model.currentPose()).position(i).translation();
+            double a=Math.toRadians(enemy.facing);
+            if(enemy.king) {
+                float y=(head.y()+.95f)*scale;
+                DrawCylinderWires(v(enemy.x,y,enemy.z),.5f,.5f,.12f,24,Menu.GOLD);
+                for(int j=0;j<7;j++) {
+                    double ca=j*Math.PI*2/7;
+                    float cx=enemy.x+(float)Math.cos(ca)*.47f,cz=enemy.z+(float)Math.sin(ca)*.47f;
+                    DrawCylinderEx(v(cx,y,cz),v(cx,y+.25f+(j%2)*.13f,cz),.075f,0,5,Menu.GOLD);
+                }
+            }
+            for(float side:new float[]{-.17f,.17f}) {
+                float lx=head.x()+side,lz=head.z()+.30f;
+                DrawSphere(v(enemy.x+(float)(lx*Math.cos(a)+lz*Math.sin(a))*scale,(head.y()+.40f)*scale,enemy.z+(float)(lz*Math.cos(a)-lx*Math.sin(a))*scale),.075f,energy);
+            }
+            break;
+        }
+    }
     public void drawEnemy(Enemy enemy) {
+        if(enemy.boss()) { drawBoss(enemy);return; }
+        surface(.64f,.08f);
         Model character=enemy.variant==3?archer:enemy.variant==4?shaman:raider;
         ModelAnimation clips=enemy.variant==3?archerAnimations:enemy.variant==4?shamanAnimations:animations;
         int attackClip=enemy.variant==3?(enemy.attackTime>.25f?2:3):enemy.variant==4?2:chop;
@@ -172,14 +265,18 @@ public final class WorldAssets implements AutoCloseable {
         UpdateModelAnimation(character,clip,frame);
         lightModel(character);
         Color tint=enemy.hitFlash>0 ? Menu.GOLD : enemy.boss()?Menu.GOLD:enemy.variant==2?Menu.color(220,178,157):enemy.variant==1?Menu.color(185,210,229):WHITE;
-        DrawCylinder(v(enemy.x,.025f,enemy.z),.42f,.42f,.015f,12,Menu.color(38,54,47));
+        if(!shadowPass) DrawCylinder(v(enemy.x,.025f,enemy.z),.42f,.42f,.015f,12,Menu.color(38,54,47));
         DrawModelEx(character,v(enemy.x,0,enemy.z),v(0,1,0),enemy.facing,v(1,1,1),tint);
-        if (enemy.boss()) {
-            DrawCylinderWires(v(enemy.x,.08f,enemy.z),.85f,.85f,.12f,24,Menu.GOLD);
-            DrawCube(v(enemy.x,2.05f,enemy.z),.5f,.18f,.5f,Menu.GOLD);
-        }
         drawWeapon(character,v(enemy.x,0,enemy.z),enemy.facing,enemy.variant==3?bow:enemy.variant==4?staff:sword);
     }
+    public void drawHeroSilhouette(Player player) {
+        Model model=player.getModel();
+        for(int i=0;i<model.materialCount();i++) new Material(model.materials()).position(i).shader().put(silhouette);
+        rlDisableDepthTest();rlDisableDepthMask();
+        DrawModelEx(model,player.getPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),WHITE);
+        rlEnableDepthMask();rlEnableDepthTest();lightModel(model);
+    }
+    public void preparePlayer(Player player) { lightModel(player.getModel());surface(.48f,.15f); }
     public void drawPlayerWeapon(Player player,int style,int tier) {
         lightModel(player.getModel());
         Color tint=tier==3?Menu.GOLD:tier==2?Menu.TEAL:tier==1?Menu.color(190,205,225):WHITE;
@@ -189,6 +286,10 @@ public final class WorldAssets implements AutoCloseable {
         drawWeapon(character,position,facing,weapon,WHITE);
     }
     private void drawWeapon(Model character,Vector3 position,float facing,Model weapon,Color tint) {
+        drawWeapon(character,position,facing,weapon,tint,1);
+    }
+    private void drawWeapon(Model character,Vector3 position,float facing,Model weapon,Color tint,float scale) {
+        lightModel(weapon);surface(.3f,.45f);
         ModelSkeleton skeleton=character.skeleton();
         for (int i=0;i<skeleton.boneCount();i++) {
             if (!new BoneInfo(skeleton.bones()).position(i).name().getString().equals(weapon==bow?"handslot.l":"handslot.r")) continue;
@@ -207,15 +308,17 @@ public final class WorldAssets implements AutoCloseable {
                 m.m4(-m.m4()).m5(-m.m5()).m6(-m.m6());
             }
             weapon.transform(m);
-            DrawModelEx(weapon,position,v(0,1,0),facing,v(1,1,1),tint);
+            DrawModelEx(weapon,position,v(0,1,0),facing,v(scale,scale,scale),tint);
             return;
         }
     }
     @Override public void close() {
         for (Model model:nature.values()) UnloadModel(model);
-        UnloadShader(daylight);
+
         UnloadModelAnimations(animations,count[0]);
         UnloadModelAnimations(archerAnimations,archerCount[0]); UnloadModelAnimations(shamanAnimations,shamanCount[0]);
-        for (Model model:new Model[]{raider,archer,shaman,bow,staff,sword}) UnloadModel(model);
+        for (Model model:new Model[]{raider,archer,shaman,bow,staff,sword,bossWarrior,bossKing,bossAxe,bossStaff}) UnloadModel(model);
+        UnloadModelAnimations(bossAnimations,bossCount[0]);UnloadModelAnimations(kingAnimations,kingCount[0]);
+        UnloadShader(daylight);UnloadShader(silhouette);uniforms.close();
     }
 }

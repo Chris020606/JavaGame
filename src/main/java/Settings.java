@@ -6,7 +6,7 @@ import java.util.Properties;
 public final class Settings {
     public final Controls controls=new Controls();
     public float volume=.6f, sensitivity=.15f;
-    public boolean muted, fullscreen;
+    public boolean muted, fullscreen, highQuality=true;
     public String playerName="Warden", warning="";
     public void load(Path file) {
         if (!Files.exists(file)) return;
@@ -16,6 +16,7 @@ public final class Settings {
             float v=Float.parseFloat(p.getProperty("volume","")),s=Float.parseFloat(p.getProperty("sensitivity",""));
             if (!Float.isFinite(v)||v<0||v>1||!Float.isFinite(s)||s<.05f||s>.5f) throw new IllegalArgumentException("Invalid settings");
             controls.restore(p); volume=v; sensitivity=s;
+            highQuality=Boolean.parseBoolean(p.getProperty("highQuality","true"));
             muted=Boolean.parseBoolean(p.getProperty("muted")); fullscreen=Boolean.parseBoolean(p.getProperty("fullscreen"));
             playerName=cleanName(p.getProperty("name","Warden"));
         } catch (IOException|IllegalArgumentException e) { warning="Settings could not be read; using defaults."; }
@@ -23,6 +24,7 @@ public final class Settings {
     public void save(Path file) throws IOException {
         Properties p=new Properties(); p.setProperty("version","1");
         p.setProperty("volume",volume+""); p.setProperty("sensitivity",sensitivity+"");
+        p.setProperty("highQuality",highQuality+"");
         p.setProperty("muted",muted+""); p.setProperty("fullscreen",fullscreen+"");
         p.setProperty("name",cleanName(playerName)); controls.store(p); AppData.write(file,p);
     }

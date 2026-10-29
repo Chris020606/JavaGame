@@ -13,6 +13,12 @@ public class Player extends Entity {
     private String name;
     private int weaponStyle;
     public void setWeaponStyle(int style) { weaponStyle=style; }
+    private final CombatDiscipline discipline=new CombatDiscipline();
+    private boolean charging,lungeAttack;
+    public CombatDiscipline discipline() { return discipline; }
+    public void setCharging(boolean value) { charging=value; }
+    public boolean invulnerable() { return dodgeTime>.10f && dodgeTime<.31f; }
+    public void lunge(float duration) { attack(1,false,duration);lungeAttack=true;if(weaponStyle==0) attackClip=PlayerAnimation.ATTACK_STAB;setAnimation(attackClip); }
     private float velocityX,velocityZ,dodgeTime,dodgeCooldown,dodgeX,dodgeZ;
     private boolean sprinting;
     private PlayerAnimation dodgeClip=PlayerAnimation.DODGE_FORWARD;
@@ -127,9 +133,12 @@ public class Player extends Entity {
 
         float moveLength = (float)Math.sqrt(moveX * moveX + moveZ * moveZ);
 
+        discipline.tick(dt,sprinting);
         dodgeCooldown=Math.max(0,dodgeCooldown-dt);
+        if(controls.pressed(PARRY) && !isAttacking() && !isDodging() && !charging) discipline.beginParry();
         if(moveLength>0) { moveX/=moveLength;moveZ/=moveLength; }
-        if(controls.pressed(DODGE) && dodgeCooldown<=0 && !isAttacking()) {
+        if(controls.pressed(DODGE) && dodgeCooldown<=0 && (!isAttacking() || attackTime<attackDuration*.48f) && discipline.recovery()<=0 && discipline.spend(CombatDiscipline.DODGE)) {
+            attackTime=0;charging=false;
             double facing=Math.toRadians(getRotation().y());
             dodgeX=moveLength>0?moveX:(float)Math.sin(facing);
             dodgeZ=moveLength>0?moveZ:(float)Math.cos(facing);
@@ -139,8 +148,8 @@ public class Player extends Entity {
                 side>0?PlayerAnimation.DODGE_RIGHT:PlayerAnimation.DODGE_LEFT;
             dodgeTime=.34f;dodgeCooldown=1.5f;restartAnimation();
         }
-        sprinting=controls.down(SPRINT) && moving && !isAttacking() && !isDodging();
-        float speed=movementSpeed*(sprinting?1.55f:1)*(isAttacking()?.3f:1);
+        sprinting=controls.down(SPRINT) && moving && !isAttacking() && !isDodging() && !charging && discipline.recovery()<=0 && discipline.canSprint();
+        float speed=movementSpeed*(sprinting?1.55f:1)*(isAttacking()?.3f:charging||discipline.recovery()>0?.15f:1);
         float blend=Math.min(1,dt*18);
         velocityX+=(moveX*speed-velocityX)*blend;
         velocityZ+=(moveZ*speed-velocityZ)*blend;
@@ -155,11 +164,11 @@ public class Player extends Entity {
                 getRotation().y((float)Math.IEEEremainder(getRotation().y()+Math.max(-720*dt,Math.min(720*dt,delta)),360));
             }
             // Small committed step gives sword swings weight, without changing the hit arc.
-            if(weaponStyle==0 && attackTime>0) {
+            if((weaponStyle==0 || lungeAttack) && attackTime>0) {
                 float phase=1-attackTime/attackDuration;
                 if(phase>.22f && phase<.5f) {
                     double a=Math.toRadians(getRotation().y());
-                    position.x(position.x()+(float)Math.sin(a)*1.6f*dt).z(position.z()+(float)Math.cos(a)*1.6f*dt);
+                    position.x(position.x()+(float)Math.sin(a)*(lungeAttack?8:1.6f)*dt).z(position.z()+(float)Math.cos(a)*(lungeAttack?8:1.6f)*dt);
                 }
             }
         }
@@ -171,6 +180,8 @@ public class Player extends Entity {
             setAnimation(dodgeClip);
         } else if (attackTime > 0) {
             setAnimation(weaponStyle==1 && 1-attackTime/attackDuration<.28f?PlayerAnimation.BOW_DRAW:attackClip);
+        } else if(discipline.recovery()>0 || charging) {
+            setAnimation(PlayerAnimation.BLOCK_IDLE);
         } else if (moving) {
             setAnimation(weaponStyle==1?PlayerAnimation.BOW_RUN:sprinting?PlayerAnimation.RUN:PlayerAnimation.WALK);
         } else {
@@ -190,7 +201,7 @@ public class Player extends Entity {
     public void attack(boolean hasWeapon) { attack(1,false,.5f); }
 
     public void attack(int combo,boolean heavy,float duration) {
-        attackDuration=duration; attackTime=duration;
+        lungeAttack=false;charging=false;attackDuration=duration; attackTime=duration;
         attackClip=heavy ? PlayerAnimation.ATTACK_JUMP_CHOP : combo==3 ? PlayerAnimation.ATTACK_CHOP : combo==2 ? PlayerAnimation.ATTACK_DIAGONAL : PlayerAnimation.ATTACK_HORIZONTAL;
         if (weaponStyle==1) attackClip=PlayerAnimation.BOW_RELEASE;
         if (weaponStyle==2) attackClip=PlayerAnimation.MAGIC_CAST;
@@ -202,7 +213,7 @@ public class Player extends Entity {
     public boolean isAttacking() { return attackTime > 0; }
 
     public void resetCombat() {
-        attackTime = dodgeTime = dodgeCooldown = velocityX = velocityZ = 0; sprinting=false;
+        attackTime = dodgeTime = dodgeCooldown = velocityX = velocityZ = 0; sprinting=charging=lungeAttack=false;discipline.reset();
         setAnimation(weaponStyle==1?PlayerAnimation.BOW_IDLE:PlayerAnimation.MELEE_IDLE);
         restartAnimation();
         updateAnimation(0);

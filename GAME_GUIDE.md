@@ -1,4 +1,4 @@
-# Outpost game guide (v1.4.0)
+# Outpost game guide (v1.5.0)
 
 ## Start here
 
@@ -16,7 +16,7 @@ Select New Game, enter a name (up to 16 characters), click a class, then Begin o
 | Archer | 90 | 6 units/s | Bow, fast arrow, 12-unit range | Power shot, 16-unit range, double damage |
 | Mage | 80 | 5.2 units/s | Staff, piercing bolt, 10-unit range | Arcane surge, 12-unit range, 2.2x damage |
 
-Class is fixed during a defense and saved with it. Warrior, Archer, and Mage have distinct models. Archer has bow idle, draw/release, and bow-running animations; Mage has spellcasting gestures. Each class starts with two potions. There is no mana, stamina, or ammunition limit.
+Class is fixed during a defense and saved with it. Warrior, Archer, and Mage have distinct models. Archer has bow idle, draw/release, and bow-running animations; Mage has spellcasting gestures. Each class starts with two potions. There is no mana or ammunition limit; stamina limits attacks, sprinting, and defensive moves.
 
 Movement sets your facing. Attacks lock that facing until the animation finishes and slow movement to 30%. Warrior swings add a short committed step. Move briefly toward your target before attacking. Arrows and bolts travel in that direction without automatic aiming. An arrow stops at the first enemy it hits; a magic bolt can hit multiple enemies, once each. World decorations are visual and do not block movement or shots.
 
@@ -31,7 +31,8 @@ Warrior swings apply damage once, partway through the animation, in a forward ar
 | Directional dodge | Left Ctrl |
 | Orbit camera | Hold right mouse and move |
 | Primary attack | Space or left mouse |
-| Heavy class attack | Q |
+| Charged class attack | Hold/release Q |
+| Timed parry / lunge | F / R |
 | Workshop near the outpost | E |
 | Open or close inventory | Tab |
 | Drink potion during play | H |
@@ -153,8 +154,38 @@ The top-center HUD shows the level, wave within that level, and waves left to cl
 
 ## Movement, attacks, and the living valley
 
-Hold Shift to sprint at 1.55 times your normal speed. Movement accelerates and decelerates smoothly. Ctrl dodges in your movement direction, or forward when standing still, using forward/back/side animations relative to your facing. A dodge lasts .34 seconds, prevents player damage during its animation, and has a 1.5-second cooldown shown on the HUD. It does not protect the sanctuary. You cannot begin a dodge during an attack or begin an attack while dodging.
+Hold Shift to sprint at 1.55 times your normal speed. Movement accelerates and decelerates smoothly. Ctrl dodges in your movement direction, or forward when standing still, using forward/back/side animations relative to your facing. A dodge lasts .34 seconds, prevents damage only during its .03–.24-second evasion window, and has a 1.5-second cooldown shown on the HUD. It does not protect the sanctuary. A dodge can cancel the last 48% of attack recovery, at stamina cost. You cannot begin an attack while dodging.
 
 Warrior's three-hit combo now plays horizontal, diagonal, and chopping swings, while the heavy attack uses a jumping chop. Windup, contact, and recovery have distinct pacing. Archer has running-with-bow and draw/release transitions. Ranged aim still follows facing; there is no mouse aiming or stamina cost.
 
 The imported-model sanctuary is surrounded by distant forest, hills, open sky, drifting clouds, birds, and campfire embers. These background areas are visual scenery. Border stones mark the bounded playable clearing; walking, sprinting, and dodging stop at its edge. Hold right mouse to orbit down toward the horizon or up for a tactical view. Environment props remain decorative rather than solid cover. Button pictograms supplement their text labels.
+
+## Combat discipline
+
+| Action | Stamina | Timing / reward |
+| --- | ---: | --- |
+| Light strike | 14 | Chain in the last .14 seconds of recovery or .23 seconds after it; later combo hits gain a 12% bonus |
+| Charged heavy | 32 | Hold Q, then release at .75–1.05 seconds for a 1.6x bonus; overholding reduces the bonus |
+| Lunge | 24 | R advances and attacks in the locked facing direction |
+| Dodge | 22 | Ctrl commits to a direction; only the middle evasion window avoids damage |
+| Parry | 12 | F opens a .22-second forward-facing window; failed attempts have .70 seconds of recovery |
+| Sprint | 16 per second | An exhausted hero must recover to 25 stamina before sprinting again |
+
+Stamina recovers at 22 per second after a short spending delay. Running out blocks the next attack; it does not queue an automatic attack when stamina returns. Early attack mashing drops the chain. The hotbar says CHAIN NOW during the valid continuation window. Heavy-charge timing and RIPOSTE READY are shown above it.
+
+A successful parry restores 18 stamina and staggers a melee attacker for 1.1 seconds. Your next attack within 1.4 seconds gains a single 1.75x riposte multiplier. It works against incoming melee or projectiles from the front, not attacks from behind. You cannot parry ground magic, slams, or shockwaves. Charging slows movement and prevents parrying; a dodge can abandon the charge. Stamina is saved; transient charge/parry/riposte states reset on load.
+
+## Skeletal boss moves
+
+The Ash Warden is a towering, horned axe warrior. The Hollow King is a crowned skeletal caster. Their own animation sets replace the earlier raider mesh.
+
+- **Gold cleave:** a broad, forward strike. Step outside the arc or time a parry.
+- **Gold rush:** the boss locks your position, warns its lane, then charges along it. Leave the lane, evade during contact, or parry to stop the rush.
+- **Red fault slam:** the marked ground at your previous position erupts. Leave the circle; the boss also emits an expanding shockwave. Evade the ring rather than parrying it.
+- **Purple sigils:** several ground zones warn before detonating. Move clear before their delay expires. Each field can hit once.
+
+At half health, the boss becomes ENRAGED: windups shorten and sigils expand from three zones to five. The HUD names the move and marks unblockable attacks. Targets stop tracking during the warning, so deliberate movement and counterattacks beat standing still and trading hits. Boss attacks focus the hero during duels; ordinary raiders still threaten the sanctuary.
+
+## Graphics quality
+
+Settings offers High (2048 shadow atlas, scene width up to 1920) or Balanced (1024 shadows, scene width up to 1440 and less bloom). Both retain material lighting, filtered shadows, anti-aliasing, tone mapping, fog, and wind effects. The UI is drawn after post-processing at native display resolution. Choose Balanced if the effects cost too much performance on your computer.

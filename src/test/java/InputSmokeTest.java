@@ -59,6 +59,12 @@ public class InputSmokeTest {
         }
         finally { UnloadImage(image); }
     }
+    private static Entities.Enemy encounter(Game game,java.nio.file.Path profile,int wave,int variant,float z) throws Exception {
+        Entities.Enemy target=new Entities.Enemy(0,z,wave,variant,.5f);
+        SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",0,8,0,new Progression(),new WaveDirector.State(wave,0,1,8,0,21,0),java.util.List.of(target),Arena.HIGHLANDS));
+        check(game.loadCurrent(),"Advanced encounter did not load");key(game,KEY_ENTER);
+        target=game.getEnemies().get(0);target.stun=100;target.cooldown=100;for(int i=0;i<20;i++)frame(game);return target;
+    }
     public static void main(String[] args) throws Exception {
         java.nio.file.Path profile=java.nio.file.Files.createTempDirectory(java.nio.file.Path.of("build"),"smoke-profile-");
         System.setProperty("outpost.dataDir",profile.toAbsolutePath().toString());
@@ -74,6 +80,20 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--visual-only")) {
+                key(game,KEY_ENTER);key(game,KEY_ENTER);for(int i=0;i<12;i++)frame(game);capture("modern-materials");check(game.shadowAtlasValid(),"Shadow atlas did not capture the sanctuary caster");
+                for(int bossWave:new int[]{5,10}) {
+                    Entities.Enemy modelBoss=new Entities.Enemy(0,13,bossWave,5,.5f);
+                    SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",0,8,0,new Progression(),new WaveDirector.State(bossWave,0,1,8,0,21,0),java.util.List.of(modelBoss),Arena.HIGHLANDS));
+                    check(game.loadCurrent(),"Boss preview load failed");key(game,KEY_ENTER);
+                    for(int i=0;i<4;i++)frame(game);
+                    Camera3D review=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+                    review._position().x(10).y(6).z(1);review.target().x(0).y(2).z(11);
+                    for(int i=0;i<3;i++) { BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing(); }
+                    capture("modern-boss-"+bossWave);
+                }
+                System.out.println("PASS: modern visual review");return;
+            }
             for (int i = 0; i < 5; i++) frame(game);
             capture("ui-menu-retina");
             // Click the center of the visible Begin Defense button, in window pixels.
@@ -340,7 +360,68 @@ public class InputSmokeTest {
             check(game.getState()==GameState.JOURNAL,"Chronicle button failed");
             for(int i=0;i<3;i++)frame(game);capture("ui-chronicle");
             key(game,KEY_ENTER);check(game.getState()==GameState.MAIN_MENU,"Chronicle return failed");
-            System.out.println("PASS: four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
+            // New combat mechanics through real input and live damage resolution.
+            Entities.Enemy parryTarget=encounter(game,profile,1,0,9.8f);
+            parryTarget.beginAttack(0,8,true);parryTarget.attackTime=.33f;
+            float parryHp=game.getProgression().health();key(game,KEY_F);for(int i=0;i<8;i++)frame(game);
+            check(game.getProgression().health()==parryHp && game.getPlayer().discipline().riposteReady(),"Timed parry did not defend and open a riposte");
+            key(game,KEY_SPACE);check(game.currentAttack().label().equals("RIPOSTE"),"Parry reward was not consumed by the next strike");
+            for(int i=0;i<40;i++)frame(game);check(parryTarget.health<=7,"Riposte did not increase damage");
+            game.getPlayer().discipline().stamina(0);key(game,KEY_SPACE);
+            check(!game.getPlayer().isAttacking(),"Empty stamina still allowed an attack");
+            check(game.saveCurrent(),"Stamina save failed");
+            check(SaveGame.read(profile.resolve("save.properties")).stamina()==game.getPlayer().discipline().stamina(),"Stamina did not persist");
+            Entities.Enemy backstab=encounter(game,profile,1,0,9.8f);
+            game.getPlayer().getRotation().y(180);backstab.beginAttack(0,8,true);backstab.attackTime=.33f;
+            key(game,KEY_F);for(int i=0;i<8;i++)frame(game);
+            check(game.getProgression().health()<100 && !game.getPlayer().discipline().riposteReady(),"Parry incorrectly blocked an attack behind the hero");
+            Entities.Enemy comboTarget=encounter(game,profile,3,0,10);
+            key(game,KEY_SPACE);for(int i=0;i<25;i++)frame(game);key(game,KEY_SPACE);for(int i=0;i<8;i++)frame(game);
+            check(game.currentAttack().label().startsWith("TIMED CHAIN 2"),"Late combo input did not chain");
+            Entities.Enemy chargedTarget=encounter(game,profile,3,0,10);
+            event(KEY_DOWN,KEY_Q,0);for(int i=0;i<48;i++)frame(game);event(KEY_UP,KEY_Q,0);frame(game);
+            check(game.currentAttack().label().equals("PERFECT CHARGE"),"Charge timing window did not reward a release");
+            for(int i=0;i<30;i++)frame(game);check(chargedTarget.health==0,"Perfect charge did not apply bonus damage");capture("modern-perfect-charge");
+            Entities.Enemy lungeTarget=encounter(game,profile,1,0,11.7f);
+            key(game,KEY_R);for(int i=0;i<26;i++)frame(game);
+            check(game.getPlayer().getPosition().z()>9 && lungeTarget.health<lungeTarget.maxHealth,"Lunge did not advance and hit at extended reach");capture("modern-lunge");
+            Entities.Enemy slamBoss=encounter(game,profile,5,5,14);
+            slamBoss.beginAttack(0,8,true);slamBoss.beginAttack(0,8,true);
+            check(slamBoss.bossMove==Entities.BossMove.SLAM,"Boss slam pattern changed");slamBoss.attackTime=.30f;
+            key(game,KEY_F);for(int i=0;i<6;i++)frame(game);
+            check(game.getProgression().health()<100 && !game.getPlayer().discipline().riposteReady(),"Unblockable slam was incorrectly parried");
+            check(game.getBossHazards().stream().anyMatch(h->h.kind==BossHazard.Kind.SHOCKWAVE),"Slam did not emit its shockwave");capture("modern-boss-slam");
+            Entities.Enemy rushBoss=encounter(game,profile,5,5,14);rushBoss.beginAttack(0,8,true);rushBoss.attackTime=.30f;
+            key(game,KEY_LEFT_CONTROL);for(int i=0;i<22;i++)frame(game);
+            check(game.getProgression().health()==100,"A correctly timed dodge failed against the charge");capture("modern-charge-dodge");
+            Entities.Enemy parryBoss=encounter(game,profile,5,5,14);parryBoss.beginAttack(0,8,true);parryBoss.attackTime=.30f;
+            for(int i=0;i<16;i++)frame(game);key(game,KEY_F);for(int i=0;i<10;i++)frame(game);
+            check(parryBoss.chargeTime==0 && game.getPlayer().discipline().riposteReady(),"Charge parry did not stop the boss");
+            Entities.Enemy sigilBoss=encounter(game,profile,10,5,14);
+            while(sigilBoss.bossMove!=Entities.BossMove.CHARGE) sigilBoss.beginAttack(0,8,true);
+            sigilBoss.stun=0;sigilBoss.attackTime=0;sigilBoss.impactPending=false;sigilBoss.cooldown=0;
+            frame(game);check(sigilBoss.bossMove==Entities.BossMove.SIGILS && game.getBossHazards().size()==3,"King did not cast a warned sigil pattern");
+            for(int i=0;i<5;i++)frame(game);check(game.getProgression().health()==100,"Sigils dealt damage during their warning");capture("modern-king-sigils");
+            for(int i=0;i<92;i++)frame(game);check(game.getProgression().health()<100,"Sigils did not detonate");
+            sigilBoss.health=sigilBoss.maxHealth*.4f;check(sigilBoss.enraged(),"Boss phase two did not activate");for(int i=0;i<4;i++)frame(game);capture("modern-king-enraged");
+            sigilBoss.stun=100;sigilBoss.cooldown=100;sigilBoss.attackTime=0;sigilBoss.impactPending=false;
+            for(int i=0;i<35;i++)frame(game);
+            sigilBoss.x=0;sigilBoss.z=10;
+            while(sigilBoss.bossMove!=Entities.BossMove.CHARGE) sigilBoss.beginAttack(0,8,true);
+            sigilBoss.stun=0;sigilBoss.cooldown=0;sigilBoss.attackTime=0;sigilBoss.impactPending=false;frame(game);
+            check(game.getBossHazards().size()==5,"Enraged King did not expand its sigil pattern");
+            for(int i=0;i<4;i++)frame(game);capture("modern-enraged-sigils");
+            // Graphics quality must recreate the atlas and scene buffers without breaking UI or shadows.
+            key(game,KEY_ESCAPE);
+            int gx=(GetScreenWidth()-440)/2,gy=(GetScreenHeight()-440)/2;
+            event(MOUSE_POSITION,gx+100,gy+230);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
+            event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);check(game.getState()==GameState.SETTING_MENU,"Graphics settings did not open");
+            int qx=(GetScreenWidth()-820)/2,qy=(GetScreenHeight()-650)/2;
+            event(MOUSE_POSITION,qx+350,qy+510);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
+            event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);key(game,KEY_ESCAPE);key(game,KEY_ENTER);
+            Settings balanced=new Settings();balanced.load(profile.resolve("settings.properties"));check(!balanced.highQuality,"Balanced graphics choice did not persist");
+            for(int i=0;i<4;i++)frame(game);capture("modern-balanced");check(game.shadowAtlasValid(),"Balanced quality lost its shadow caster");
+            System.out.println("PASS: stamina/parry/riposte, timed chains, charged heavies, lunges, boss slams/charges/sigils/enrage, four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

@@ -7,7 +7,7 @@ public final class Controls {
     public enum Action {
         FORWARD("Forward",KEY_W), BACK("Back",KEY_S), LEFT("Left",KEY_A), RIGHT("Right",KEY_D),
         SLASH("Slash",KEY_SPACE), HEAVY("Heavy",KEY_Q), WORKSHOP("Workshop",KEY_E), MUTE("Mute",KEY_M),
-        SAVE("Quick save",KEY_F5), LOAD("Quick load",KEY_F9), INVENTORY("Inventory",KEY_TAB), POTION("Use potion",KEY_H), SPRINT("Sprint",KEY_LEFT_SHIFT), DODGE("Dodge",KEY_LEFT_CONTROL);
+        SAVE("Quick save",KEY_F5), LOAD("Quick load",KEY_F9), INVENTORY("Inventory",KEY_TAB), POTION("Use potion",KEY_H), SPRINT("Sprint",KEY_LEFT_SHIFT), DODGE("Dodge",KEY_LEFT_CONTROL), PARRY("Parry",KEY_F), LUNGE("Lunge strike",KEY_R);
         public final String label; public final int defaultKey;
         Action(String label,int key) { this.label=label; defaultKey=key; }
     }
@@ -36,10 +36,19 @@ public final class Controls {
     public void restore(java.util.Properties p) {
         EnumMap<Action,Integer> restored=new EnumMap<>(Action.class);
         java.util.HashSet<Integer> used=new java.util.HashSet<>();
-        for (Action a:Action.values()) {
-            int key=Integer.parseInt(p.getProperty("key."+a,a.defaultKey+""));
+        for (Action a:Action.values()) if(p.containsKey("key."+a)) {
+            int key=Integer.parseInt(p.getProperty("key."+a));
             if (!validKey(key)||!used.add(key)) throw new IllegalArgumentException("Invalid or duplicate key binding");
             restored.put(a,key);
+        }
+        for(Action a:Action.values()) if(!restored.containsKey(a)) {
+            int key=a.defaultKey;
+            if(used.contains(key)) {
+                key=0;
+                for(int candidate=KEY_A;candidate<=KEY_Z;candidate++) if(!used.contains(candidate)) { key=candidate;break; }
+                if(key==0) throw new IllegalArgumentException("No free default binding");
+            }
+            used.add(key);restored.put(a,key);
         }
         keys.clear(); keys.putAll(restored);
     }

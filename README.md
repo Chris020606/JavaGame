@@ -1,6 +1,6 @@
 # Outpost
 
-![The Last Ember campaign](docs/images/campaign-gameplay.png)
+![Modern lighting and skeletal boss](docs/images/modern-boss-warden.png)
 
 **Outpost** is a small 3D wave-defense game about a warden protecting a frontier settlement. Fight through increasingly dangerous raids, collect crystals, and improve your hero and outpost before the next attack arrives.
 
@@ -14,7 +14,9 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 - Sprint and dodge with animated movement; chain three warrior sword swings and a jumping heavy cleave.
 - Explore a bounded clearing framed by distant forest, sky, drifting clouds, birds, and campfire embers.
 - Find healing inside the glowing, six-unit sanctuary ring.
-- Directional sunlight, distance haze, and a redesigned HUD with a combat hotbar.
+- Filtered cast shadows, material lighting, bloom, anti-aliasing, and a native-DPI combat HUD.
+- Stamina management, timed attack chains, charged heavies, parry/riposte, and lunging strikes.
+- Towering skeletal bosses with slams, rushes, sigils, and enraged phases.
 - An inventory with equippable weapon tiers, healing potions, and workshop restocking.
 - Boss-only duels against the Ash Warden and Hollow King, with crystal rewards and weapon loot.
 - Directional sword attacks with a three-hit combo and a heavy cleave.
@@ -49,7 +51,8 @@ On Windows or macOS, the first launch may show a security confirmation because t
 | Sprint / dodge | `Left Shift` / `Left Ctrl` |
 | Orbit the camera | Hold the right mouse button |
 | Sword combo | `Space` or left click |
-| Heavy class attack | `Q` |
+| Charged heavy attack | Hold / release `Q` |
+| Parry / lunge | `F` / `R` |
 | Inventory / use potion | `Tab` / `H` |
 | Open the workshop | `E` near the outpost |
 | Save / load | `F5` / `F9` |
@@ -57,7 +60,7 @@ On Windows or macOS, the first launch may show a security confirmation because t
 | Pause or go back | `Escape` |
 | Confirm a choice | `Enter` |
 
-Choose your class on the name screen before beginning. Face an enemy before attacking. Arrows stop at the first enemy; magic bolts pierce enemies. Each class has a stronger attack on Q.
+Choose your class on the name screen before beginning. Face an enemy before attacking. Arrows stop at the first enemy; magic bolts pierce enemies. Each class has a stronger charged attack on Q. Attacks, sprinting, and dodging consume stamina; watch the gold meter. Face an incoming gold attack and tap F just before impact to parry, then counterattack for a riposte. Red and purple boss areas must be evaded.
 
  Sword swings hit in the direction your warden is facing. Press again near the end of a swing to continue the combo. The third attack is stronger, while the heavy cleave does more damage but takes longer to recover.
 
