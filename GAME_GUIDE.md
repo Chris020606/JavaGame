@@ -1,4 +1,4 @@
-# Outpost game guide (v1.5.0)
+# Outpost game guide (v1.6.0)
 
 ## Start here
 
@@ -6,7 +6,7 @@ Outpost is a single-player 3D defense game with a finite story campaign, The Las
 
 Download the archive for your operating system from https://github.com/Chris020606/JavaGame/releases, extract it, and launch Outpost. The release includes Java. Keep the extracted folders together. Source instructions are below.
 
-Select New Game, enter a name (up to 16 characters), click a class, then Begin or Enter. A blank name becomes Warden. New Game starts fresh; Load Game restores the last saved defense. Starting fresh does not replace the disk save until a save or automatic save occurs. Try Again restarts with the same class.
+Select New Game, enter a name (up to 16 characters), choose a class and difficulty, then Begin or Enter. A blank name becomes Warden. New Game starts fresh; Load Game restores the last saved defense. Starting fresh does not replace the disk save until a save or automatic save occurs. Try Again restarts with the same class.
 
 ## Classes and equipment
 
@@ -45,27 +45,52 @@ Settings lets you rebind keyboard actions, adjust camera sensitivity and volume,
 
 ## Inventory, crystals, and upgrades
 
-Tab shows your class, equipment, damage, armor reduction, crystal balance, and potions. Click Use Potion there or press H during play. Each potion restores up to 60 HP, capped at your maximum. It is not consumed at full health, and cannot revive a defeated hero. You can carry five. Buy more at the workshop for 30 crystals each; potions do not drop from enemies.
+Tab opens an equipment grid with a rotatable 3D player preview, five equipped slots, stat comparisons, and potion storage. Click an owned item to equip it, or drag it into its matching slot. Right-click an equipped armor slot to remove that piece. Drag the preview to rotate the character. Armor and weapons are visible on the animated hero during play.
 
-Regular enemies award 15 crystals each; Warlords award 120. Stand within six units of the center and press E to shop. Time pauses while shopping. Each upgrade costs 45 times its current level, starting at 45 crystals.
+Potions restore up to 60 HP, capped at maximum health. Click Use Potion or press H during play. You can carry five and buy more for 30 crystals in the workshop's Supplies tab. Full-health heroes do not consume potions.
 
-| Upgrade | Effect |
+Regular enemies award 15 crystals; bosses award 120. Stand within six units of the sanctuary and press E. Time pauses in the workshop. Training cards show the current level, exact improvement, and price. New stat training starts at 45 crystals; the next price is `45 × current level + 10 × (current level − 1)²`. Resilience and Sanctuary cost `45 × current level`. All seven tracks cap at level 10. Previous saves retain their older combined character upgrades.
+
+| Training | Effect per purchase |
 | --- | --- |
-| Outpost | +100 maximum integrity and a full repair |
-| Armor | +2 damage reduction per level after level 1 |
-| Character | +10 base damage, +25 maximum hero HP, and a full heal |
+| Vitality | +20 maximum and current HP |
+| Power | +5 base damage |
+| Endurance | +15 maximum stamina |
+| Recovery | +3 stamina regenerated per second |
+| Agility | +4% of the class's starting movement speed |
+| Resilience | +2 damage reduction |
+| Sanctuary | +100 maximum integrity and full repair |
 
-Base damage starts at 25 before weapon bonuses, outpost integrity at 250, and armor reduction at zero. Positive incoming damage to the player is reduced by armor but always deals at least 1 HP. Armor does not protect the outpost. Standing within six units of the center regenerates 3 + outpost level HP per second. A pulsing teal ring, ground crosses, and rising motes mark that exact radius. The HUD shows the healing rate when inside.
+Base damage starts at 25, stamina at 100, recovery at 22/second, and outpost integrity at 250. Defense reduces incoming player damage to a minimum of 1; it does not protect the sanctuary. Standing inside its marked six-unit ring heals `3 + sanctuary level` HP/second.
 
 ## Weapon loot and equipment
 
-Every Warlord defeated unlocks the next tier of your class weapon. The two campaign bosses unlock Forged (+8 damage) and Runic (+16). Legendary (+24) remains supported for existing upgraded saves. Drops go directly into inventory and never disappear on the ground. Starting a new defense resets this progression.
+Each defeated boss unlocks the next class weapon tier. The Equipment Forge also sells tiers directly, including Legendary during this campaign. Buying a higher tier grants access to the lower tiers. Purchases unlock gear; equip it in Tab.
 
-Open Tab and click an unlocked weapon to equip it. The `>` marker identifies your current weapon. Locked tiers show what you can earn next. You can switch back to any unlocked tier. Bonuses do not stack: a Legendary weapon adds 24 damage total. Bonuses add to character upgrades and apply before each attack's damage multiplier. The weapon's tint changes with its tier; tiers share the sword, bow, or staff model of your class. Loot does not automatically replace the equipped weapon.
+| Tier | Weapon price / damage bonus | Armor set price / full-set defense |
+| --- | --- | --- |
+| Forged / Iron | 100 / +8 | 100 / +7 |
+| Runic | 240 / +16 | 220 / +14 |
+| Legendary / Dawnsteel | 450 / +24 | 380 / +21 |
+
+Warriors switch between a sword, longsword, waraxe, and Dawnblade with different geometry. Archers progress from bows to crossbows; mages use a staff, wand, skull staff, and Dawnstaff. Iron, Runic, and Dawnsteel sets each include a helmet, chest/shoulder armor, greaves, and boots. Mix individual pieces freely. Head/chest/legs/boots provide 1/3/2/1 defense per tier; boots also add .12 movement speed per tier. Equipped bonuses replace lower tiers rather than stacking. Starting a new campaign resets its equipment and training.
+
+## Difficulty
+
+Choose Easy, Normal, Hard, or Extreme on the name/class screen. The choice is fixed for that campaign, saved with it, and remembered as the preference for new games.
+
+| Difficulty | Enemy HP | Damage | Speed | Raid size | Concurrent melee attackers on hero |
+| --- | --- | --- | --- | --- | --- |
+| Easy | 75% | 65% | 90% | 80% | 1 |
+| Normal | 100% | 100% | 100% | 100% | 2 |
+| Hard | 125% | 135% | 108% | 115% | 3 |
+| Extreme | 160% | 175% | 116% | 135% | 4 |
+
+Harder settings also shorten attack recoveries, windups, and arrivals. Raid sizes round to whole enemies and cap at 36. Boss-only chapters always contain one boss. Ranged fire and boss moves are independent of the regular melee assault limit.
 
 ## Waves and enemies
 
-The first wave begins after five seconds. Normal defense waves queue up to 36 enemies (4 + 3 times the global wave number). Arrivals are staggered along four trails. The next wave waits until both the queue and living enemies are empty, followed by eight seconds of rest. Rings and the minimap warn of imminent arrivals. Chapters 2 and 4 contain exactly one boss each, with no regular raiders. A boss has a gold tint, crown marker, gold ground ring, minimap marker, and a large health bar. Chapter boundaries wait for Continue; no eleventh wave is scheduled.
+The first wave begins after five seconds. Normal defense waves queue up to 36 enemies (4 + 3 times the global wave number). Arrivals are staggered along four trails; the Frozen Pass uses its north/south approaches. The next wave waits until both the queue and living enemies are empty, followed by eight seconds of rest. Rings and the minimap warn of imminent arrivals. Chapters 2 and 4 contain exactly one boss each, with no regular raiders. A boss has a gold tint, crown marker, gold ground ring, minimap marker, and a large health bar. Chapter boundaries wait for Continue; no eleventh wave is scheduled.
 
 | Enemy | Behavior |
 | --- | --- |
@@ -73,10 +98,12 @@ The first wave begins after five seconds. Normal defense waves queue up to 36 en
 | Scout | Faster movement, detects the hero farther away |
 | Brute | More health, slower movement, stronger melee hits |
 | Archer | Appears from wave 2; retreats when close and shoots arrows |
-| Shaman | Appears from wave 3; fires slower, stronger magic |
+| Shaman / Frost Hexer | Fires magic; channels an interruptible ward to heal wounded allies |
 | Warlord | Ash Warden (chapter 2) and Hollow King (chapter 4); melee duels with weapon loot |
 
-Enemies choose the hero when close enough, otherwise attack the outpost. Melee enemies can flank and crowd around targets. Attack warnings show the direction of a pending strike. Move away before impact, or interrupt regular enemies with a hit. Warlords resist interruption and knockback: hitting them will not cancel their attack. Enemy health and speed increase with waves. Warlords have five times a normal raider’s health, slower movement, and a 1.2-second attack animation with impact after 0.95 seconds. They deal 22 + 3 times the wave number damage to the hero, or 30 + 3 times the wave number to the outpost. Their longer reach is shown by the attack warning. Chapters share the sanctuary clearing, with additional ruins in later chapters.
+Enemies commit briefly to a target and use detection hysteresis to avoid constantly switching between hero and sanctuary. Scouts flank widely; ordinary melee enemies circle and backstep during recovery; brutes press forward. Nearby allies steer apart. Ranged enemies retreat when crowded, strafe during recovery, reposition around blocked firing lanes, and lead a moving hero. Shamans and frost hexers can heal a wounded nearby ally after a visible, interruptible channel. Melee attackers coordinate their windups according to difficulty. Attacks require facing the target and lock their aim during the warning, giving you a chance to evade. Hits interrupt regular enemies; bosses resist interruption. Movement accelerates smoothly and turns at a bounded rate, with idle, walking, running, strafing, and attack clips.
+
+The meadow uses human raiders, scouts, brutes, archers, and shamans. The cemetery contains the skeletal Ash Warden. The Frozen Pass uses Boneguards, Rattlescouts, Frost Reavers, Bone Archers, and Frost Hexers. The necropolis contains the Hollow King. Each chapter changes scenery, sky, fog, palette, and lighting. Snow drifts through the pass; cemetery gates, graves and crypts replace the meadow's trees and camp. Scenery is decorative and does not provide physical cover; the playable boundary remains ±22 units.
 
 Gold numbers show damage dealt, red shows damage taken, and teal shows crystal rewards. The HUD displays health, outpost integrity, crystals, queued enemies, wave, attack recovery, and potion count. The minimap marks your hero, enemies, the outpost, and announced arrivals.
 
@@ -92,7 +119,7 @@ There is one save slot. F5, the pause menu, and Save & Main Menu save the defens
 
 Files are `save.properties` and `settings.properties`. Replacing a file keeps the prior version as `.bak`. You can manually copy that backup over a damaged file while the game is closed. Invalid saves report an error without replacing the active defense. Back up the folder before editing files.
 
-Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, unlocked and equipped weapon tiers, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v1.4 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
+Saves retain your position, facing, class, potions, health, upgrades, crystals, kills, difficulty, independent stat training, unlocked armor sets, equipped armor pieces, upgraded stamina, unlocked and equipped weapon tiers, wave queue, and living enemies. In-flight projectiles and attack windups are cancelled on load, and enemies get a short grace period. v1.6 writes save format 2 and reads format 1 saves from both earlier releases. Older saves retain their class and potions when present, defaulting to Warrior and two potions otherwise, and start with the Starter weapon. Older game releases reject format 2 saves; keep a backup if you plan to downgrade.
 
 ## Build, test, and release
 
@@ -137,7 +164,7 @@ For isolated manual testing, Java system property `outpost.dataDir` overrides th
 
 Gameplay rules are separated from native rendering where practical so JUnit can check them directly. Rendering and input still live together in Game. Enemy variants are numeric: 0 Raider, 1 Scout, 2 Brute, 3 Archer, 4 Shaman, 5 Warlord. Update persistence bounds and rendering together if adding variants. Add class rules in HeroClass and keep equipment rendering consistent in WorldAssets.
 
-Character and weapon assets are from KayKit under CC0. See THIRD_PARTY_NOTICES.md and the included licenses for dependencies. See DEVELOPMENT_NOTES.md for known limits and future work.
+Character and most weapon assets are from KayKit under CC0; modular armor and Dawn weapons are original generated meshes. See THIRD_PARTY_NOTICES.md and the included licenses for dependencies. See DEVELOPMENT_NOTES.md for known limits and future work.
 
 ## The Last Ember campaign
 
@@ -145,10 +172,10 @@ The skyfires died a century ago. One ember beneath the sanctuary still warms the
 
 | Level | Encounter | Goal |
 | --- | --- | --- |
-| 1 — The Last Ember | Four defense waves | Wake the sanctuary beacon |
-| 2 — The Ash Warden | One boss only | Reclaim the northern road |
-| 3 — Road to Dawn | Four defense waves | Protect the caravan's crossing |
-| 4 — The Hollow King | One final boss only | Bring morning back to the valley |
+| 1 — The Last Ember | Meadow / four raider waves | Wake the sanctuary beacon |
+| 2 — The Ash Warden | Cemetery / one skeleton boss | Reclaim the northern road |
+| 3 — Road to Dawn | Frozen Pass / four skeleton waves | Protect the caravan's crossing |
+| 4 — The Hollow King | Necropolis / one final skeleton boss | Bring morning back to the valley |
 
 The top-center HUD shows the level, wave within that level, and waves left to clear (including the active wave). Boss chapters read BOSS ONLY. Defeat all queued and living enemies to complete a level. Read its aftermath and next briefing, open Inventory if desired, then Continue or Enter to advance. Defeating the Hollow King opens the victory ending. The Chronicle on the title and pause menus collects all chapter briefings. Classic Woodland selection has been removed; old saves use the campaign scenery.
 

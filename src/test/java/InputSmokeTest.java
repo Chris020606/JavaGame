@@ -36,6 +36,10 @@ public class InputSmokeTest {
         event(KEY_DOWN, key, 0); frame(game);
         event(KEY_UP, key, 0); frame(game);
     }
+    private static void click(Game game,int x,int y) {
+        event(MOUSE_POSITION,x,y);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
+        event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);
+    }
     private static void check(boolean condition, String message) {
         if (!condition) throw new AssertionError(message);
     }
@@ -91,6 +95,30 @@ public class InputSmokeTest {
                     review._position().x(10).y(6).z(1);review.target().x(0).y(2).z(11);
                     for(int i=0;i<3;i++) { BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing(); }
                     capture("modern-boss-"+bossWave);
+                }
+                for(int chapter=0;chapter<4;chapter++) {
+                    int stageWave=new int[]{1,5,6,10}[chapter];
+                    Entities.Enemy stageEnemy=new Entities.Enemy(5,14,stageWave,chapter==1||chapter==3?5:chapter==2?4:0,.5f);
+                    SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",0,8,0,new Progression(),new WaveDirector.State(stageWave,0,1,8,0,21,0),java.util.List.of(stageEnemy),Arena.HIGHLANDS));
+                    check(game.loadCurrent(),"Stage preview load failed");key(game,KEY_ENTER);for(int i=0;i<4;i++)frame(game);
+                    Camera3D view=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+                    view._position().x(20).y(24).z(28);view.target().x(0).y(0).z(0);
+                    for(int i=0;i<3;i++) { BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing(); }
+                    capture("expansion-chapter-"+chapter);
+                }
+                Progression gear=game.getProgression();for(int i=0;i<300;i++)gear.rewardKill();gear.buyWeapon(3);gear.buyArmor(3);gear.equipWeapon(3);
+                for(Entities.ArmorSlot slot:Entities.ArmorSlot.values()) gear.equipArmor(slot,3);
+                gear.purchase(Progression.Upgrade.ENDURANCE);gear.purchase(Progression.Upgrade.VITALITY);
+                key(game,KEY_TAB);for(int i=0;i<4;i++)frame(game);capture("expansion-inventory");
+                key(game,KEY_ESCAPE);game.getPlayer().getPosition().x(0).z(4);key(game,KEY_E);for(int i=0;i<4;i++)frame(game);capture("expansion-workshop");
+                key(game,KEY_ESCAPE);
+                for(HeroClass hero:HeroClass.values()) {
+                    Progression dressed=new Progression(hero,Entities.Difficulty.HARD);for(int i=0;i<300;i++)dressed.rewardKill();
+                    dressed.buyWeapon(3);dressed.equipWeapon(3);dressed.buyArmor(3);
+                    for(Entities.ArmorSlot slot:Entities.ArmorSlot.values())dressed.equipArmor(slot,3);
+                    SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",0,8,0,dressed,new WaveDirector.State(1,0,1,8,0,21,0),java.util.List.of(new Entities.Enemy(0,20,1,0,.5f,Entities.Difficulty.HARD)),Arena.HIGHLANDS));
+                    check(game.loadCurrent(),"Class gear preview load failed");key(game,KEY_ENTER);key(game,KEY_TAB);
+                    for(int i=0;i<3;i++)frame(game);capture("expansion-gear-"+hero.name().toLowerCase());key(game,KEY_ESCAPE);
                 }
                 System.out.println("PASS: modern visual review");return;
             }
@@ -275,8 +303,8 @@ public class InputSmokeTest {
             check(game.getProgression().weaponUnlocked()==1,"Boss did not unlock loot");
             check(game.getProgression().crystals()==120,"Boss crystal reward incorrect");
             key(game,KEY_TAB);
-            int ix=(GetScreenWidth()-620)/2,iy=(GetScreenHeight()-520)/2;
-            event(MOUSE_POSITION,ix+465,iy+177);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
+            int ix=(GetScreenWidth()-940)/2,iy=(GetScreenHeight()-600)/2;
+            event(MOUSE_POSITION,ix+507,iy+122);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
             event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);
             check(game.getProgression().weaponTier()==1 && game.getProgression().damage()==33,"Inventory equip failed");for(int i=0;i<3;i++)frame(game);capture("ui-weapon-loot");
             key(game,KEY_ESCAPE);check(game.saveCurrent() && game.loadCurrent(),"Equipment save failed");
@@ -421,7 +449,54 @@ public class InputSmokeTest {
             event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);key(game,KEY_ESCAPE);key(game,KEY_ENTER);
             Settings balanced=new Settings();balanced.load(profile.resolve("settings.properties"));check(!balanced.highQuality,"Balanced graphics choice did not persist");
             for(int i=0;i<4;i++)frame(game);capture("modern-balanced");check(game.shadowAtlasValid(),"Balanced quality lost its shadow caster");
-            System.out.println("PASS: stamina/parry/riposte, timed chains, charged heavies, lunges, boss slams/charges/sigils/enrage, four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
+            // New-game difficulty controls, independent training, forge and slot interactions.
+            for(Entities.Difficulty difficulty:Entities.Difficulty.values()) {
+                game.setState(GameState.MAIN_MENU);key(game,KEY_ENTER);
+                int dx=(GetScreenWidth()-560)/2,dy=(GetScreenHeight()-450)/2;
+                click(game,dx+difficulty.ordinal()*142+60,dy+394);key(game,KEY_ENTER);
+                check(game.getProgression().difficulty()==difficulty,"Difficulty button failed: "+difficulty);
+                Settings chosen=new Settings();chosen.load(profile.resolve("settings.properties"));
+                check(chosen.difficulty==difficulty,"Difficulty preference did not persist");
+            }
+            Progression equipment=game.getProgression();for(int i=0;i<300;i++)equipment.rewardKill();
+            game.getPlayer().getPosition().x(0).z(4);key(game,KEY_E);check(game.isWorkshopOpen(),"Workshop did not open");
+            int ex=(GetScreenWidth()-940)/2,ey=(GetScreenHeight()-600)/2;
+            click(game,ex+100,ey+275);click(game,ex+326,ey+275);click(game,ex+552,ey+275);
+            check(equipment.maxHealth()==120 && equipment.damage()==30 && equipment.maxStamina()==115,"Training cards did not independently upgrade HP, damage and stamina");
+            click(game,ex+410,ey+85);click(game,ex+700,ey+305);click(game,ex+700,ey+430);
+            check(equipment.weaponUnlocked()==3 && equipment.armorUnlocked()==3,"Forge purchase failed");capture("expansion-forge");
+            key(game,KEY_ESCAPE);key(game,KEY_TAB);
+            click(game,ex+658,ey+122);check(equipment.weaponTier()==3,"Legendary weapon grid selection failed");
+            // Tier-three helmet: drag from the grid into the head slot.
+            event(MOUSE_POSITION,ex+433,ey+274);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
+            event(MOUSE_POSITION,ex+332,ey+122);frame(game);event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);
+            check(equipment.armorTier(Entities.ArmorSlot.HEAD)==3,"Armor drag did not equip into head slot");
+            event(MOUSE_DOWN,MOUSE_BUTTON_RIGHT,0);frame(game);event(MOUSE_UP,MOUSE_BUTTON_RIGHT,0);frame(game);
+            check(equipment.armorTier(Entities.ArmorSlot.HEAD)==0,"Right-click did not remove armor");
+            for(int item=12;item<16;item++)click(game,ex+433+(item%6)*75,ey+122+(item/6)*76);
+            check(equipment.defense()==21,"Armor grid did not equip the complete set");
+            for(int i=0;i<3;i++)frame(game);capture("expansion-inventory");key(game,KEY_ESCAPE);
+            game.getPlayer().discipline().stamina(110);check(game.saveCurrent() && game.loadCurrent(),"Expanded equipment save failed");
+            check(game.getProgression().difficulty()==Entities.Difficulty.EXTREME && game.getProgression().defense()==21 && game.getProgression().weaponTier()==3,"Difficulty or equipment lost on load");
+            check(game.getPlayer().discipline().maximum()==115 && game.getPlayer().discipline().stamina()==110,"Upgraded stamina failed to restore");
+            // Exercise the crossbow clip/socket through a real ranged hit.
+            Progression crossbowHero=new Progression(HeroClass.ARCHER);for(int i=0;i<100;i++)crossbowHero.rewardKill();crossbowHero.buyWeapon(3);crossbowHero.equipWeapon(3);
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Archer",0,8,0,crossbowHero,new WaveDirector.State(6,0,1,8,0,21,0),java.util.List.of(new Entities.Enemy(0,14,6)),Arena.HIGHLANDS));
+            check(game.loadCurrent(),"Crossbow profile did not load");key(game,KEY_ENTER);
+            Entities.Enemy crossbowTarget=game.getEnemies().get(0);crossbowTarget.stun=100;crossbowTarget.cooldown=100;
+            for(int i=0;i<20;i++)frame(game);float crossbowHp=crossbowTarget.health;key(game,KEY_SPACE);
+            for(int i=0;i<35;i++)frame(game);check(crossbowTarget.health<crossbowHp,"Equipped crossbow did not hit");capture("expansion-crossbow-world");
+            // Frost hexers channel a real ward; interruption cancels the pending heal.
+            Entities.Enemy hexer=new Entities.Enemy(6,10,6,4,.5f),patient=new Entities.Enemy(6,12,6);patient.health=patient.maxHealth*.3f;
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",0,8,0,new Progression(),new WaveDirector.State(6,0,2,8,0,21,0),java.util.List.of(hexer,patient),Arena.HIGHLANDS));
+            check(game.loadCurrent(),"Support squad did not load");key(game,KEY_ENTER);
+            hexer=game.getEnemies().get(0);patient=game.getEnemies().get(1);patient.stun=100;hexer.cooldown=100;hexer.healCooldown=0;
+            frame(game);check(hexer.healingTarget==patient,"Hexer did not choose wounded ally");float patientHp=patient.health;
+            for(int i=0;i<45;i++)frame(game);check(patient.health>patientHp,"Hexer ward did not heal ally");
+            hexer.attackTime=0;hexer.healCooldown=0;frame(game);check(hexer.healingTarget==patient,"Second ward did not begin");
+            hexer.hit(1,0,0,0);patientHp=patient.health;for(int i=0;i<45;i++)frame(game);
+            check(patient.health==patientHp && hexer.healingTarget==null,"Interrupted hexer still healed ally");
+            System.out.println("PASS: crossbow impact and interruptible allied healing; four difficulty selections, independent training, forge purchases, armor click/drag/remove, equipment preview and expanded save state; stamina/parry/riposte, timed chains, charged heavies, lunges, boss slams/charges/sigils/enrage, four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

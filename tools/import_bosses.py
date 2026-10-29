@@ -6,7 +6,7 @@ BASE=f'https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pac
 ROOT='addons/kaykit_character_pack_skeletons/'
 out=Path(__file__).resolve().parents[1]/'resources/outpost/bosses'
 out.mkdir(parents=True,exist_ok=True)
-files={name:ROOT+'Characters/gltf/'+name for name in ('Skeleton_Warrior.glb','Skeleton_Mage.glb','skeleton_texture.png')}
+files={name:ROOT+'Characters/gltf/'+name for name in ('Skeleton_Warrior.glb','Skeleton_Mage.glb','Skeleton_Minion.glb','Skeleton_Rogue.glb','skeleton_texture.png')}
 for name in ('Skeleton_Axe.gltf','Skeleton_Axe.bin','Skeleton_Staff.gltf','Skeleton_Staff.bin'):
     files[name]=ROOT+'Assets/gltf/'+name
 files['LICENSE.txt']='LICENSE.txt'

@@ -6,6 +6,8 @@
   "sha256": {
     "Skeleton_Warrior.glb": "178b6fda810b814c250d8a2010c24dfd9b458b9006dd323353e620b7ff118bbe",
     "Skeleton_Mage.glb": "e05b0f5cfa395271c9f75fd07c0a0613c56f401ece4ab644e080001a79971075",
+    "Skeleton_Minion.glb": "6ffc003f895bed0b074791e0e490846210a2e2f8fc7da300aba53cc185f95968",
+    "Skeleton_Rogue.glb": "4003f2b77891bb56f7e0de7d555abcb497aebbcaee35b614211f16275f9ccae3",
     "skeleton_texture.png": "15741a25c53e04fa9bf3beac3bc0de442359404b1ff9be863b892cb551ad3657",
     "Skeleton_Axe.gltf": "44c8b65942cbb573c99dc14c2a188fad8c47e29ad9764d27b47e6f57bb7e4ebd",
     "Skeleton_Axe.bin": "f994f9e1b3297961a2b27120adb81ccc61ef7a901586b584fa53fdba8b962cc7",
@@ -14,5 +16,5 @@
     "LICENSE.txt": "5d822abca4e08c5a91d329e5372b3dc605cba8d994f752cb0f7dfdb7a0a79954",
     "Hollow_King.glb": "001aaf9e2a91dc9822cf8d31bf257adcef3ca4e3e1013ba3c92d4d9577600b16"
   },
-  "derivation": "Hollow_King.glb removes the mage hat mesh; skeleton, textures, and animation are retained."
+  "derivation": "Hollow_King.glb removes the mage hat; skeleton, textures and animation are retained."
 }

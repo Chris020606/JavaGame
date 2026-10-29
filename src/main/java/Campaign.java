@@ -12,13 +12,13 @@ public final class Campaign {
             "The skyfires died a century ago. Beneath these stones, one ember still warms the valley. Hold the sanctuary until its beacon wakes.",
             "The beacon answers. Across the valley, something ancient hears it too."),
         new Chapter("THE ASH WARDEN",5,5,true,
-            "Once the keeper of this shrine, the Ash Warden now serves the cold. Break his oath and reclaim the northern road.",
+            "The Ash Cemetery shelters a broken oath. Its buried keeper has risen as the Ash Warden. Defeat him beneath the crypts and reclaim the northern road.",
             "The Warden falls. His broken seal reveals a road to the Crown of Dawn."),
         new Chapter("ROAD TO DAWN",6,9,false,
-            "Refugees follow your light through the highlands. Defend the waystones while the last caravan crosses the pass.",
+            "Snow buries the northern pass. Boneguards, dead archers and frost hexers hunt the last caravan. Hold the waystones until the refugees cross.",
             "The caravan reaches safety. Only the Hollow King stands between the valley and morning."),
         new Chapter("THE HOLLOW KING",10,10,true,
-            "The Hollow King has swallowed every fire before yours. Face him alone at the final waystone. Let this be the last long night.",
+            "The Hollow King has swallowed every fire before yours. Face him alone among the crypts of the Hollow Necropolis. Let this be the last long night.",
             "At dawn, the valley remembers warmth. The stones shine again, and the road home is open. Your watch is complete.")
     };
     public static Chapter chapter(int wave) {

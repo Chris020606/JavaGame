@@ -24,6 +24,8 @@
     "platform_stone",
     "campfire_stones",
     "fence_simple",
-    "statue_ring"
+    "statue_ring",
+    "bridge_stone",
+    "cliff_half_stone"
   ]
 }

@@ -3,6 +3,8 @@ import java.util.Random;
 /** One announced arrival at a time; clearing the field never skips queued raiders. */
 public final class WaveDirector {
     private final Random random;
+    private Entities.Difficulty difficulty=Entities.Difficulty.NORMAL;
+    public void difficulty(Entities.Difficulty difficulty) { this.difficulty=difficulty; }
     private int wave, remaining, total;
     private float rest=5, arrival, x, z;
     public record Spawn(float x,float z,int wave,int variant) {}
@@ -14,7 +16,7 @@ public final class WaveDirector {
             if (levelCleared(living) || wave>=10) return null;
             rest-=dt;
             if (rest>0) return null;
-            rest=0; wave++; total=remaining=Campaign.enemies(wave); schedule();
+            rest=0; wave++; total=remaining=difficulty.count(Campaign.enemies(wave),Campaign.chapter(wave).bossOnly()); schedule();
             return null;
         }
         arrival-=dt;
@@ -34,11 +36,11 @@ public final class WaveDirector {
     public int chapterIndex() { return Campaign.index(total==0?wave+1:wave); }
     private void schedule() {
         // Four approach routes, with lateral and distance variation.
-        int gate=random.nextInt(4);
+        int gate=Campaign.index(wave)==2?(random.nextBoolean()?0:2):random.nextInt(4);
         double angle=gate*Math.PI/2+(random.nextFloat()-.5)*.55;
         float radius=20+random.nextFloat()*2;
         x=(float)Math.sin(angle)*radius; z=(float)Math.cos(angle)*radius;
-        arrival=.9f+random.nextFloat()*1.4f;
+        arrival=(.9f+random.nextFloat()*1.4f)*difficulty.cadence;
         if (remaining%3==0) arrival+=1.2f;
     }
     public record State(int wave,int remaining,int total,float rest,float arrival,float x,float z) {}

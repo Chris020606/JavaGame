@@ -12,6 +12,7 @@ uniform vec3 bossPos;
 uniform float bossGlow;
 uniform float shadowSize;
 uniform vec2 material;
+uniform float environment;
 out vec4 finalColor;
 const float PI=3.14159265;
 float depthAt(vec2 p) { return dot(texture(shadowMap,p).rgb,vec3(1.0,1.0/255.0,1.0/65025.0)); }
@@ -38,8 +39,8 @@ void main() {
     vec3 f=fresnel(hv,mix(vec3(.04),albedo,metal));
     vec3 spec=distribution*geometry*f/max(4.0*nv*max(nl,.001),.001);
     float shadow=visibility(n,l);
-    vec3 sun=((1.0-f)*(1.0-metal)*albedo/PI+spec)*vec3(3.4,2.85,2.2)*nl*shadow;
-    vec3 hemi=mix(vec3(.16,.19,.12),vec3(.43,.57,.72),n.y*.5+.5);
+    vec3 sun=((1.0-f)*(1.0-metal)*albedo/PI+spec)*(environment<.5?vec3(3.4,2.85,2.2):environment<1.5?vec3(1.6,.9,.6):environment<2.5?vec3(2.4,2.8,3.3):vec3(.35,.42,.9))*nl*shadow;
+    vec3 hemi=mix(vec3(.16,.19,.12),environment>2.5?vec3(.20,.22,.43):environment>1.5?vec3(.53,.65,.82):environment>.5?vec3(.35,.30,.41):vec3(.43,.57,.72),n.y*.5+.5);
     vec3 color=albedo*hemi*.75+sun;
     // Local emissive sources illuminate the camp, sanctuary, and boss silhouette.
     color+=albedo*vec3(2.4,.65,.12)/(1.0+dot(world-vec3(3,.7,-2),world-vec3(3,.7,-2))*.6);
@@ -47,7 +48,7 @@ void main() {
     color+=albedo*vec3(.75,.12,1.4)*bossGlow/(1.0+dot(world-bossPos,world-bossPos)*.3);
     color+=pow(1.0-nv,4.0)*vec3(.025,.05,.065);
     float dist=length(viewPos-world);
-    float fog=clamp((1.0-exp(-dist*.008))*exp(-max(world.y,0.0)*.06),0.0,.70);
-    color=mix(color,vec3(.23,.37,.43),fog);
+    float fog=clamp((1.0-exp(-dist*(environment>2.5?.016:environment>.5 && environment<1.5?.014:.008)))*exp(-max(world.y,0.0)*.06),0.0,.70);
+    color=mix(color,environment>2.5?vec3(.03,.035,.075):environment>1.5?vec3(.42,.55,.65):environment>.5?vec3(.16,.12,.16):vec3(.23,.37,.43),fog);
     finalColor=vec4(color,tex.a);
 }

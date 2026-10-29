@@ -11,3 +11,7 @@ gradlew.bat text eol=crlf
 *.png binary
 *.wav binary
 *.jar binary
+
+# Preserve upstream whitespace in imported Kenney meshes and license files.
+resources/outpost/graveyard/** -whitespace
+resources/outpost/nature/** -whitespace

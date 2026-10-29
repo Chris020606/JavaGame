@@ -1,6 +1,6 @@
 # Outpost
 
-![Modern lighting and skeletal boss](docs/images/modern-boss-warden.png)
+![Cemetery chapter](docs/images/expansion-chapter-1.png)
 
 **Outpost** is a small 3D wave-defense game about a warden protecting a frontier settlement. Fight through increasingly dangerous raids, collect crystals, and improve your hero and outpost before the next attack arrives.
 
@@ -17,7 +17,12 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 - Filtered cast shadows, material lighting, bloom, anti-aliasing, and a native-DPI combat HUD.
 - Stamina management, timed attack chains, charged heavies, parry/riposte, and lunging strikes.
 - Towering skeletal bosses with slams, rushes, sigils, and enraged phases.
-- An inventory with equippable weapon tiers, healing potions, and workshop restocking.
+- Easy, Normal, Hard, and Extreme campaigns with coordinated enemy squads.
+- Four distinct chapter environments: meadow, cemetery, snowy pass, and necropolis.
+- Skeleton squads with flanking scouts, retreating archers, and allied-healing hexers.
+- Independent health, damage, stamina, recovery, speed, defense, and sanctuary training.
+- A drag-and-drop equipment grid with a rotatable 3D hero preview.
+- Visible swords, axe, bows/crossbows, staves, and four modular armor slots.
 - Boss-only duels against the Ash Warden and Hollow King, with crystal rewards and weapon loot.
 - Directional sword attacks with a three-hit combo and a heavy cleave.
 - Six enemy types with different strengths and attack styles.
@@ -26,7 +31,9 @@ See [GAME_GUIDE.md](GAME_GUIDE.md) for the complete player and developer guide, 
 - A decorated low-poly map with paths, trees, lanterns, fences, rocks, and flowers.
 - Sound effects, a name screen, save/load, and customizable controls.
 
-![Living valley and sky](docs/images/living-horizon.png)
+![Frozen Pass](docs/images/expansion-chapter-2.png)
+
+![Equipment inventory and character preview](docs/images/expansion-inventory.png)
 
 ## Download and install
 
@@ -82,8 +89,9 @@ Red and gold warnings show where an enemy is about to attack. Step away from the
 Defeated enemies drop crystals. Spend them at the workshop near the outpost:
 
 - **Outpost:** increases its maximum integrity and repairs it completely.
-- **Armor:** reduces damage taken from enemy attacks.
-- **Character:** increases sword damage and maximum health.
+- **Training:** improve health, damage, stamina capacity/recovery, movement, and damage reduction independently.
+- **Equipment Forge:** unlock visible weapon upgrades and Iron, Runic, or Dawnsteel armor sets.
+- **Supplies:** restock healing potions.
 
 Stay near the outpost when you need to recover. The safe area heals your warden over time.
 

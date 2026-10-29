@@ -1,0 +1,31 @@
+{
+  "author": "Kenney",
+  "license": "CC0",
+  "version": "5.0",
+  "source": "https://opengameart.org/content/graveyard-kit",
+  "archive_sha256": "1a93613f2e5675f3310acf49ec9ef13ae7adeb756ac3b205bfb6cc9311a81062",
+  "models": [
+    "crypt",
+    "crypt-large",
+    "crypt-large-roof",
+    "crypt-door",
+    "gravestone-cross",
+    "gravestone-round",
+    "gravestone-broken",
+    "grave",
+    "coffin",
+    "iron-fence",
+    "iron-fence-border-gate",
+    "stone-wall",
+    "stone-wall-column",
+    "altar-stone",
+    "pillar-obelisk",
+    "pine-crooked",
+    "trunk",
+    "lantern-candle",
+    "lightpost-single",
+    "fire-basket",
+    "road",
+    "rocks-tall"
+  ]
+}

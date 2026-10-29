@@ -59,11 +59,11 @@ public final class SaveGame {
         List<Enemy> enemies=new ArrayList<>();
         for (int i=0;i<count;i++) {
             String k="enemy."+i+".";
-            Enemy e=new Enemy(number(p,k+"x",-30,30),number(p,k+"z",-30,30),wave,integer(p,k+"variant",0,legacy?4:5),number(p,k+"personality",0,1));
+            Enemy e=new Enemy(number(p,k+"x",-30,30),number(p,k+"z",-30,30),wave,integer(p,k+"variant",0,legacy?4:5),number(p,k+"personality",0,1),progress.difficulty());
             e.health=number(p,k+"health",.001f,e.maxHealth); e.facing=number(p,k+"facing",-360,360);
             // Resume with a short grace period; interrupted windups/projectiles are cancelled.
             e.cooldown=Math.max(.6f,number(p,k+"cooldown",0,5)); enemies.add(e);
         }
-        return new Snapshot(Settings.cleanName(p.getProperty("name")),number(p,"player.x",-22,22),number(p,"player.z",-22,22),number(p,"player.facing",-360,360),progress,director,List.copyOf(enemies),p.containsKey("arena")?Arena.valueOf(p.getProperty("arena")):Arena.forWave(wave),p.containsKey("stamina")?number(p,"stamina",0,100):100);
+        return new Snapshot(Settings.cleanName(p.getProperty("name")),number(p,"player.x",-22,22),number(p,"player.z",-22,22),number(p,"player.facing",-360,360),progress,director,List.copyOf(enemies),p.containsKey("arena")?Arena.valueOf(p.getProperty("arena")):Arena.forWave(wave),p.containsKey("stamina")?number(p,"stamina",0,progress.maxStamina()):100);
     }
 }
