@@ -41,6 +41,14 @@ public class Progression {
     public Progression() { this(HeroClass.WARRIOR); }
     public Progression(HeroClass heroClass) { this(heroClass,Difficulty.NORMAL); }
     public Progression(HeroClass heroClass,Difficulty difficulty) { this.heroClass=heroClass;this.difficulty=difficulty;health=maxHealth(); }
+    /** Separate sandbox loadout; grants equipment without fabricated kills or boss rewards. */
+    public static Progression playtest(HeroClass hero,Difficulty difficulty,boolean maxTraining) {
+        Progression p=new Progression(hero,difficulty);p.crystals=100000;p.potions=5;
+        p.weaponUnlocked=p.weaponTier=p.armorUnlocked=3;
+        java.util.Arrays.fill(p.armor,3);
+        if(maxTraining) { p.vitality=p.power=p.endurance=p.recovery=p.agility=p.baseLevel=p.armorLevel=10; }
+        p.health=p.maxHealth();p.baseHealth=p.maxBaseHealth();return p;
+    }
     public Difficulty difficulty() { return difficulty; }
     public int armorUnlocked() { return armorUnlocked; }
     public int armorTier(ArmorSlot slot) { return armor[slot.ordinal()]; }

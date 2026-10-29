@@ -2,7 +2,7 @@
 
 **Outpost** is a 3D action and wave-defense game about the last warden of a dying valley. Protect the sanctuary, master stamina-based combat, build your character, and carry the last ember through a four-chapter campaign.
 
-**Current source version: 1.7.0.** The latest published download is **v1.2.0** and contains the older game. The features and screenshots below describe the current source. Build it locally or get packages from a successful [desktop build workflow](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml).
+**Current source version: 1.8.0.** The latest published download is **v1.2.0** and contains the older game. The features and screenshots below describe the current source. Build it locally or get packages from a successful [desktop build workflow](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml).
 
 ![Ash Cemetery with grouped burial plots and a winding approach](docs/images/polish-cemetery.png)
 
@@ -54,6 +54,14 @@ Open the inventory for a **rotatable 3D player preview**, an equipment grid, own
 
 ![Equipment grid with visible player armor and weapon](docs/images/expansion-inventory.png)
 
+## Instant playtest — no grinding
+
+Choose **PLAYTEST / ALL GEAR** on the title screen. Select any class, difficulty, and chapter, then start with all weapons and armor unlocked, a full Dawnsteel set equipped, five potions, 100,000 crystals, full health/stamina, and maxed training. Switch Training to starter stats if you want to test upgrades or combat balance. The inventory opens immediately so you can try equipment.
+
+**Pause → Playtest Tools** changes class/chapter or resets the complete kit. **Load Playtest** resumes the separate `playtest-save.properties` slot; the regular campaign save is preserved. Save/load shortcuts use the active mode's slot.
+
+To launch directly from source: `./gradlew run --args=--playtest`. A packaged launcher also accepts `--playtest`.
+
 ## Music and sound
 
 An original stereo soundtrack has separate title, meadow, cemetery, frozen-pass, and necropolis themes. A synchronized percussion layer fades in during combat. Scene transitions crossfade; music continues through paused menus while combat intensity fades out.
@@ -93,7 +101,8 @@ Extract the archive and keep its folders together. These packages are unsigned. 
 
 | Version | Availability | Main additions |
 | --- | --- | --- |
-| 1.7.0 | Current source | Natural scenery composition, redesigned workshop, chapter soundtrack, layered Foley, textured combat effects |
+| 1.8.0 | Current source | All-unlocked playtest, class/chapter selector, starter/max training and separate save |
+| [1.7.0](https://github.com/Chris020606/JavaGame/commit/0d2c25f) | Source update | Natural scenery composition, redesigned workshop, chapter soundtrack, layered Foley, textured combat effects |
 | [1.6.0](https://github.com/Chris020606/JavaGame/commit/3cdadad) | Source update | Tactical AI, four difficulties, chapter biomes, training/forge, modular armor and preview inventory |
 | [1.5.0](https://github.com/Chris020606/JavaGame/commit/f5908ed) | Source update | Combat discipline, skeletal bosses, modern lighting and post-processing |
 | [1.4.0](https://github.com/Chris020606/JavaGame/commit/bbad0ff) | Source update | Four-chapter story, boss-only levels, sprint/dodge, living sky, healing indicators |

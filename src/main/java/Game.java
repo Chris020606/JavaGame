@@ -21,6 +21,10 @@ public class Game {
     private final java.util.function.BooleanSupplier mouseAttack;
     private final Settings settings=new Settings();
     private final Path settingsPath=AppData.directory().resolve("settings.properties"), savePath=AppData.directory().resolve("save.properties");
+    private final Path playtestSavePath=AppData.directory().resolve("playtest-save.properties");
+    private boolean playtest,maxPlaytestTraining=true;
+    private int playtestChapter;
+    private GameState playtestReturn=GameState.MAIN_MENU;
     private GameState settingsReturn=GameState.MAIN_MENU;
     private Controls.Action rebinding;
     private String nameDraft="", menuMessage="";
@@ -99,11 +103,13 @@ public class Game {
     int chapterIndex() { return director.chapterIndex(); }
     private void start() {
         applyHeroModel(); storyTime=12;
-        progress = new Progression(selectedClass,selectedDifficulty); player.setMovementSpeed(selectedClass.speed); inventory=false; heroShots.clear(); enemies.clear(); projectiles.clear(); wave = 0; nextWave = 5;
+        progress = playtest?Progression.playtest(selectedClass,selectedDifficulty,maxPlaytestTraining):new Progression(selectedClass,selectedDifficulty); player.setMovementSpeed(selectedClass.speed); inventory=false; heroShots.clear(); enemies.clear(); projectiles.clear(); wave = 0; nextWave = 5;
         attackCooldown = slashTime = noticeTime = heavyCharge = 0; bossHazards.clear(); workshop = false;
         player.getPosition().x(0).y(0).z(4);
         player.resetCombat();
-        director.reset();director.difficulty(progress.difficulty());applyProgression();lastHeroX=0;lastHeroZ=4; feedback.clear();vfx.clear(); combo=0;
+        director.reset();director.difficulty(progress.difficulty());
+        if(playtest) { director.restore(new WaveDirector.State(Campaign.CHAPTERS[playtestChapter].first()-1,0,0,5,0,0,21));wave=director.wave();inventory=true; }
+        applyProgression();lastHeroX=0;lastHeroZ=4; feedback.clear();vfx.clear(); combo=0;
         comboWindow=inputBuffer=attackElapsed=hurtFlash=0; impactPending=false;
         player.setName(settings.playerName); menuMessage="";
         state = GameState.PLAYING;
@@ -114,8 +120,13 @@ public class Game {
 
     public void update(float dt) {
         dt = Math.max(0, Math.min(dt, .05f));applyProgression();
-        boolean titleAudio=state==GameState.MAIN_MENU || state==GameState.LOGIN || state==GameState.JOURNAL && journalReturn==GameState.MAIN_MENU || state==GameState.SETTING_MENU && settingsReturn==GameState.MAIN_MENU;
+        boolean titleAudio=state==GameState.PLAYTEST_SETUP && playtestReturn==GameState.MAIN_MENU || state==GameState.MAIN_MENU || state==GameState.LOGIN || state==GameState.JOURNAL && journalReturn==GameState.MAIN_MENU || state==GameState.SETTING_MENU && settingsReturn==GameState.MAIN_MENU;
         audio.update(dt,chapterIndex(),titleAudio,state==GameState.PLAYING && !inventory && !workshop && !enemies.isEmpty());
+        if(state==GameState.PLAYTEST_SETUP) {
+            if(IsKeyPressed(KEY_ESCAPE))state=playtestReturn;
+            else if(IsKeyPressed(KEY_ENTER))startPlaytest();
+            return;
+        }
         if(state==GameState.JOURNAL) {
             if(IsKeyPressed(KEY_ESCAPE)||IsKeyPressed(KEY_ENTER)) state=journalReturn;
             return;
@@ -154,7 +165,7 @@ public class Game {
             return;
         }
         if ((state==GameState.PLAYING||state==GameState.PAUSED)&&settings.controls.pressed(SAVE)) { saveCurrent(); return; }
-        if (settings.controls.pressed(LOAD)) { loadCurrent(); return; }
+        if (settings.controls.pressed(LOAD)) { loadActive(); return; }
         if (IsKeyPressed(KEY_ENTER)) {
             if (state == GameState.MAIN_MENU) { requestNewGame(); return; }
             if (state == GameState.GAME_OVER) { start(); return; }
@@ -391,6 +402,7 @@ public class Game {
             drawEnemyHealth();
             if (state == GameState.MAIN_MENU) { drawMainMenu(); return; }
             if (state == GameState.LOGIN) { drawNameEntry(); return; }
+            if(state==GameState.PLAYTEST_SETUP) { drawPlaytestSetup();return; }
             if (state == GameState.SETTING_MENU) { drawSettings(); return; }
             feedback.draw(sceneManager.getOpenScene().getCameraController().getCamera());
             if (hurtFlash>0) {
@@ -464,7 +476,7 @@ public class Game {
         // A quiet header leaves the centre of the world unobstructed.
         Menu.panel(24,20,264,134);
         Menu.text(progress.heroClass().label.toUpperCase()+"  /  "+player.getName(),40,29,20,Menu.TEXT);
-        Menu.text("LEVEL "+progress.characterLevel()+" / "+progress.difficulty().label.toUpperCase()+" / DEF "+progress.defense(),40,55,13,Menu.MUTED);
+        Menu.text((playtest?"PLAYTEST":"LEVEL "+progress.characterLevel())+" / "+progress.difficulty().label.toUpperCase()+" / DEF "+progress.defense(),40,55,13,Menu.MUTED);
         Menu.bar(40,80,232,progress.health(),progress.maxHealth(),Menu.TEAL);
         Menu.text((int)progress.health()+" / "+progress.maxHealth()+" HP",40,94,15,Menu.TEXT);
         Menu.text("STAMINA "+Math.round(player.discipline().stamina())+" / "+progress.maxStamina(),40,120,12,Menu.GOLD);
@@ -537,7 +549,9 @@ public class Game {
         if (Menu.button("QUIT", x+480, y+285, 140, true)) quitRequested = true;
         if (Menu.button("SETTINGS",x,y+344,200,true)) openSettings();
         if(Menu.button("CHRONICLE / THE LAST EMBER",x+220,y+344,400,true)) { journalReturn=state;state=GameState.JOURNAL; }
-        Menu.text(menuMessage.isEmpty()?"Hold right mouse to orbit. ESC pauses.":menuMessage, x, y+401, 15, Menu.MUTED);
+        if(Menu.button("PLAYTEST / ALL GEAR",x,y+402,280,true))openPlaytestSetup();
+        Menu.text("All classes, armor, weapons and chapters.",x+300,y+416,16,Menu.TEAL);
+        Menu.text(menuMessage.isEmpty()?"Hold right mouse to orbit. ESC pauses.":menuMessage, x, y+462, 15, Menu.MUTED);
     }
     private void drawInventory() { dim();if(equipmentScreen.draw(progress,settings.controls.label(INVENTORY))) inventory=false; }
     private void drawWorkshop() {
@@ -549,14 +563,15 @@ public class Game {
         Menu.text(lost?"OUTPOST FALLEN":"DEFENSE PAUSED",x,y,36,Menu.TEXT);
         Menu.text(lost?"Wave "+wave+" / "+progress.kills()+" defeated":player.getName()+" / Wave "+wave,x,y+54,20,Menu.MUTED);
         if (Menu.button(lost?"TRY AGAIN":"RESUME",x,y+100,440,true)) { if (lost) start(); else state=GameState.PLAYING; }
-        if (Menu.button("SAVE GAME",x,y+154,212,!lost)) saveCurrent();
-        if (Menu.button("LOAD GAME",x+228,y+154,212,Files.exists(savePath))) loadCurrent();
+        if (Menu.button(playtest?"SAVE PLAYTEST":"SAVE GAME",x,y+154,212,!lost)) saveCurrent();
+        if (Menu.button(playtest?"LOAD PLAYTEST":"LOAD GAME",x+228,y+154,212,Files.exists(playtest?playtestSavePath:savePath)))loadActive();
         if (Menu.button("SETTINGS",x,y+208,212,true)) openSettings();
         if (Menu.button("CHRONICLE",x+228,y+208,212,true)) { journalReturn=state;state=GameState.JOURNAL; }
         if (Menu.button("SAVE & MAIN MENU",x,y+262,440,!lost)) { if (saveCurrent()) state=GameState.MAIN_MENU; }
         if (lost && Menu.button("MAIN MENU",x,y+262,440,true)) state=GameState.MAIN_MENU;
-        Menu.text(menuMessage,x,y+325,15,Menu.GOLD);
-        Menu.text("Closing the game also saves an active defense.",x,y+356,15,Menu.MUTED);
+        if(playtest) { if(Menu.button("PLAYTEST TOOLS / CLASS + CHAPTER",x,y+318,440,true))openPlaytestSetup(); }
+        else Menu.text(menuMessage,x,y+325,15,Menu.GOLD);
+        Menu.text(playtest?"Separate playtest save / Campaign save is preserved.":"Closing the game also saves an active defense.",x,y+(playtest?380:356),15,Menu.MUTED);
     }
     private void drawChapterEnd() {
         dim();int x=(GetScreenWidth()-660)/2,y=(GetScreenHeight()-480)/2;
@@ -572,7 +587,7 @@ public class Game {
         } else Menu.text(progress.kills()+" enemies defeated / The sanctuary endures.",x,y+230,19,Menu.TEAL);
         if(Menu.button(state==GameState.VICTORY?"MAIN MENU [ENTER]":"CONTINUE [ENTER]",x,y+350,380,true)) continueCampaign();
         if(state!=GameState.VICTORY && Menu.button("INVENTORY",x+400,y+350,240,true)) inventory=true;
-        Menu.text("Your campaign progress has been saved.",x,y+424,16,Menu.MUTED);
+        Menu.text(playtest?"Your playtest has been saved separately.":"Your campaign progress has been saved.",x,y+424,16,Menu.MUTED);
         if(state!=GameState.VICTORY && Menu.button("MAIN MENU [ESC]",x+440,y+416,200,true)) { saveCurrent();state=GameState.MAIN_MENU; }
     }
     private void drawJournal() {
@@ -588,12 +603,33 @@ public class Game {
         if(Menu.button("RETURN [ENTER / ESC]",x,y+540,360,true)) state=journalReturn;
     }
     private void requestNewGame() {
+        playtest=false;
         nameDraft=settings.playerName.equals("Warden")?"":settings.playerName;
         menuMessage=""; state=GameState.LOGIN;
         while (GetCharPressed()!=0) { }
     }
     private void confirmName() {
         settings.playerName=Settings.cleanName(nameDraft);settings.difficulty=selectedDifficulty; persistSettings(); start();
+    }
+    void startPlaytest() { playtest=true;start(); }
+    boolean isPlaytest() { return playtest; }
+    private void openPlaytestSetup() { playtestReturn=state;state=GameState.PLAYTEST_SETUP; }
+    private void drawPlaytestSetup() {
+        dim();int x=(GetScreenWidth()-800)/2,y=(GetScreenHeight()-600)/2;
+        Menu.panel(x,y,800,600);Menu.text("PLAYTEST / EVERYTHING UNLOCKED",x+24,y+20,30,Menu.GOLD);
+        Menu.text("100,000 crystals / all gear / 5 potions / separate save",x+24,y+69,18,Menu.TEAL);
+        Menu.text("CLASS",x+24,y+93,12,Menu.MUTED);
+        for(HeroClass hero:HeroClass.values())if(Menu.button((selectedClass==hero?"> ":"")+hero.label,x+24+hero.ordinal()*256,y+112,240,true))selectedClass=hero;
+        Menu.text("DIFFICULTY",x+24,y+181,12,Menu.MUTED);
+        for(Difficulty d:Difficulty.values())if(Menu.button((selectedDifficulty==d?"> ":"")+d.label,x+24+d.ordinal()*194,y+202,176,true))selectedDifficulty=d;
+        Menu.text("JUMP TO CHAPTER",x+24,y+270,12,Menu.MUTED);
+        for(int i=0;i<4;i++)if(Menu.button((playtestChapter==i?"> ":"")+(i+1)+" / "+Campaign.CHAPTERS[i].title(),x+24+(i%2)*388,y+292+(i/2)*56,364,true))playtestChapter=i;
+        if(Menu.button(maxPlaytestTraining?"TRAINING / MAXED":"TRAINING / STARTER STATS",x+24,y+420,364,true))maxPlaytestTraining=!maxPlaytestTraining;
+        Menu.text("Gear stays unlocked with either option.",x+412,y+435,16,Menu.MUTED);
+        if(Menu.button("START / RESET PLAYTEST [ENTER]",x+24,y+490,364,true))startPlaytest();
+        if(Menu.button("BACK [ESC]",x+412,y+490,176,true))state=playtestReturn;
+        if(Menu.button("LOAD PLAYTEST",x+608,y+490,168,Files.exists(playtestSavePath)))loadFrom(playtestSavePath,true);
+        Menu.text("Tab changes equipment. Pause > Playtest Tools switches class/chapter or resets the kit.",x+24,y+556,15,Menu.MUTED);
     }
     private void drawNameEntry() {
         dim(); int x=(GetScreenWidth()-560)/2,y=(GetScreenHeight()-450)/2;
@@ -654,15 +690,20 @@ public class Game {
     boolean saveCurrent() {
         if (progress.defeated()) return false;
         try {
-            SaveGame.write(savePath,new SaveGame.Snapshot(player.getName(),player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),progress,director.snapshot(),enemies.stream().filter(e->e.health>0).toList(),Arena.HIGHLANDS,player.discipline().stamina()));
-            menuMessage="Game saved."; notifyPlayer(menuMessage); return true;
+            SaveGame.write(playtest?playtestSavePath:savePath,new SaveGame.Snapshot(player.getName(),player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),progress,director.snapshot(),enemies.stream().filter(e->e.health>0).toList(),Arena.HIGHLANDS,player.discipline().stamina()));
+            menuMessage=playtest?"Playtest saved separately.":"Game saved."; notifyPlayer(menuMessage); return true;
         } catch (IOException e) { menuMessage="Save failed. Previous save was kept.";notifyPlayer(menuMessage);System.err.println(e.getMessage());return false; }
     }
-    boolean loadCurrent() {
+    private boolean loadActive() { return loadFrom(playtest?playtestSavePath:savePath,playtest); }
+    boolean loadCurrent() { return loadFrom(savePath,false); }
+    private boolean loadFrom(Path path,boolean sandbox) {
         try {
-            SaveGame.Snapshot saved=SaveGame.read(savePath);
+            SaveGame.Snapshot saved=SaveGame.read(path);
+            playtest=sandbox;
             progress=saved.progression();selectedDifficulty=progress.difficulty();director.difficulty(progress.difficulty());director.restore(saved.wave());enemies.clear();enemies.addAll(saved.enemies());projectiles.clear();heroShots.clear();inventory=false;
-            selectedClass=progress.heroClass();applyHeroModel();
+            selectedClass=progress.heroClass();
+            if(playtest) { playtestChapter=director.chapterIndex();maxPlaytestTraining=progress.level(Progression.Upgrade.VITALITY)==10; }
+            applyHeroModel();
             player.setName(saved.name());settings.playerName=saved.name();player.getPosition().x(saved.x()).z(saved.z());player.getRotation().y(saved.facing());
             applyProgression();player.resetCombat();player.discipline().stamina(saved.stamina());lastHeroX=saved.x();lastHeroZ=saved.z();heavyCharge=0;bossHazards.clear();feedback.clear();vfx.clear();wave=director.wave();nextWave=director.rest();workshop=false;
             combo=0;comboWindow=inputBuffer=attackElapsed=hurtFlash=slashTime=noticeTime=0;attackCooldown=.3f;impactPending=false;
@@ -678,7 +719,7 @@ public class Game {
     GameAudio audio() { return audio; }
     boolean isWorkshopOpen() { return workshop; }
     public boolean shouldQuit() { return quitRequested; }
-    public void dispose() { persistSettings(); if (state==GameState.PLAYING||state==GameState.PAUSED||state==GameState.LEVEL_COMPLETE||state==GameState.VICTORY||state==GameState.JOURNAL&&journalReturn==GameState.PAUSED||state==GameState.SETTING_MENU&&settingsReturn==GameState.PAUSED) saveCurrent(); audio.close();vfx.close(); assets.close();renderer.close();equipmentScreen.close(); player.dispose(); Menu.close(); }
+    public void dispose() { persistSettings(); if (state==GameState.PLAYING||state==GameState.PAUSED||state==GameState.LEVEL_COMPLETE||state==GameState.VICTORY||state==GameState.JOURNAL&&journalReturn==GameState.PAUSED||state==GameState.SETTING_MENU&&settingsReturn==GameState.PAUSED||state==GameState.PLAYTEST_SETUP&&playtestReturn==GameState.PAUSED) saveCurrent(); audio.close();vfx.close(); assets.close();renderer.close();equipmentScreen.close(); player.dispose(); Menu.close(); }
     public GameState getState() { return state; }
     public void setState(GameState state) { this.state = state; }
     public SceneManager getSceneManager() { return sceneManager; }

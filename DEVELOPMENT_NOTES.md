@@ -1,5 +1,11 @@
 # Development progress and future work
 
+## v1.8.0: Instant all-unlocked playtest
+
+Added a title-screen playtest entry with class, difficulty, and chapter selection. A direct --playtest launcher argument opens the full inventory immediately. The sandbox grants every weapon/armor tier, equips Dawnsteel, starts with five potions and 100,000 crystals, and optionally maxes all seven training tracks without inventing kills. Pause > Playtest Tools resets the kit or switches class/chapter. Save/load and automatic saves use playtest-save.properties; normal campaign saves remain separate, and the main Load Game action still loads the campaign.
+
+Validation: 50 unit tests pass, including the sandbox factory for every class and both training settings. Both desktop DPI suites pass menu selection, equipped gear, chapter jump, separate save/resume, and byte-for-byte campaign preservation. The packaged v1.8.0 launcher completes --playtest --smoke-test outside the repository; its isolated profile contains the complete kit in playtest-save.properties and no normal campaign save. No asset/shader warnings. README and guide explain direct launch and playtest controls. Remaining roadmap stays in the sections below; no requested feature work remains.
+
 ## v1.7.0: Authored scenery, workshop redesign, soundtrack, and combat effects
 
 Completed the presentation polish request. Replaced repeated rings/grids and evenly spaced boundary stones with EnvironmentLayout: winding approach paths, an authored expedition camp, grouped vegetation/rock colonies, rotated burial plots, broken cemetery walls and gateways, uneven mountain outcrops, and asymmetrical crypt/obelisk landmarks. Seeded groves create a stable, irregular horizon. Both lit and shadow passes consume the same cached prop layout. Central healing space stays clear; decorative scenery still has no collision/cover. Grave earth and crooked pines have more restrained tints. Camp lighting follows the new fire locations.

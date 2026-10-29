@@ -1,4 +1,4 @@
-# Outpost game guide (v1.7.0)
+# Outpost game guide (v1.8.0)
 
 ## Start here
 
@@ -226,3 +226,9 @@ Swings and impacts have multiple variations. Bows, magic, parries, dodges, boss 
 Enemy attacks now use soft additive weapon ribbons and particles, spell rune decals, animated charge-lane motes, magical projectile trails, and modeled arrow shafts/tips. Slams emit dust and expanding shockwave rings; healing channels send wisps toward their target. Visual effects do not change collision, damage, warning duration, or parry rules. Red/purple boss attacks remain unblockable. Gold cleaves and rushes can be parried.
 
 Chapter scenery uses authored camps, grave plots, ruins and mountain outcrops with winding paths and stable seeded groves. Large scenery stays outside the sanctuary center. Decorative props still do not provide collision or cover. Layout generation is deterministic and does not change save data.
+
+## Instant equipment playtest
+
+Title screen → PLAYTEST / ALL GEAR opens a class, difficulty, and chapter selector. Start with every weapon and armor tier owned, Dawnsteel equipped, five potions, 100,000 crystals, full health/stamina, and zero fabricated kills. Maxed Training starts all seven training tracks at level 10. Starter Stats keeps those tracks at level 1 while leaving all gear and crystals available. The inventory opens on entry; Tab or Escape closes it.
+
+Pause → Playtest Tools reopens the selector. Starting again resets the kit and jumps directly to the chosen chapter's preparation period. Boss chapters still contain one boss. Use Tab to mix equipment and visit the workshop to test purchases with starter stats. Save/load and automatic saves use `playtest-save.properties`; the regular `save.properties` campaign is preserved. Load Game on the title screen always loads the campaign. Load Playtest resumes the sandbox. `--playtest` launches directly into a fully equipped Warrior playtest.

@@ -14,6 +14,7 @@ public class Main {
         Game game = null;
         try {
             game = new Game();
+            if(java.util.Arrays.asList(args).contains("--playtest"))game.startPlaytest();
             int frames = 0;
             while (!WindowShouldClose() && !game.shouldQuit()) {
                 game.update(GetFrameTime());

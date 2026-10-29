@@ -1,5 +1,6 @@
 public enum GameState {
     LOGIN,
+    PLAYTEST_SETUP,
     LEVEL_COMPLETE,
     VICTORY,
     JOURNAL,

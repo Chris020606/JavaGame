@@ -518,7 +518,31 @@ public class InputSmokeTest {
             hexer.attackTime=0;hexer.healCooldown=0;frame(game);check(hexer.healingTarget==patient,"Second ward did not begin");
             hexer.hit(1,0,0,0);patientHp=patient.health;for(int i=0;i<45;i++)frame(game);
             check(patient.health==patientHp && hexer.healingTarget==null,"Interrupted hexer still healed ally");
-            System.out.println("PASS: streamed title/chapter music, mixer mute, redesigned workshop and textured combat effects; crossbow impact and interruptible allied healing; four difficulty selections, independent training, forge purchases, armor click/drag/remove, equipment preview and expanded save state; stamina/parry/riposte, timed chains, charged heavies, lunges, boss slams/charges/sigils/enrage, four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
+            { // A complete playtest kit must never replace the campaign save.
+            for(Entities.Enemy enemy:game.getEnemies())enemy.cooldown=Math.min(2,enemy.cooldown);
+            check(game.saveCurrent(),"Campaign checkpoint before playtest failed");
+            byte[] campaignBefore=java.nio.file.Files.readAllBytes(profile.resolve("save.properties"));
+            game.setState(GameState.MAIN_MENU);
+            int playMenuX=(GetScreenWidth()-640)/2,playMenuY=(GetScreenHeight()-420)/2;
+            click(game,playMenuX+140,playMenuY+424);check(game.getState()==GameState.PLAYTEST_SETUP,"Playtest entry did not open");
+            int tx=(GetScreenWidth()-800)/2,ty=(GetScreenHeight()-600)/2;
+            click(game,tx+400,ty+134);click(game,tx+580,ty+314);capture("playtest-setup");
+            click(game,tx+180,ty+512);check(game.isPlaytest(),"Playtest did not start");
+            check(game.getProgression().heroClass()==HeroClass.ARCHER && game.chapterIndex()==1,"Playtest class/chapter selection failed");
+            check(game.getProgression().weaponUnlocked()==3 && game.getProgression().armorUnlocked()==3 && game.getProgression().potions()==5,"Playtest gear not unlocked");
+            check(game.getProgression().crystals()==100000 && game.getProgression().kills()==0 && game.getPlayer().discipline().maximum()==235,"Playtest resources/training incorrect");
+            for(int i=0;i<4;i++)frame(game);capture("playtest-all-gear");
+            check(game.saveCurrent() && java.util.Arrays.equals(campaignBefore,java.nio.file.Files.readAllBytes(profile.resolve("save.properties"))),"Playtest overwrote campaign save");
+            check(java.nio.file.Files.exists(profile.resolve("playtest-save.properties")),"Separate playtest save missing");
+            key(game,KEY_ESCAPE);key(game,KEY_ESCAPE);
+            int px=(GetScreenWidth()-440)/2,py=(GetScreenHeight()-440)/2;
+            click(game,px+220,py+340);check(game.getState()==GameState.PLAYTEST_SETUP,"Pause playtest tools failed");
+            click(game,tx+650,ty+512);check(game.isPlaytest() && game.getState()==GameState.PAUSED,"Separate playtest resume failed");
+            check(game.getProgression().heroClass()==HeroClass.ARCHER && game.chapterIndex()==1,"Saved playtest kit/chapter lost");
+            check(game.loadCurrent() && !game.isPlaytest(),"Returning to normal campaign failed");
+            check(java.util.Arrays.equals(campaignBefore,java.nio.file.Files.readAllBytes(profile.resolve("save.properties"))),"Campaign changed after playtest resume");
+            }
+            System.out.println("PASS: all-unlocked playtest, class/chapter controls, separate save/resume and campaign preservation; streamed title/chapter music, mixer mute, redesigned workshop and textured combat effects; crossbow impact and interruptible allied healing; four difficulty selections, independent training, forge purchases, armor click/drag/remove, equipment preview and expanded save state; stamina/parry/riposte, timed chains, charged heavies, lunges, boss slams/charges/sigils/enrage, four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
         } finally {
             if (game != null) game.dispose();
             CloseWindow();
