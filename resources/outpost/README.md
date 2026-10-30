@@ -4,7 +4,7 @@
 
 The scenery OBJ/MTL files are original geometry created for this project. Rebuild all derived assets from the project root with `python3 tools/prepare_assets.py`. Do not move the derived raider independently of its referenced textures.
 
-`hero_archer.glb` and `hero_mage.glb` use the Ranger and Mage meshes, the full knight movement/melee animation set, and class-specific ranged clips from the same bundled CC0 sources. Their textures remain relative to the Adventurers character directory.
+`hero_warrior.glb`, `hero_archer.glb` and `hero_mage.glb` use the Knight, Ranger and Mage meshes, the full knight movement/melee animation set, and class-specific ranged clips from the same bundled CC0 sources. Their textures remain relative to the Adventurers character directory. Retained `resources/source/Rig_Medium_General.glb` and `Rig_Medium_Simulation.glb` supply Death_A and Cheering; ordinary human enemies receive Death_A too. The Archer also imports Ranged_2H_Reload. The runtime's fitted armor follows these poses using the same 23-bone rigs. Skeleton deaths use the source pack's existing Death_C_Skeletons disassembly clip.
 
 The `nature/` directory contains selected unmodified Kenney Nature Kit (2.1) OBJ/MTLs downloaded from https://opengameart.org/content/nature-kit under CC0. The original license and source/archive checksum are included. To reimport, run `python3 tools/import_nature.py /path/to/Nature-Kit.zip`. These downloaded models are independent of `prepare_assets.py`.
 

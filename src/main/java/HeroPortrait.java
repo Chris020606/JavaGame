@@ -13,7 +13,7 @@ public final class HeroPortrait implements AutoCloseable {
     public void prepare(WorldAssets assets,HeroClass hero) {
         Player player=heroes[hero.ordinal()];
         if(player==null) {
-            player=new Player();String file=hero==HeroClass.WARRIOR?"resources/knight.glb":hero==HeroClass.ARCHER?"resources/outpost/hero_archer.glb":"resources/outpost/hero_mage.glb";
+            player=new Player();String file=hero==HeroClass.WARRIOR?"resources/outpost/hero_warrior.glb":hero==HeroClass.ARCHER?"resources/outpost/hero_archer.glb":"resources/outpost/hero_mage.glb";
             player.setModel(LoadModel(AssetPaths.path(file)));player.loadAnimations(AssetPaths.path(file));player.setWeaponStyle(hero.ordinal());player.setAnimationFPS(60);
             player.setAnimation(hero==HeroClass.ARCHER?PlayerAnimation.BOW_IDLE:PlayerAnimation.UNARMED_IDLE);heroes[hero.ordinal()]=player;
         }

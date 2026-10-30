@@ -3,6 +3,7 @@ package Entities;
 public class Enemy {
     public float x, z, health, cooldown;
     public float facing, animationTime, attackTime, hitFlash, stun;
+    public float deathTime;
     public float attackX, attackZ;
     public BossMove bossMove=BossMove.CLEAVE;
     private int attackCycle;

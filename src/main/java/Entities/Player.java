@@ -181,7 +181,8 @@ public class Player extends Entity {
         if (isDodging()) {
             setAnimation(dodgeClip);
         } else if (attackTime > 0) {
-            setAnimation(weaponStyle==1 && 1-attackTime/attackDuration<.28f?(crossbow?PlayerAnimation.CROSSBOW_IDLE:PlayerAnimation.BOW_DRAW):attackClip);
+            float phase=1-attackTime/attackDuration;
+            setAnimation(weaponStyle==1 && crossbow?(phase<.28f?PlayerAnimation.CROSSBOW_IDLE:phase<.55f?PlayerAnimation.CROSSBOW_SHOOT:PlayerAnimation.CROSSBOW_RELOAD):weaponStyle==1 && phase<.28f?PlayerAnimation.BOW_DRAW:attackClip);
         } else if(discipline.recovery()>0 || charging) {
             setAnimation(PlayerAnimation.BLOCK_IDLE);
         } else if (moving) {
@@ -195,7 +196,7 @@ public class Player extends Entity {
             float phase=1-attackTime/attackDuration;
             // Deliberate windup, fast contact, and a full recovery pose.
             float pose=phase<.36f?phase/.36f*.42f:phase<.58f?.42f+(phase-.36f)/.22f*.30f:.72f+(phase-.58f)/.42f*.28f;
-            playAnimationProgress(weaponStyle==0?pose:weaponStyle==1?(phase<.28f?phase/.28f:(phase-.28f)/.72f):phase);
+            playAnimationProgress(weaponStyle==0?pose:weaponStyle==1 && crossbow?(phase<.28f?0:phase<.55f?(phase-.28f)/.27f:(phase-.55f)/.45f):weaponStyle==1?(phase<.28f?phase/.28f:(phase-.28f)/.72f):phase);
         }
         else updateAnimation(dt);
     }
@@ -212,6 +213,11 @@ public class Player extends Entity {
     }
 
     public float attackRemaining() { return attackTime; }
+    public boolean isReloading() { return crossbow && weaponStyle==1 && attackTime>0 && 1-attackTime/attackDuration>=.55f; }
+    public void poseForOutcome(boolean victory,float elapsed) {
+        setAnimation(victory?PlayerAnimation.CHEER:PlayerAnimation.DEATH);
+        playAnimationProgress(victory?(elapsed%2.4f)/2.4f:elapsed/1.25f);
+    }
     public boolean isAttacking() { return attackTime > 0; }
 
     public void poseForInventory() {

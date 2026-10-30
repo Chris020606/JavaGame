@@ -32,6 +32,7 @@ for character,output in [('Rogue_Hooded','raider'),('Ranger','archer'),('Mage','
     d,b=read_glb(ROOT/('resources/KayKit_Adventurers_2.0_FREE/Characters/gltf/'+character+'.glb'))
     d['animations']=[]
     b=append_animations(d,b,ROOT/'resources/knight.glb',('Running_A','Melee_1H_Attack_Chop','Melee_2H_Idle','Walking_A.001','Running_Strafe_Left','Running_Strafe_Right'))
+    b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_General.glb',('Death_A',))
     if output!='raider':
         clips=('Ranged_Bow_Draw','Ranged_Bow_Release') if output=='archer' else ('Ranged_Magic_Spellcasting',)
         b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_CombatRanged.glb',clips)
@@ -40,13 +41,16 @@ for character,output in [('Rogue_Hooded','raider'),('Ranger','archer'),('Mage','
     write_glb(OUT/(output+'.glb'),d,b)
 # Player variants retain the full shared locomotion/combat set plus ranged clips.
 for character, output, clips in [
-    ('Ranger', 'hero_archer', ('Ranged_Bow_Draw', 'Ranged_Bow_Release', 'Ranged_Bow_Idle', 'Ranged_2H_Aiming', 'Ranged_2H_Shoot')),
+    ('Knight', 'hero_warrior', ()),
+    ('Ranger', 'hero_archer', ('Ranged_Bow_Draw', 'Ranged_Bow_Release', 'Ranged_Bow_Idle', 'Ranged_2H_Aiming', 'Ranged_2H_Shoot', 'Ranged_2H_Reload')),
     ('Mage', 'hero_mage', ('Ranged_Magic_Spellcasting',))]:
     d,b=read_glb(ROOT/('resources/KayKit_Adventurers_2.0_FREE/Characters/gltf/'+character+'.glb'))
     d['animations']=[]
     source,_=read_glb(ROOT/'resources/knight.glb')
     b=append_animations(d,b,ROOT/'resources/knight.glb',tuple(a['name'] for a in source['animations']))
     b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_CombatRanged.glb',clips)
+    b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_General.glb',('Death_A',))
+    b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_Simulation.glb',('Cheering',))
     for img in d.get('images',[]):
         if 'uri' in img: img['uri']='../KayKit_Adventurers_2.0_FREE/Characters/gltf/'+img['uri']
     write_glb(OUT/(output+'.glb'),d,b)

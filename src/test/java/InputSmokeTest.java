@@ -106,6 +106,7 @@ public class InputSmokeTest {
             for(int i=0;i<20;i++)frame(game);
             key(game,KEY_Q);for(int i=0;i<80;i++)frame(game);
             check(game.getState()==GameState.LEVEL_COMPLETE,"Boss defeat did not reach chapter completion for "+hero);
+            for(int i=0;i<100;i++)frame(game);
             int x=(GetScreenWidth()-660)/2,y=(GetScreenHeight()-480)/2;
             // First mouse opening happens after this frame's preview preparation.
             click(game,x+510,y+370);
@@ -119,6 +120,61 @@ public class InputSmokeTest {
             key(game,KEY_ESCAPE);
         }
         System.out.println("PASS: boss defeat then first mouse-open inventory, reopen, shortcut and class thumbnail changes");
+    }
+    private static void victoryPresentationRegression(Game game,java.nio.file.Path profile) throws Exception {
+        for(HeroClass hero:HeroClass.values()) {
+            Progression kit=Progression.playtest(hero,Entities.Difficulty.NORMAL,false);
+            Entities.Enemy boss=new Entities.Enemy(0,10,5,5,.5f);
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Ada",0,8,0,kit,new WaveDirector.State(5,0,1,8,0,21,0),java.util.List.of(boss),Arena.HIGHLANDS));
+            check(game.loadCurrent(),"Victory presentation setup failed");key(game,KEY_ENTER);
+            boss=game.getEnemies().get(0);boss.stun=boss.cooldown=100;
+            for(int i=0;i<20;i++)frame(game);
+            check(game.audio().theme()==6,"Boss duel score did not start");
+            boss.health=boss.maxHealth*.4f;
+            for(int i=0;i<20;i++)frame(game);
+            check(!game.audio().ready() || game.audio().enrageGain()>.4f,"Enrage music did not intensify");
+            if(hero==HeroClass.ARCHER) {
+                key(game,KEY_SPACE);boolean reload=false;float[] reloadStart=null,reloadEnd=null;
+                for(int i=0;i<38;i++) {
+                    frame(game);
+                    if(game.getPlayer().isReloading()) {
+                        reload=true;
+                        check(new ModelAnimation(game.getPlayer().getAnimation()).position(game.getPlayer().getAnimationIndex()).name().getString().equals("Ranged_2H_Reload"),"Crossbow selected the wrong native clip");
+                        if(reloadStart==null)reloadStart=handPose(game);reloadEnd=handPose(game);
+                    }
+                }
+                check(reload,"Crossbow never entered its reload clip");
+                check(Math.abs(reloadStart[0]-reloadEnd[0])+Math.abs(reloadStart[1]-reloadEnd[1])+Math.abs(reloadStart[2]-reloadEnd[2])>.05f,"Crossbow reload did not move its weapon hand");
+                for(int i=0;i<30;i++)frame(game);
+            }
+            boss.health=1;key(game,KEY_Q);
+            for(int i=0;i<100 && game.getState()==GameState.PLAYING;i++)frame(game);
+            check(game.getState()==GameState.LEVEL_COMPLETE && game.fallenCount()==1,"Boss did not leave an animated defeat");
+            int kills=game.getProgression().kills();
+            for(int i=0;i<35;i++)frame(game);capture("victory-"+hero.name().toLowerCase()+"-fall");
+            for(int i=0;i<75;i++)frame(game);capture("victory-"+hero.name().toLowerCase()+"-congratulations");
+            check(game.getProgression().kills()==kills,"Death animation awarded duplicate loot");
+            check(game.getPlayer().getAnimationIndex()>=0,"Hero celebration pose missing");
+            for(int i=0;i<100;i++)frame(game);check(game.fallenCount()==0,"Death visuals did not expire");
+            check(game.saveCurrent(),"Completed chapter save failed");
+            check(game.loadCurrent() && game.getState()==GameState.LEVEL_COMPLETE,"Completed chapter failed to restore");
+            int x=(GetScreenWidth()-660)/2,y=(GetScreenHeight()-480)/2;click(game,x+510,y+370);
+            check(game.isInventoryOpen(),"Restored congratulations inventory did not open");key(game,KEY_ESCAPE);
+            // Render the actual player death clip, including fitted armor, and hold its last frame.
+            game.setState(GameState.PLAYING);game.getProgression().damagePlayer(10000);frame(game);
+            check(game.getState()==GameState.GAME_OVER,"Player defeat did not trigger");
+            float[] start=handPose(game);for(int i=0;i<35;i++)frame(game);capture("victory-"+hero.name().toLowerCase()+"-death-motion");
+            for(int i=0;i<50;i++)frame(game);float[] end=handPose(game);
+            check(Math.abs(start[0]-end[0])+Math.abs(start[1]-end[1])+Math.abs(start[2]-end[2])>.1f,"Player death did not animate for "+hero);
+            for(int i=0;i<40;i++)frame(game);float[] held=handPose(game);
+            check(Math.abs(end[0]-held[0])+Math.abs(end[1]-held[1])+Math.abs(end[2]-held[2])<.001f,"Player death restarted instead of holding");
+            capture("victory-"+hero.name().toLowerCase()+"-player-defeat");
+        }
+        for(int wave:new int[]{1,6})for(int variant=0;variant<5;variant++) {
+            Entities.Enemy enemy=encounter(game,profile,wave,variant,12);enemy.health=0;frame(game);
+            check(game.fallenCount()==1,"Ordinary enemy death missing");for(int i=0;i<4;i++)frame(game);
+        }
+        System.out.println("PASS: boss/enrage music, crossbow reload, all class death/celebration rigs, enemy falls, one-time rewards and completion restore");
     }
     public static void main(String[] args) throws Exception {
         java.nio.file.Path profile=java.nio.file.Files.createTempDirectory(java.nio.file.Path.of("build"),"smoke-profile-");
@@ -135,6 +191,9 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--victory-review")) {
+                chapterInventoryRegression(game,profile);victoryPresentationRegression(game,profile);return;
+            }
             if(java.util.Arrays.asList(args).contains("--inventory-regression")) {
                 chapterInventoryRegression(game,profile);return;
             }
@@ -247,7 +306,7 @@ public class InputSmokeTest {
             }
             for (int i = 0; i < 5; i++) frame(game);
             check(game.weaponMaterialsValid(),"Generated weapon materials loaded black");
-            check(!game.audio().ready() || game.audio().loadedMusic()==6 && game.audio().musicStreaming(),"Music assets missing or streams not playing");
+            check(!game.audio().ready() || game.audio().loadedMusic()==8 && game.audio().musicStreaming(),"Music assets missing or streams not playing");
             check(game.audio().theme()==4,"Title music theme not selected");
             capture("ui-menu-retina");
             // Click the center of the visible Begin Defense button, in window pixels.
@@ -667,6 +726,7 @@ public class InputSmokeTest {
             }
             System.out.println("PASS: all-unlocked playtest, class/chapter controls, separate save/resume and campaign preservation; streamed title/chapter music, mixer mute, redesigned workshop and textured combat effects; crossbow impact and interruptible allied healing; four difficulty selections, independent training, forge purchases, armor click/drag/remove, equipment preview and expanded save state; stamina/parry/riposte, timed chains, charged heavies, lunges, boss slams/charges/sigils/enrage, four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
             chapterInventoryRegression(game,profile);
+            victoryPresentationRegression(game,profile);
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

@@ -36,6 +36,11 @@ def effect(name,duration,kind,seed=1):
         elif kind=='slam':value=.45*math.sin(TAU*(55*t-12*t*t))*math.exp(-t*4)+.38*low*math.exp(-t*7)
         elif kind=='dash':value=.35*(noise-low)*math.sin(math.pi*u)*tail
         elif kind=='ward':value=(.17*math.sin(TAU*392*t)+.12*math.sin(TAU*587.33*t)+.08*math.sin(TAU*783.99*t))*math.sin(math.pi*u)**2
+        elif kind=='victory':
+            for f,start in ((392,0),(493.88,.18),(587.33,.36),(783.99,.60),(987.77,.60)):
+                age=t-start
+                if age>=0:value+=(.17*math.sin(TAU*f*age)+.04*math.sin(TAU*f*2*age))*(1-math.exp(-age*60))*math.exp(-age*2.7)
+        elif kind=='boss-fall':value=.40*math.sin(TAU*(64*t-17*t*t))*math.exp(-t*3)+.32*low*math.exp(-t*5)+.16*noise*math.exp(-t*14)*(.5+.5*math.cos(t*95))
         value*=attack*min(1,(duration-t)/.012)
         left.append(value);right.append(value*(.97+.03*math.sin(t*11)))
     # Short stereo reflections soften synthetic edges and give metal/stone a space.
@@ -45,7 +50,7 @@ def effect(name,duration,kind,seed=1):
             left[i]+=right[i-offset]*amount;right[i]+=left[i-offset]*amount*.8
     pcm(name,left,right,rate)
 
-for name,duration in [('swing',.30),('hit',.28),('hurt',.46),('kill',.5),('wave',1.5),('upgrade',1.1),('bow',.28),('magic',.55),('parry',.65),('slam',1.0),('dash',.35),('ward',.95)]:
+for name,duration in [('swing',.30),('hit',.28),('hurt',.46),('kill',.5),('wave',1.5),('upgrade',1.1),('bow',.28),('magic',.55),('parry',.65),('slam',1.0),('dash',.35),('ward',.95),('victory',1.8),('boss-fall',1.2)]:
     effect(name,duration,name,19)
 for kind in ('swing','hit'):
     for variant in range(3):effect(kind+str(variant),(.27 if kind=='swing' else .25)+variant*.025,kind,31+variant*17)
@@ -102,3 +107,37 @@ def score(name,theme):
     pcm(name,left,right,RATE)
 for theme,name in enumerate(('meadow','cemetery','frost','necropolis','title','battle')):
     score('music-'+name,theme);print('Composed',name,flush=True)
+
+def boss_score(enrage=False):
+    """160-BPM duel score: low strings, brass calls, driving toms and cymbals."""
+    left=array('f',[0])*FRAMES;right=array('f',[0])*FRAMES
+    rng=random.Random(194)
+    def voice(start,duration,midi,amp,pan,brass=False):
+        freq=440*2**((midi-69)/12);offset=round(start*RATE)
+        for i in range(round(duration*RATE)):
+            t=i/RATE;env=min(1,t/.018)*min(1,(duration-t)/.06)*math.exp(-t*(1 if brass else 6))
+            phase=TAU*freq*t
+            tone=math.sin(phase)+.30*math.sin(phase*2)+.17*math.sin(phase*3)+.08*math.sin(phase*5)
+            index=(offset+i)%FRAMES;value=amp*env*tone
+            left[index]+=value*math.sqrt((1-pan)/2);right[index]+=value*math.sqrt((1+pan)/2)
+    for bar in range(16):
+        start=bar*1.5;root=(38,38,34,34,41,41,36,37)[bar%8]
+        for step in range(8 if not enrage else 16):
+            interval=.1875 if not enrage else .09375
+            voice(start+step*interval,.24,root+(12 if step%4 in (1,3) else 0),.13 if not enrage else .075,(-1 if step%2 else 1)*.45)
+        if not enrage:
+            for midi in (root+12,root+19,root+24):voice(start,.7,midi,.085,0,True)
+            voice(start+.75,.60,root+([27,24,22,19][bar%4]),.11,.22,True)
+        for beat in range(8):
+            offset=round((start+beat*.1875)*RATE)
+            for i in range(round(.30*RATE)):
+                t=i/RATE;noise=rng.uniform(-1,1)
+                if enrage:value=.065*noise*math.exp(-t*55)+(.14*noise*math.exp(-t*16) if beat in (2,6) else 0)
+                else:value=(.34*math.sin(TAU*(78*t-70*t*t))*math.exp(-t*14) if beat%2==0 else .07*noise*math.exp(-t*60))+(.16*noise*math.exp(-t*24) if beat in (2,6) else 0)
+                index=(offset+i)%FRAMES;left[index]+=value;right[index]+=value*.94
+    dryL=array('f',left);dryR=array('f',right)
+    for i in range(FRAMES):
+        left[i]+=dryR[(i-round(.1875*RATE))%FRAMES]*.14
+        right[i]+=dryL[(i-round(.28125*RATE))%FRAMES]*.14
+    pcm('music-enrage' if enrage else 'music-boss',left,right,RATE)
+boss_score();boss_score(True);print('Composed boss duel and enrage layer',flush=True)

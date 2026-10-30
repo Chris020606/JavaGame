@@ -63,6 +63,8 @@ node_modules/
 # (Add any runtime-generated data directories here)
 
 # Local game state and native crash dumps
+/DEVELOPMENT_NOTES.md
+/GAME_GUIDE.md
 /outpost-data/
 /save.properties*
 /settings.properties*

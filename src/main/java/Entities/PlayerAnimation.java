@@ -3,6 +3,9 @@ package Entities;
 public enum PlayerAnimation {
     CROSSBOW_IDLE("Ranged_2H_Aiming"),
     CROSSBOW_SHOOT("Ranged_2H_Shoot"),
+    CROSSBOW_RELOAD("Ranged_2H_Reload"),
+    DEATH("Death_A"),
+    CHEER("Cheering"),
     BOW_DRAW("Ranged_Bow_Draw"),
     BOW_IDLE("Ranged_Bow_Idle"),
     BOW_RELEASE("Ranged_Bow_Release"),

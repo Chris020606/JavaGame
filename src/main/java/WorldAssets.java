@@ -290,17 +290,18 @@ public final class WorldAssets implements AutoCloseable {
     private void drawBoss(Enemy enemy) {
         Model model=enemy.king?bossKing:bossWarrior;
         ModelAnimation animations=enemy.king?kingAnimations:bossAnimations;
-        String name=enemy.stun>0?"Hit_A":enemy.chargeTime>0?"Running_A":enemy.attackTime>0?
+        String name=enemy.health<=0?"Death_C_Skeletons":enemy.stun>0?"Hit_A":enemy.chargeTime>0?"Running_A":enemy.attackTime>0?
             switch(enemy.bossMove) { case CLEAVE -> "2H_Melee_Attack_Slice";case SLAM -> "2H_Melee_Attack_Chop";case CHARGE -> "Taunt";case SIGILS -> "Spellcast_Raise"; }:"Walking_D_Skeletons";
         ModelAnimation clip=new ModelAnimation(animations).position(bossClips.get(name));
-        int frame=enemy.attackTime>0?AnimationFrames.progress(1-enemy.attackTime/enemy.attackDuration(),clip.keyframeCount()):
+        int frame=enemy.health<=0?AnimationFrames.progress(enemy.deathTime/1.6f,clip.keyframeCount()):enemy.attackTime>0?AnimationFrames.progress(1-enemy.attackTime/enemy.attackDuration(),clip.keyframeCount()):
             AnimationFrames.loop(enemy.animationTime*45,clip.keyframeCount());
         UpdateModelAnimation(model,clip,frame);lightModel(model);surface(.38f,.25f);
         float scale=enemy.king?2.45f:2.1f;
         Color tint=enemy.hitFlash>0?Menu.TEXT:enemy.king?Menu.color(190,190,215):Menu.color(210,184,151);
-        DrawModelEx(model,v(enemy.x,0,enemy.z),v(0,1,0),enemy.facing,v(scale,scale,scale),tint);
-        drawWeapon(model,v(enemy.x,0,enemy.z),enemy.facing,enemy.king?bossStaff:bossAxe,WHITE,scale);
-        if(shadowPass) return;
+        float modelY=enemy.health<=0?-Math.max(0,enemy.deathTime-1.8f)*3:0;
+        DrawModelEx(model,v(enemy.x,modelY,enemy.z),v(0,1,0),enemy.facing,v(scale,scale,scale),tint);
+        if(enemy.health>0)drawWeapon(model,v(enemy.x,0,enemy.z),enemy.facing,enemy.king?bossStaff:bossAxe,WHITE,scale);
+        if(shadowPass || enemy.health<=0) return;
         Color energy=enemy.enraged()?Menu.RED:enemy.king?Menu.color(185,105,255):Menu.GOLD;
         DrawCylinderWires(v(enemy.x,.08f,enemy.z),1.35f,1.35f,.1f,32,energy);
         // Eye lights follow the animated head rather than floating over the character.
@@ -334,17 +335,18 @@ public final class WorldAssets implements AutoCloseable {
         else if(enemy.locomotion<.1f) clipName=bone?"Idle_Combat":"Melee_2H_Idle";
         else if(enemy.action.equals("STRAFE")) clipName="Running_Strafe_Left";
         else clipName=enemy.variant==1?"Running_A":bone?"Walking_D_Skeletons":"Walking_A.001";
+        if(enemy.health<=0)clipName=bone?"Death_C_Skeletons":"Death_A";
         Integer index=(bone?bossClips:humanClips.get(character)).get(clipName);
         if(index==null) throw new IllegalStateException("Missing enemy clip "+clipName);
         ModelAnimation clip=new ModelAnimation(clips).position(index);
         float phase=enemy.attackTime>0?1-enemy.attackTime/enemy.attackDuration():0;
         if(!bone && enemy.variant==3 && enemy.attackTime>0) phase=enemy.attackTime>.25f?(enemy.attackDuration()-enemy.attackTime)/Math.max(.01f,enemy.attackDuration()-.25f):(.25f-enemy.attackTime)/.25f;
-        int frame=enemy.attackTime>0?AnimationFrames.progress(phase,clip.keyframeCount()):AnimationFrames.loop(enemy.animationTime*60,clip.keyframeCount());
+        int frame=enemy.health<=0?AnimationFrames.progress(enemy.deathTime,clip.keyframeCount()):enemy.attackTime>0?AnimationFrames.progress(phase,clip.keyframeCount()):AnimationFrames.loop(enemy.animationTime*60,clip.keyframeCount());
         UpdateModelAnimation(character,clip,frame);lightModel(character);
         float scale=enemy.variant==2?1.18f:1;
         Color tint=enemy.hitFlash>0?Menu.GOLD:bone?Menu.color(174,205,228):WHITE;
-        DrawModelEx(character,v(enemy.x,0,enemy.z),v(0,1,0),enemy.facing,v(scale,scale,scale),tint);
-        drawWeapon(character,v(enemy.x,0,enemy.z),enemy.facing,enemy.variant==3?bow:enemy.variant==4?staff:enemy.variant==2?waraxe:sword,WHITE,scale);
+        DrawModelEx(character,v(enemy.x,enemy.health<=0?-Math.max(0,enemy.deathTime-1.2f)*3:0,enemy.z),v(0,1,0),enemy.facing,v(scale,scale,scale),tint);
+        if(enemy.health>0)drawWeapon(character,v(enemy.x,0,enemy.z),enemy.facing,enemy.variant==3?bow:enemy.variant==4?staff:enemy.variant==2?waraxe:sword,WHITE,scale);
     }
     public void drawArmor(Player player,Progression progress) {
         surface(.35f,.55f);

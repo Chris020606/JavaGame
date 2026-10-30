@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'outpost'
-version = '2.0.0'
+version = '2.1.0'
 repositories { mavenCentral() }
 
 dependencies {
@@ -35,14 +35,14 @@ def runtimeAssets = copySpec {
 }
 def guideImages = copySpec {
     from('docs/images') {
-        include 'player-meadow.png', 'player-welcome.png', 'player-warrior.png', 'player-mage.png', 'player-moonlight.png'
+        include 'player-meadow.png', 'player-welcome.png', 'player-warrior.png', 'player-mage.png', 'player-moonlight.png', 'player-victory.png'
     }
 }
 distributions {
     main {
         contents {
             into('resources') { with runtimeAssets }
-            from('README.md', 'GAME_GUIDE.md', 'DEVELOPMENT_NOTES.md', 'THIRD_PARTY_NOTICES.md')
+            from('README.md', 'THIRD_PARTY_NOTICES.md')
             into('licenses') { from 'licenses' }
             into('docs/images') { with guideImages }
         }
@@ -55,7 +55,7 @@ tasks.register('stagePackage', Sync) {
     into layout.buildDirectory.dir('package-input')
     from(tasks.shadowJar.archiveFile)
     into('resources') { with runtimeAssets }
-    from('README.md', 'GAME_GUIDE.md', 'DEVELOPMENT_NOTES.md', 'THIRD_PARTY_NOTICES.md')
+    from('README.md', 'THIRD_PARTY_NOTICES.md')
     into('licenses') { from 'licenses' }
     into('icons') { from 'packaging/icons' }
     into('docs/images') { with guideImages }

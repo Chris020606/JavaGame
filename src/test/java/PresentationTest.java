@@ -22,7 +22,7 @@ class PresentationTest {
         assertEquals(4,signatures.size());
     }
     @Test void musicIsStereoLoopableAndNotClippedOrSilent() throws Exception {
-        for(String theme:List.of("title","meadow","cemetery","frost","necropolis","battle")) {
+        for(String theme:List.of("title","meadow","cemetery","frost","necropolis","battle","boss","enrage")) {
             try(AudioInputStream stream=AudioSystem.getAudioInputStream(Path.of("resources/audio/music-"+theme+".wav").toFile())) {
                 assertEquals(2,stream.getFormat().getChannels());assertEquals(24000,stream.getFormat().getSampleRate());assertEquals(24*24000,stream.getFrameLength());
                 byte[] pcm=stream.readAllBytes();double energy=0,stereo=0;int peak=0;
@@ -40,7 +40,7 @@ class PresentationTest {
         }
     }
     @Test void originalFoleyFilesAreStereoFiniteAndShort() throws Exception {
-        for(String name:List.of("swing0","swing1","swing2","hit0","hit1","hit2","parry","bow","magic","ward","slam","upgrade"))
+        for(String name:List.of("swing0","swing1","swing2","hit0","hit1","hit2","parry","bow","magic","ward","slam","upgrade","victory","boss-fall"))
             try(AudioInputStream stream=AudioSystem.getAudioInputStream(Path.of("resources/audio/"+name+".wav").toFile())) {
                 assertEquals(2,stream.getFormat().getChannels());assertTrue(stream.getFrameLength()>4000 && stream.getFrameLength()<90000);
             }
