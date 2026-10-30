@@ -65,6 +65,9 @@ node_modules/
 # Local game state and native crash dumps
 /DEVELOPMENT_NOTES.md
 /GAME_GUIDE.md
+/marketing/exports/
+__pycache__/
+*.pyc
 /outpost-data/
 /save.properties*
 /settings.properties*

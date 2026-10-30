@@ -21,7 +21,7 @@ public final class WaveDirector {
         }
         arrival-=dt;
         if (arrival>0) return null;
-        Spawn result=new Spawn(x,z,wave,bossWave() && remaining==total?5:random.nextInt(wave>=3?5:wave>=2?4:3));
+        Spawn result=new Spawn(x,z,wave,WaveFormation.variant(wave,total-remaining));
         remaining--;
         if (remaining>0) schedule(); else rest=8;
         return result;

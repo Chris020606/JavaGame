@@ -7,7 +7,7 @@ public final class Controls {
     public enum Action {
         FORWARD("Forward",KEY_W), BACK("Back",KEY_S), LEFT("Left",KEY_A), RIGHT("Right",KEY_D),
         SLASH("Slash",KEY_SPACE), HEAVY("Heavy",KEY_Q), WORKSHOP("Workshop",KEY_E), MUTE("Mute",KEY_M),
-        SAVE("Quick save",KEY_F5), LOAD("Quick load",KEY_F9), INVENTORY("Inventory",KEY_TAB), POTION("Use potion",KEY_H), SPRINT("Sprint",KEY_LEFT_SHIFT), DODGE("Dodge",KEY_LEFT_CONTROL), PARRY("Parry",KEY_F), LUNGE("Lunge strike",KEY_R);
+        SAVE("Quick save",KEY_F5), LOAD("Quick load",KEY_F9), INVENTORY("Inventory",KEY_TAB), POTION("Use potion",KEY_H), SPRINT("Sprint",KEY_LEFT_SHIFT), DODGE("Dodge",KEY_LEFT_CONTROL), PARRY("Parry",KEY_F), LUNGE("Lunge strike",KEY_R), INTERACT("Interact / Blessing",KEY_G);
         public final String label; public final int defaultKey;
         Action(String label,int key) { this.label=label; defaultKey=key; }
     }

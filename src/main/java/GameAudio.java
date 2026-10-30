@@ -9,6 +9,8 @@ public final class GameAudio implements AutoCloseable {
     private boolean ready,muted;
     private float volume=.6f,duck;
     private int variation,theme=4;
+    private java.util.function.Consumer<String> cueObserver;
+    void observeCues(java.util.function.Consumer<String> observer) { cueObserver=observer; }
     public GameAudio() {
         InitAudioDevice();ready=IsAudioDeviceReady();
         if(!ready)return;
@@ -33,8 +35,9 @@ public final class GameAudio implements AutoCloseable {
         }
     }
     public void play(String name) {
-        if(muted || !ready)return;
         if(name.equals("swing") || name.equals("hit"))name+=variation++%3;
+        if(cueObserver!=null)cueObserver.accept(name);
+        if(muted || !ready)return;
         Sound sound=sounds.get(name);if(sound!=null) { PlaySound(sound);duck=.13f; }
     }
     public void configure(float volume,boolean mute) {

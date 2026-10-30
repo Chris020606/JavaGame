@@ -36,6 +36,7 @@ public class Game {
     private final ArrayList<Projectile> projectiles=new ArrayList<>();
     private Player player;
     private GameState journalReturn=GameState.MAIN_MENU;
+    private GameState blessingReturn=GameState.PLAYING;
     private float storyTime;
     private Difficulty selectedDifficulty=Difficulty.NORMAL;
     private float lastHeroX,lastHeroZ;
@@ -125,7 +126,7 @@ public class Game {
         player.setName(settings.playerName); menuMessage="";
         state = GameState.PLAYING;
     }
-    private void applyProgression() { player.setCrossbow(progress.heroClass()==HeroClass.ARCHER && progress.weaponTier()>=2);player.setMovementSpeed(progress.movementSpeed());player.discipline().configure(progress.maxStamina(),progress.staminaRecovery()); }
+    private void applyProgression() { player.setCrossbow(progress.heroClass()==HeroClass.ARCHER && progress.weaponTier()>=2);player.setMovementSpeed(progress.movementSpeed());player.setDodgeRecovery(1.5f-.15f*progress.expedition().rank(Expedition.Blessing.WAYFARER));player.discipline().configure(progress.maxStamina(),progress.staminaRecovery()); }
     private boolean nearBase() { return Math.hypot(player.getPosition().x(), player.getPosition().z()) < 6; }
     private void notifyPlayer(String message) { notice = message; noticeTime = 3; }
 
@@ -141,6 +142,15 @@ public class Game {
         boolean battle=state==GameState.PLAYING && !inventory && !workshop && !enemies.isEmpty();
         Enemy musicBoss=enemies.stream().filter(e->e.boss() && e.health>0).findFirst().orElse(null);
         audio.update(dt,chapterIndex(),titleAudio,battle,battle && musicBoss!=null,battle && musicBoss!=null && musicBoss.enraged());
+        if(state==GameState.RELIC_CHOICE) {
+            if(IsKeyPressed(KEY_ESCAPE))state=blessingReturn;
+            else if(settings.controls.pressed(SAVE))saveCurrent();
+            else for(int i=0;i<progress.expedition().offers().size();i++)if(IsKeyPressed(KEY_ONE+i)) { chooseBlessing(i);break; }
+            return;
+        }
+        if((state==GameState.PLAYING || state==GameState.LEVEL_COMPLETE) && settings.controls.pressed(INTERACT) && nearBase() && enemies.isEmpty() && director.remaining()==0 && progress.expedition().embers()>0 && !progress.expedition().offers().isEmpty()) {
+            blessingReturn=state;state=GameState.RELIC_CHOICE;return;
+        }
         if(state==GameState.PLAYTEST_SETUP) {
             if(IsKeyPressed(KEY_ESCAPE))state=playtestReturn;
             else if(IsKeyPressed(KEY_ENTER))startPlaytest();
@@ -212,6 +222,8 @@ public class Game {
         sceneManager.getOpenScene().updatesEntities(dt);
         if(!wasDodging && player.isDodging())audio.play("dash");
         float px = player.getPosition().x(), pz = player.getPosition().z();
+        FieldEvent event=progress.fieldEvent();FieldEvent.Status previousEventStatus=event.status();event.update(dt,px,pz,settings.controls.down(INTERACT));
+        if(event.claim()) { progress.rewardObjective();audio.play("upgrade");vfx.impact(event.x(),event.z(),Menu.GOLD,true);notifyPlayer("OBJECTIVE COMPLETE / +65 CRYSTALS / +1 EMBER BLESSING / SUPPLIES");saveCurrent(); }
         float heroVx=Math.max(-15,Math.min(15,(px-lastHeroX)/Math.max(.001f,dt))),heroVz=Math.max(-15,Math.min(15,(pz-lastHeroZ)/Math.max(.001f,dt)));
         lastHeroX=px;lastHeroZ=pz;
         if (nearBase()) progress.heal(dt);
@@ -246,6 +258,7 @@ public class Game {
             else {
                 combo=bufferedLunge||bufferedHeavy?0:bufferedTimed?combo%3+1:1;
                 activeAttack=bufferedLunge?Combat.lunge(progress.heroClass()):progress.heroClass().attack(combo,bufferedHeavy);
+                if(bufferedHeavy)activeAttack=Combat.scale(activeAttack,1+.12f*progress.expedition().rank(Expedition.Blessing.KINDLING),activeAttack.label());
                 if(bufferedHeavy) {
                     boolean perfect=releasedCharge>=.75f && releasedCharge<=1.05f;
                     float bonus=perfect?1.6f:releasedCharge>1.2f?1.05f:1+releasedCharge*.25f;
@@ -273,7 +286,9 @@ public class Game {
                 continue;
             }
             boolean huntsPlayer=enemy.chooseHero(px,pz,dt);
-            float tx=huntsPlayer?px:0,tz=huntsPlayer?pz:0,separationX=0,separationZ=0;
+            boolean huntsTraveler=!enemy.boss() && event.vulnerable() && enemy.distance(event.x(),event.z())<9 && (!huntsPlayer || enemy.distance(event.x(),event.z())<enemy.distance(px,pz)*.75f);
+            if(huntsTraveler)huntsPlayer=false;
+            float tx=huntsTraveler?event.x():huntsPlayer?px:0,tz=huntsTraveler?event.z():huntsPlayer?pz:0,separationX=0,separationZ=0;
             for(Enemy other:enemies) if(other!=enemy && other.health>0) {
                 float dx=enemy.x-other.x,dz=enemy.z-other.z,d=(float)Math.hypot(dx,dz);
                 if(d>.01f && d<2.5f) { float force=(2.5f-d)/2.5f;separationX+=dx/d*force;separationZ+=dz/d*force; }
@@ -308,7 +323,9 @@ public class Game {
                 } else if (enemy.ranged()) { projectiles.add(new Projectile(enemy,wave));if(enemy.distance(px,pz)<15)audio.play(enemy.variant==4?"magic":"bow"); }
                 else if (enemy.targetsPlayer && Combat.inArc(enemy.x,enemy.z,enemy.facing,px,pz,enemy.meleeRange(),65)) {
                     strikeHero(enemy.meleeDamage(wave),enemy.x,enemy.z,true,enemy);
-                } else if (!enemy.targetsPlayer && enemy.distance(0,0)<enemy.meleeRange()+.1f) {
+                } else if(enemy.targetsTraveler && event.vulnerable() && enemy.distance(event.x(),event.z())<enemy.meleeRange()+.1f) {
+                    event.damage(enemy.siegeDamage(wave));vfx.impact(event.x(),event.z(),Menu.RED,false);audio.play("hurt");
+                } else if (!enemy.targetsPlayer && !enemy.targetsTraveler && enemy.distance(0,0)<enemy.meleeRange()+.1f) {
                     float before=progress.baseHealth(); progress.damageBase(enemy.siegeDamage(wave));
                     feedback.add(0,0,"OUTPOST -"+Math.round(before-progress.baseHealth()),Menu.RED); audio.play("hurt");
                 }
@@ -318,6 +335,7 @@ public class Game {
                 if(enemy.ranged() && !SquadTactics.clearShot(enemy,tx,tz,enemies)) { enemy.sideStepTime=.65f;continue; }
                 float lead=enemy.ranged() && huntsPlayer?Math.min(.6f,enemy.distance(px,pz)/10)*(.45f+(1-enemy.difficulty.cadence)) : 0;
                 enemy.beginAttack(Math.max(-22,Math.min(22,tx+heroVx*lead)),Math.max(-22,Math.min(22,tz+heroVz*lead)),huntsPlayer);
+                enemy.targetsTraveler=huntsTraveler;
                 if(!enemy.ranged() && enemy.distance(px,pz)<10)audio.play("swing");
                 if(enemy.boss() && enemy.bossMove==BossMove.SIGILS) {
                     int count=enemy.enraged()?5:3;
@@ -346,9 +364,10 @@ public class Game {
         separateEnemies(dt);
         for (Iterator<Projectile> shots=projectiles.iterator();shots.hasNext();) {
             Projectile shot=shots.next(); shot.update(dt);
-            boolean hit=shot.playerTarget?shot.hits(px,pz,.65f):shot.hits(0,0,1.8f);
+            boolean hit=shot.travelerTarget?event.vulnerable() && shot.hits(event.x(),event.z(),.8f):shot.playerTarget?shot.hits(px,pz,.65f):shot.hits(0,0,1.8f);
             if (hit) {
-                if(shot.playerTarget) strikeHero(shot.damage,shot.x-shot.vx*.2f,shot.z-shot.vz*.2f,true,null);
+                if(shot.travelerTarget) { event.damage(shot.damage);vfx.impact(event.x(),event.z(),Menu.RED,false);audio.play("hurt"); }
+                else if(shot.playerTarget) strikeHero(shot.damage,shot.x-shot.vx*.2f,shot.z-shot.vz*.2f,true,null);
                 else {
                     float before=progress.baseHealth();progress.damageBase(shot.damage);
                     feedback.add(0,0,"OUTPOST -"+Math.round(before-progress.baseHealth()),Menu.RED);audio.play("hurt");
@@ -361,9 +380,11 @@ public class Game {
             if(hazard.hits(px,pz)) strikeHero(hazard.damage,hazard.x,hazard.z,false,null);
             if(hazard.expired()) hazards.remove();
         }
+        if(event.status()==FieldEvent.Status.FAILED && previousEventStatus!=FieldEvent.Status.FAILED)notifyPlayer("OPTIONAL OBJECTIVE LOST / The sanctuary still needs you.");
         if (progress.defeated()) { state = GameState.GAME_OVER;outcomeTime=0;player.resetCombat();impactPending=false;heavyCharge=0;player.poseForOutcome(false,0); return; }
+        if(wave>0 && director.total()>0 && director.remaining()==0 && enemies.isEmpty() && progress.expedition().waveCleared(wave))notifyPlayer("EMBER BLESSING EARNED / Return to the sanctuary and press "+settings.controls.label(INTERACT));
         WaveDirector.Spawn spawn=director.update(dt,enemies.size());
-        if (director.wave()!=wave) { wave=director.wave(); audio.play("wave"); notifyPlayer(chapter().bossOnly()?chapter().title()+" / BOSS DUEL":"WAVE "+(wave-chapter().first()+1)+" OF "+chapter().waves()+" / "+chapter().title()); }
+        if (director.wave()!=wave) { wave=director.wave();progress.fieldEvent().begin(wave);audio.play("wave"); notifyPlayer(chapter().bossOnly()?chapter().title()+" / BOSS DUEL":"WAVE "+(wave-chapter().first()+1)+" / "+WaveFormation.label(wave)); }
         if (spawn!=null) enemies.add(new Enemy(spawn.x(),spawn.z(),spawn.wave(),spawn.variant(),random.nextFloat(),progress.difficulty()));
         nextWave=director.rest();
         if(director.levelCleared(enemies.size()) && !player.isAttacking()) {
@@ -379,9 +400,10 @@ public class Game {
         if(player.invulnerable()) { feedback.add(px,pz,"EVADE",Menu.TEAL);return; }
         if(parryable && Combat.inArc(px,pz,player.getRotation().y(),sourceX,sourceZ,1000,75) && player.discipline().deflect()) {
             if(attacker!=null) { attacker.stun=1.1f;attacker.attackTime=attacker.chargeTime=0;attacker.impactPending=false;attacker.cooldown=1.3f; }
+            player.discipline().stamina(player.discipline().stamina()+10*progress.expedition().rank(Expedition.Blessing.SECOND_WIND));
             vfx.impact(px,pz,Menu.TEAL,true);feedback.add(px,pz,"PARRY / RIPOSTE",Menu.GOLD);audio.play("parry");return;
         }
-        float before=progress.health();progress.damagePlayer(damage);vfx.impact(px,pz,Menu.RED,false);
+        float before=progress.health();progress.damagePlayer(damage);progress.fieldEvent().interrupt();vfx.impact(px,pz,Menu.RED,false);
         feedback.add(px,pz,"-"+Math.round(before-progress.health()),Menu.RED);hurtFlash=.25f;audio.play("hurt");
     }
     private void continueCampaign() {
@@ -393,7 +415,7 @@ public class Game {
     private void resolvePlayerHit(float px,float pz) {
         slashTime=.16f;
         if (progress.heroClass()!=HeroClass.WARRIOR) {
-            heroShots.add(new HeroShot(px,pz,player.getRotation().y(),activeAttack,progress.damage(),progress.heroClass()==HeroClass.MAGE));
+            heroShots.add(new HeroShot(px,pz,player.getRotation().y(),activeAttack,Math.round(progress.damage()*(1+.10f*progress.expedition().rank(Expedition.Blessing.HUNTERS_MARK))),progress.heroClass()==HeroClass.MAGE));
             return;
         }
         boolean hit=false;
@@ -435,6 +457,7 @@ public class Game {
             if (state == GameState.LOGIN) { drawNameEntry(); return; }
             if(state==GameState.PLAYTEST_SETUP) { drawPlaytestSetup();return; }
             if (state == GameState.SETTING_MENU) { drawSettings(); return; }
+            if(state==GameState.RELIC_CHOICE) { drawBlessings();return; }
             feedback.draw(sceneManager.getOpenScene().getCameraController().getCamera());
             if (hurtFlash>0) {
                 Color tint=Fade(Menu.RED,hurtFlash*1.5f);
@@ -496,6 +519,7 @@ public class Game {
         assets.drawPlayerWeapon(player,progress.heroClass().ordinal(),progress.weaponTier());assets.drawArmor(player,progress);
         for(Enemy enemy:enemies) assets.drawEnemy(enemy);
         for(Enemy enemy:fallen)assets.drawEnemy(enemy);
+        assets.drawFieldEvent(progress.fieldEvent(),(float)GetTime());
     }
     private void drawEnemyHealth() {
         for (Enemy enemy : enemies) {
@@ -547,6 +571,18 @@ public class Game {
         Menu.text(settings.controls.label(WORKSHOP)+"  WORKSHOP    "+settings.controls.label(SAVE)+"  SAVE    ESC  PAUSE",w-265,h-57,13,Menu.TEXT);
         Menu.text(settings.controls.label(SPRINT)+" SPRINT / "+settings.controls.label(DODGE)+" DODGE"+(player.discipline().stamina()<22?" TIRED":player.dodgeCooldown()>0?" "+String.format("%.1fs",player.dodgeCooldown()):" READY"),w-265,h-34,12,Menu.MUTED);
         if(nearBase()) Menu.text("+ HEALING HAVEN / +"+(3+progress.baseLevel())+" HP/s",40,160,14,Menu.TEAL);
+        if(progress.expedition().embers()>0) {
+            Menu.panel(24,h-180,242,62);Menu.text(progress.expedition().embers()+" EMBER BLESSING"+(progress.expedition().embers()>1?"S":""),40,h-170,17,Menu.GOLD);
+            Menu.text(settings.controls.label(INTERACT)+" AT SANCTUARY / FIELD MUST BE CLEAR",40,h-142,11,Menu.TEAL);
+        }
+        FieldEvent event=progress.fieldEvent();
+        if(event.visible() && state==GameState.PLAYING && !inventory && !workshop) {
+            Menu.panel(24,338,270,128);Menu.text("OPTIONAL / "+event.title(),38,350,16,Menu.GOLD);
+            Menu.wrapped("["+settings.controls.label(INTERACT)+"] "+event.instruction(),38,380,244,14,Menu.TEXT);
+            Menu.text((int)Math.ceil(event.time())+"s / "+(event.vulnerable()?"INTEGRITY "+(int)event.health():"+65 CRYSTALS + BLESSING"),38,443,12,Menu.TEAL);
+            Vector2 marker=GetWorldToScreen(v(event.x(),2.8f,event.z()),sceneManager.getOpenScene().getCameraController().getCamera());
+            Menu.text(event.kind()==FieldEvent.Kind.SURVIVOR?"SURVIVOR":"EMBER OBJECTIVE",(int)marker.x()-50,(int)marker.y(),12,Menu.TEAL);
+        }
         for(Enemy enemy:enemies) if(enemy.boss() && enemy.health>0) {
             Menu.panel(w/2-170,114,340,72);
             Menu.center((wave==10?"HOLLOW KING":wave==5?"ASH WARDEN":"WARLORD")+"  /  "+(int)enemy.health+" HP",w/2,121,18,Menu.GOLD);
@@ -567,6 +603,7 @@ public class Game {
         DrawCircleLines(cx,cy,59,Menu.LINE);
         DrawLine(cx-59,cy,cx+59,cy,Menu.LINE); DrawLine(cx,cy-59,cx,cy+59,Menu.LINE);
         DrawCircle(cx,cy,5,Menu.TEAL);
+        if(progress.fieldEvent().visible())DrawCircle(cx+(int)(progress.fieldEvent().x()*2.5f),cy+(int)(progress.fieldEvent().z()*2.5f),4,Menu.TEAL);
         for (Enemy e:enemies) DrawCircle(cx+(int)(e.x*2.5f),cy+(int)(e.z*2.5f),3,e.boss()||e.variant==2?Menu.GOLD:Menu.RED);
         if (director.warning()) DrawCircleLines(cx+(int)(director.x()*2.5f),cy+(int)(director.z()*2.5f),6,Menu.GOLD);
         DrawCircle(cx+(int)(player.getPosition().x()*2.5f),cy+(int)(player.getPosition().z()*2.5f),4,Menu.TEXT);
@@ -589,6 +626,28 @@ public class Game {
         Menu.text(menuMessage.isEmpty()?"Hold right mouse to orbit. ESC pauses.":menuMessage, x, y+462, 15, Menu.MUTED);
     }
     private void drawInventory() { dim();if(equipmentScreen.draw(progress,settings.controls.label(INVENTORY))) inventory=false; }
+    private void chooseBlessing(int index) {
+        var offers=progress.expedition().offers();if(index<0 || index>=offers.size())return;
+        Expedition.Blessing choice=offers.get(index);
+        if(progress.expedition().choose(choice)) {
+            audio.play("upgrade");state=blessingReturn;notifyPlayer(choice.title.toUpperCase()+" / RANK "+progress.expedition().rank(choice));saveCurrent();
+        }
+    }
+    private void drawBlessings() {
+        dim();int x=(GetScreenWidth()-900)/2,y=(GetScreenHeight()-510)/2;
+        Menu.panel(x-20,y-20,940,550);Menu.text("CHOOSE YOUR EMBER BLESSING",x+20,y+12,32,Menu.GOLD);
+        Menu.text("Shape your expedition / "+progress.expedition().embers()+" ember"+(progress.expedition().embers()==1?"":"s")+" to spend",x+20,y+60,18,Menu.TEAL);
+        var offers=progress.expedition().offers();
+        for(int i=0;i<offers.size();i++) {
+            var b=offers.get(i);int left=x+20+i*292;Menu.panel(left,y+108,272,300);
+            Menu.icon(b==Expedition.Blessing.BLOODROOT?"heart":b==Expedition.Blessing.BULWARK?"crown":"sword",left+24,y+128,34,Menu.TEAL);
+            Menu.text(b.title,left+22,y+182,25,Menu.GOLD);Menu.text("RANK "+progress.expedition().rank(b)+" > "+(progress.expedition().rank(b)+1)+" / 3",left+22,y+220,16,Menu.MUTED);
+            Menu.wrapped(b.description,left+22,y+254,228,18,Menu.TEXT);
+            if(Menu.button("["+(i+1)+"] CLAIM",left+20,y+350,232,true)) { chooseBlessing(i);break; }
+        }
+        Menu.text("Blessings persist with your save. Leave now to decide later.",x+20,y+440,17,Menu.MUTED);
+        if(Menu.button("RETURN [ESC]",x+620,y+466,252,true))state=blessingReturn;
+    }
     private void drawWorkshop() {
         dim();if(workshopScreen.draw(progress,settings.controls.label(WORKSHOP),audio))workshop=false;
     }
@@ -785,7 +844,7 @@ public class Game {
     boolean isInventoryOpen() { return inventory; }
     int fallenCount() { return fallen.size(); }
     public boolean shouldQuit() { return quitRequested; }
-    public void dispose() { persistSettings(); if (state==GameState.PLAYING||state==GameState.PAUSED||state==GameState.LEVEL_COMPLETE||state==GameState.VICTORY||state==GameState.JOURNAL&&journalReturn==GameState.PAUSED||state==GameState.SETTING_MENU&&settingsReturn==GameState.PAUSED||state==GameState.PLAYTEST_SETUP&&playtestReturn==GameState.PAUSED) saveCurrent(); audio.close();vfx.close(); assets.close();renderer.close();equipmentScreen.close();heroPortrait.close(); player.dispose(); Menu.close(); }
+    public void dispose() { persistSettings(); if (state==GameState.RELIC_CHOICE||state==GameState.PLAYING||state==GameState.PAUSED||state==GameState.LEVEL_COMPLETE||state==GameState.VICTORY||state==GameState.JOURNAL&&journalReturn==GameState.PAUSED||state==GameState.SETTING_MENU&&settingsReturn==GameState.PAUSED||state==GameState.PLAYTEST_SETUP&&playtestReturn==GameState.PAUSED) saveCurrent(); audio.close();vfx.close(); assets.close();renderer.close();equipmentScreen.close();heroPortrait.close(); player.dispose(); Menu.close(); }
     public GameState getState() { return state; }
     public void setState(GameState state) { this.state = state; }
     public SceneManager getSceneManager() { return sceneManager; }

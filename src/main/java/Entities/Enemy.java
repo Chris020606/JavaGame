@@ -34,6 +34,7 @@ public class Enemy {
     }
 
     public boolean targetsPlayer, impactPending;
+    public boolean targetsTraveler;
     public final float maxHealth, speed, personality;
     public final int variant;
     public Enemy(float x, float z, int wave) { this(x,z,wave,0,.5f); }

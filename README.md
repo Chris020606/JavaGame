@@ -22,6 +22,8 @@ Watch your stamina. Sprint to reach a threatened gate, dodge through danger, or 
 
 Enemies have plans of their own: scouts flank, brutes push forward, archers retreat and reposition, and spellcasters can heal wounded allies. Read their attack warnings and interrupt them before they finish.
 
+Each siege has a different formation: fast scout raids, armored siege columns, hexers with bodyguards, and mixed ambushes. Decide which threat to deal with first.
+
 **Gold boss attacks can be parried. Red and purple attacks must be evaded.**
 
 ![A Warrior's sword swing with fitted Dawnsteel armor](docs/images/player-warrior.png)
@@ -54,6 +56,14 @@ Open your inventory for a rotatable, zoomable character preview and real equipme
 
 Need to recover? Step inside the sanctuary's glowing healing ring. Keep potions handy for fights farther from home; you can carry five and restock at the workshop.
 
+## More than holding the center
+
+Watch the radar for optional opportunities. Recover a lost supply cache, find a survivor and escort them home, or awaken a waystone and defend it for 14 seconds. Enemies can attack the survivor and waystone. Stay close, pick your fights, and decide whether the extra reward is worth leaving the sanctuary.
+
+Completed objectives grant crystals, supplies, and an **ember blessing**. Clearing siege waves also earns embers. When the field is clear, return to the sanctuary and press **G** to choose one of three blessings. Build around heavy strikes, healing on kills, rewarding parries, faster dodges, stronger projectiles, or a tougher sanctuary. Blessings have three ranks and stay with your save.
+
+Hold **G** beside a supply cache to recover it; interact with a survivor or waystone to begin its objective. Objective timers pause when you open a menu. Failed optional objectives leave the main campaign playable.
+
 ## Try everything without grinding
 
 Choose **PLAYTEST / ALL GEAR** on the title screen to start with:
@@ -75,6 +85,7 @@ The inventory opens immediately. **Pause → Playtest Tools** lets you switch cl
 | Sprint / dodge | Left Shift / Left Ctrl |
 | Parry / lunge | F / R |
 | Inventory / potion | Tab / H |
+| Interact / sanctuary blessings | G |
 | Workshop near the sanctuary | E |
 | Orbit the camera | Hold right mouse button |
 | Pause / mute | Escape / M |
@@ -88,7 +99,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.1.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.2.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -99,6 +110,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **2.2:** optional supplies, survivor escorts and waystone defenses, persistent ember blessing builds, distinct siege formations, and a reproducible extended gameplay trailer.
 - **2.1:** dedicated boss/enrage music, animated deaths and celebrations, victory fanfare and congratulations, crossbow reloads, and fixes for boss-enrage and post-boss inventory crashes.
 - **2.0:** corrected Dawn weapon colors, real inventory thumbnails and comparisons, a bridge that crosses the stream, mountain scenery, and a saved day/night cycle.
 - **1.9:** fitted armor for every class, restored Warrior swing animations, a livelier meadow, animated hero selection, and a refreshed player guide.
@@ -112,7 +124,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–2.1 are development updates rather than published releases.
+Versions 1.3–2.2 are development updates rather than published releases.
 
 </details>
 

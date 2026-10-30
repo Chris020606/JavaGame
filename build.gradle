@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'outpost'
-version = '2.1.0'
+version = '2.2.0'
 repositories { mavenCentral() }
 
 dependencies {
@@ -84,5 +84,20 @@ tasks.register('inputSmokeTest', JavaExec) {
     mainClass = 'InputSmokeTest'
     jvmArgs = application.applicationDefaultJvmArgs
     systemProperty 'outpost.dataDir', layout.buildDirectory.dir('smoke-userdata').get().asFile.absolutePath
+    workingDir = projectDir
+}
+
+tasks.register('captureTrailer', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'TrailerCapture'
+    jvmArgs = application.applicationDefaultJvmArgs
+    workingDir = projectDir
+}
+tasks.register('trailerTitles', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'TrailerTitles'
+    systemProperty 'java.awt.headless', 'true'
     workingDir = projectDir
 }

@@ -12,6 +12,7 @@ import static com.raylib.Colors.WHITE;
 public final class WorldAssets implements AutoCloseable {
     private final Model raider = LoadModel(AssetPaths.path("resources/outpost/raider.glb"));
     private final Model sword = LoadModel(AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/sword_1handed.gltf"));
+    private final Model supplyCache=LoadModel(AssetPaths.path("resources/outpost/crate.obj"));
     private final Shader silhouette=LoadShader(null,AssetPaths.path("resources/outpost/silhouette.fs"));
     private final Shader daylight=LoadShader(AssetPaths.path("resources/outpost/daylight.vs"),AssetPaths.path("resources/outpost/daylight.fs"));
     private final java.util.Map<String,Model> nature=new java.util.LinkedHashMap<>();
@@ -324,6 +325,22 @@ public final class WorldAssets implements AutoCloseable {
             break;
         }
     }
+    public void drawFieldEvent(FieldEvent event,float time) {
+        if(!event.visible() && !(event.kind()==FieldEvent.Kind.SURVIVOR && event.status()==FieldEvent.Status.COMPLETE))return;
+        surface(.55f,.15f);
+        if(event.kind()==FieldEvent.Kind.SURVIVOR) {
+            String name=event.status()==FieldEvent.Status.ACTIVE?"Walking_A.001":"Melee_2H_Idle";
+            ModelAnimation clip=new ModelAnimation(animations).position(humanClips.get(raider).get(name));
+            UpdateModelAnimation(raider,clip,AnimationFrames.loop(time*40,clip.keyframeCount()));lightModel(raider);
+            DrawModelEx(raider,v(event.x(),0,event.z()),v(0,1,0),event.facing(),v(.9f,.9f,.9f),Menu.TEAL);
+        } else if(event.kind()==FieldEvent.Kind.SUPPLIES) {
+            lightModel(supplyCache);DrawModelEx(supplyCache,v(event.x(),0,event.z()),v(0,1,0),25,v(1.4f,1.4f,1.4f),WHITE);
+        } else scenery("statue_obelisk",event.x(),event.z(),0,1.8f);
+        if(!shadowPass && event.visible()) {
+            DrawCylinderWires(v(event.x(),.06f,event.z()),2.5f,2.5f,.08f,32,Menu.TEAL);
+            for(int i=0;i<6;i++) { double a=time+i*Math.PI/3;DrawSphere(v(event.x()+(float)Math.cos(a)*.8f,1.4f+(float)Math.sin(time*2+i)*.2f,event.z()+(float)Math.sin(a)*.8f),.055f,Menu.GOLD); }
+        }
+    }
     public void drawEnemy(Enemy enemy) {
         if(enemy.boss()) { drawBoss(enemy);return; }
         surface(.64f,.08f);
@@ -450,7 +467,7 @@ public final class WorldAssets implements AutoCloseable {
 
         UnloadModelAnimations(animations,count[0]);
         UnloadModelAnimations(archerAnimations,archerCount[0]); UnloadModelAnimations(shamanAnimations,shamanCount[0]);
-        for (Model model:new Model[]{raider,archer,shaman,bow,staff,sword,bossWarrior,bossKing,bossAxe,bossStaff}) UnloadModel(model);
+        for (Model model:new Model[]{raider,archer,shaman,bow,staff,sword,supplyCache,bossWarrior,bossKing,bossAxe,bossStaff}) UnloadModel(model);
         UnloadModelAnimations(bossAnimations,bossCount[0]);UnloadModelAnimations(kingAnimations,kingCount[0]);
         UnloadModel(mountains);UnloadModel(frostMountains);UnloadTexture(skyGlow);UnloadShader(daylight);UnloadShader(silhouette);UnloadTexture(whiteAlbedo);uniforms.close();
     }

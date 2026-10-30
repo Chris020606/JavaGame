@@ -4,10 +4,11 @@ public final class Projectile {
     public float x,z,previousX,previousZ,life=3;
     public final float vx,vz,damage;
     public final boolean playerTarget,magic;
+    public final boolean travelerTarget;
     public Projectile(Enemy enemy,int wave) {
         x=previousX=enemy.x; z=previousZ=enemy.z;
         float dx=enemy.attackX-x,dz=enemy.attackZ-z,len=(float)Math.hypot(dx,dz);
-        magic=enemy.variant==4; playerTarget=enemy.targetsPlayer; damage=((magic?14:8)+wave*2)*enemy.difficulty.damage;
+        magic=enemy.variant==4; playerTarget=enemy.targetsPlayer;travelerTarget=enemy.targetsTraveler; damage=((magic?14:8)+wave*2)*enemy.difficulty.damage;
         float speed=magic?6:10;
         vx=len>.001f?dx/len*speed:0; vz=len>.001f?dz/len*speed:0;
     }

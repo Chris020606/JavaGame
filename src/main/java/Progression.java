@@ -3,6 +3,7 @@ import Entities.ArmorSlot;
 /** Rules and economy kept independent of rendering so they can be tested. */
 public class Progression {
     public void store(java.util.Properties p) {
+        expedition.store(p);fieldEvent.store(p);
         p.setProperty("difficulty",difficulty.name());
         p.setProperty("vitality",vitality+"");p.setProperty("power",power+"");p.setProperty("endurance",endurance+"");p.setProperty("recovery",recovery+"");p.setProperty("agility",agility+"");
         p.setProperty("armorUnlocked",armorUnlocked+"");
@@ -15,6 +16,7 @@ public class Progression {
     }
     public static Progression restore(java.util.Properties p) {
         Progression result=new Progression(HeroClass.valueOf(p.getProperty("heroClass","WARRIOR")),Difficulty.valueOf(p.getProperty("difficulty","NORMAL")));
+        result.expedition=Expedition.restore(p);result.fieldEvent=FieldEvent.restore(p);
         result.potions=p.containsKey("potions")?SaveGame.integer(p,"potions",0,5):2;
         result.weaponUnlocked=p.containsKey("weaponUnlocked")?SaveGame.integer(p,"weaponUnlocked",0,3):0;
         result.weaponTier=p.containsKey("weaponTier")?SaveGame.integer(p,"weaponTier",0,result.weaponUnlocked):0;
@@ -33,6 +35,12 @@ public class Progression {
     public static final Upgrade[] TRAINING={Upgrade.VITALITY,Upgrade.POWER,Upgrade.ENDURANCE,Upgrade.RECOVERY,Upgrade.AGILITY,Upgrade.ARMOR,Upgrade.BASE};
     private int vitality=1,power=1,endurance=1,recovery=1,agility=1,armorUnlocked;
     private final int[] armor=new int[4];
+    private Expedition expedition=new Expedition();
+    private FieldEvent fieldEvent=new FieldEvent();
+    public Expedition expedition() { return expedition; }
+    public FieldEvent fieldEvent() { return fieldEvent; }
+    public void restoreHealth(float amount) { if(!defeated())health=Math.min(maxHealth(),health+Math.max(0,amount)); }
+    public void rewardObjective() { if(!defeated()) { expedition.objectiveCompleted();crystals+=65;if(potions<5)potions++;restoreHealth(15); } }
     private final Difficulty difficulty;
     private int crystals, kills, baseLevel = 1, armorLevel = 1, characterLevel = 1;
     private final HeroClass heroClass;
@@ -91,6 +99,7 @@ public class Progression {
     }
     public void rewardEnemy(boolean boss) {
         kills++; crystals+=boss?120:15;
+        restoreHealth(expedition.rank(Expedition.Blessing.BLOODROOT)*3);
         if (boss) weaponUnlocked=Math.min(3,weaponUnlocked+1);
     }
     public int crystals() { return crystals; }
@@ -128,6 +137,6 @@ public class Progression {
         return true;
     }
     public void damagePlayer(float amount) { if (amount > 0) health = Math.max(0, health - Math.max(1, amount - defense())); }
-    public void damageBase(float amount) { baseHealth = Math.max(0, baseHealth - Math.max(0, amount)); }
+    public void damageBase(float amount) { baseHealth = Math.max(0, baseHealth - Math.max(0, amount)*(1-.12f*expedition.rank(Expedition.Blessing.BULWARK))); }
     public void heal(float dt) { health = Math.min(maxHealth(), health + Math.max(0, dt) * (3 + baseLevel)); }
 }

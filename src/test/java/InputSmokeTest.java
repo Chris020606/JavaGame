@@ -176,6 +176,45 @@ public class InputSmokeTest {
         }
         System.out.println("PASS: boss/enrage music, crossbow reload, all class death/celebration rigs, enemy falls, one-time rewards and completion restore");
     }
+    private static void livingExpeditionRegression(Game game,java.nio.file.Path profile) throws Exception {
+        Progression p=new Progression();p.expedition().waveCleared(1);
+        SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Ada",0,4,0,p,new WaveDirector.State(0,0,0,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
+        check(game.loadCurrent(),"Blessing setup failed");key(game,KEY_ENTER);key(game,KEY_G);
+        check(game.getState()==GameState.RELIC_CHOICE,"Sanctuary interaction did not open blessing draft");
+        float phase=game.dayPhase();for(int i=0;i<12;i++)frame(game);check(game.dayPhase()==phase,"Blessing choice did not pause simulation");capture("living-blessing-draft");
+        key(game,KEY_F5);check(game.loadCurrent(),"Blessing draft save could not restore");key(game,KEY_ENTER);key(game,KEY_G);key(game,KEY_ONE);
+        check(game.getProgression().expedition().rank(Expedition.Blessing.KINDLING)==1 && game.getProgression().expedition().embers()==0,"Draft did not consume exactly one ember");
+        key(game,KEY_G);check(game.getState()!=GameState.RELIC_CHOICE,"Empty draft could reopen");
+        for(int wave:new int[]{1,2,3}) {
+            p=new Progression();p.fieldEvent().begin(wave);FieldEvent e=p.fieldEvent();
+            Entities.Enemy guard=new Entities.Enemy(20,-20,wave,0,.5f);
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Ada",e.x()+1,e.z(),0,p,new WaveDirector.State(wave,0,1,8,0,21,0),java.util.List.of(guard),Arena.HIGHLANDS));
+            check(game.loadCurrent(),"Field encounter setup failed");key(game,KEY_ENTER);game.getEnemies().get(0).stun=100;
+            e=game.getProgression().fieldEvent();float before=e.time();key(game,KEY_ESCAPE);for(int i=0;i<10;i++)frame(game);check(e.time()==before-.016666668f || Math.abs(e.time()-before)<.04f,"Paused field event advanced");key(game,KEY_ESCAPE);
+            if(wave==1) {
+                event(KEY_DOWN,KEY_G,0);for(int i=0;i<130;i++)frame(game);event(KEY_UP,KEY_G,0);frame(game);
+                check(e.status()==FieldEvent.Status.COMPLETE && game.getProgression().crystals()==65,"Supplies did not pay once");
+                for(int i=0;i<10;i++)frame(game);check(game.getProgression().crystals()==65,"Supplies paid twice");
+            } else if(wave==2) {
+                key(game,KEY_G);check(e.vulnerable(),"Survivor did not join escort");
+                Entities.Enemy attacker=game.getEnemies().get(0);attacker.x=e.x()+1;attacker.z=e.z();attacker.stun=attacker.cooldown=0;
+                game.getPlayer().getPosition().x(e.x()+5).z(e.z());
+                for(int i=0;i<70;i++)frame(game);check(e.health()<100,"Enemies ignored escort target");
+                attacker.stun=100;
+                for(int i=0;i<220 && e.visible();i++) {
+                    float distance=(float)Math.hypot(e.x(),e.z());game.getPlayer().getPosition().x(e.x()-e.x()/distance*3).z(e.z()-e.z()/distance*3);frame(game);
+                }
+                check(e.status()==FieldEvent.Status.COMPLETE,"Escort could not reach sanctuary");
+            } else {
+                key(game,KEY_G);check(e.vulnerable(),"Waystone did not activate");capture("living-waystone");
+                for(int i=0;i<845;i++)frame(game);
+                check(e.status()==FieldEvent.Status.COMPLETE && game.getProgression().expedition().objectives()==1,"Waystone defense did not reward its completion");
+            }
+            capture("living-objective-"+wave);check(game.saveCurrent() && game.loadCurrent(),"Objective progress did not save/restore");
+            check(game.getProgression().fieldEvent().status()==FieldEvent.Status.COMPLETE,"Completed objective was lost");
+        }
+        System.out.println("PASS: optional supplies, vulnerable escort, beacon defense, persistent blessing drafts and paused event timers");
+    }
     public static void main(String[] args) throws Exception {
         java.nio.file.Path profile=java.nio.file.Files.createTempDirectory(java.nio.file.Path.of("build"),"smoke-profile-");
         System.setProperty("outpost.dataDir",profile.toAbsolutePath().toString());
@@ -191,6 +230,9 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--living-review")) {
+                livingExpeditionRegression(game,profile);return;
+            }
             if(java.util.Arrays.asList(args).contains("--victory-review")) {
                 chapterInventoryRegression(game,profile);victoryPresentationRegression(game,profile);return;
             }
@@ -727,6 +769,7 @@ public class InputSmokeTest {
             System.out.println("PASS: all-unlocked playtest, class/chapter controls, separate save/resume and campaign preservation; streamed title/chapter music, mixer mute, redesigned workshop and textured combat effects; crossbow impact and interruptible allied healing; four difficulty selections, independent training, forge purchases, armor click/drag/remove, equipment preview and expanded save state; stamina/parry/riposte, timed chains, charged heavies, lunges, boss slams/charges/sigils/enrage, four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
             chapterInventoryRegression(game,profile);
             victoryPresentationRegression(game,profile);
+            livingExpeditionRegression(game,profile);
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

@@ -23,6 +23,8 @@ public class Player extends Entity {
     public boolean invulnerable() { return dodgeTime>.10f && dodgeTime<.31f; }
     public void lunge(float duration) { attack(1,false,duration);lungeAttack=true;if(weaponStyle==0) attackClip=PlayerAnimation.ATTACK_STAB;setAnimation(attackClip);restartAnimation();playAnimationProgress(0); }
     private float velocityX,velocityZ,dodgeTime,dodgeCooldown,dodgeX,dodgeZ;
+    private float dodgeRecovery=1.5f;
+    public void setDodgeRecovery(float seconds) { dodgeRecovery=seconds; }
     private boolean sprinting;
     private PlayerAnimation dodgeClip=PlayerAnimation.DODGE_FORWARD;
     public boolean isDodging() { return dodgeTime>0; }
@@ -148,7 +150,7 @@ public class Player extends Entity {
             float side=dodgeX*(float)Math.cos(facing)-dodgeZ*(float)Math.sin(facing);
             dodgeClip=forward>.5f?PlayerAnimation.DODGE_FORWARD:forward<-.5f?PlayerAnimation.DODGE_BACKWARD:
                 side>0?PlayerAnimation.DODGE_RIGHT:PlayerAnimation.DODGE_LEFT;
-            dodgeTime=.34f;dodgeCooldown=1.5f;restartAnimation();
+            dodgeTime=.34f;dodgeCooldown=dodgeRecovery;restartAnimation();
         }
         sprinting=controls.down(SPRINT) && moving && !isAttacking() && !isDodging() && !charging && discipline.recovery()<=0 && discipline.canSprint();
         float speed=movementSpeed*(sprinting?1.55f:1)*(isAttacking()?.3f:charging||discipline.recovery()>0?.15f:1);
