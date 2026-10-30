@@ -97,6 +97,29 @@ public class InputSmokeTest {
         }
         System.out.println("PASS: both bosses cross enrage during every move without invalid native frames");
     }
+    private static void chapterInventoryRegression(Game game,java.nio.file.Path profile) throws Exception {
+        for(HeroClass hero:HeroClass.values()) {
+            Entities.Enemy boss=new Entities.Enemy(0,10,5,5,.5f);boss.health=1;
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Ada",0,8,0,new Progression(hero),new WaveDirector.State(5,0,1,8,0,21,0),java.util.List.of(boss),Arena.HIGHLANDS));
+            check(game.loadCurrent(),"Boss inventory setup did not load");key(game,KEY_ENTER);
+            boss=game.getEnemies().get(0);boss.stun=boss.cooldown=100;
+            for(int i=0;i<20;i++)frame(game);
+            key(game,KEY_Q);for(int i=0;i<80;i++)frame(game);
+            check(game.getState()==GameState.LEVEL_COMPLETE,"Boss defeat did not reach chapter completion for "+hero);
+            int x=(GetScreenWidth()-660)/2,y=(GetScreenHeight()-480)/2;
+            // First mouse opening happens after this frame's preview preparation.
+            click(game,x+510,y+370);
+            check(game.isInventoryOpen(),"Chapter button did not open inventory for "+hero);
+            for(int i=0;i<3;i++)frame(game);
+            check(game.getProgression().weaponUnlocked()==1,"Boss loot missing from inventory");
+            key(game,KEY_ESCAPE);check(!game.isInventoryOpen(),"Inventory did not close");
+            click(game,x+510,y+370);check(game.isInventoryOpen(),"Cached inventory did not reopen");
+            key(game,KEY_ESCAPE);key(game,KEY_TAB);
+            check(game.isInventoryOpen(),"Chapter inventory shortcut did not open");
+            key(game,KEY_ESCAPE);
+        }
+        System.out.println("PASS: boss defeat then first mouse-open inventory, reopen, shortcut and class thumbnail changes");
+    }
     public static void main(String[] args) throws Exception {
         java.nio.file.Path profile=java.nio.file.Files.createTempDirectory(java.nio.file.Path.of("build"),"smoke-profile-");
         System.setProperty("outpost.dataDir",profile.toAbsolutePath().toString());
@@ -112,6 +135,9 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--inventory-regression")) {
+                chapterInventoryRegression(game,profile);return;
+            }
             if(java.util.Arrays.asList(args).contains("--boss-regression")) {
                 bossEnrageRegression(game,profile);return;
             }
@@ -640,6 +666,7 @@ public class InputSmokeTest {
             check(java.util.Arrays.equals(campaignBefore,java.nio.file.Files.readAllBytes(profile.resolve("save.properties"))),"Campaign changed after playtest resume");
             }
             System.out.println("PASS: all-unlocked playtest, class/chapter controls, separate save/resume and campaign preservation; streamed title/chapter music, mixer mute, redesigned workshop and textured combat effects; crossbow impact and interruptible allied healing; four difficulty selections, independent training, forge purchases, armor click/drag/remove, equipment preview and expanded save state; stamina/parry/riposte, timed chains, charged heavies, lunges, boss slams/charges/sigils/enrage, four-chapter campaign, boss-only levels, victory, sprint/dodge, bounds, warrior animation set, chronicle, second stage and hero models,  name entry, menus, combat, save/load, corrupt-save recovery, settings, persisted key remapping, ranged enemies, resize, Archer and Mage projectiles, inventory, potions, boss impact and rewards, equipment");
+            chapterInventoryRegression(game,profile);
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

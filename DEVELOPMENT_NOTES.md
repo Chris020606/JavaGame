@@ -1,5 +1,13 @@
 # Development progress and future work
 
+## Post-boss inventory crash fix
+
+Clicking Inventory on the chapter-complete screen changed the inventory flag during the 2D UI pass, after offscreen preparation had already been skipped. On a first inventory visit, drawing then dereferenced null thumbnails. Rendering now records whether inventory was prepared at the start of the frame and only draws it when ready; a button-opened inventory appears on the next prepared frame. Preview generation stays outside the 2D overlay, with no placeholder or loss of equipment graphics.
+
+The native regression defeats the first boss with each class, opens inventory using the chapter-complete mouse button (including a cold thumbnail cache), closes/reopens it and checks the keyboard shortcut and boss loot. Run `./gradlew --offline inputSmokeTest --args=--inventory-regression`; the scenario also runs in the complete desktop suite. Existing saves and controls are unchanged.
+
+Validation: 57 unit tests and the full high-DPI gameplay suite pass. The focused inventory regression passes at both display scales for all three classes. Native packaging and the packaged app's `--playtest --smoke-test` from outside the repository pass without warnings or errors.
+
 ## Boss fight crash fix
 
 The native SIGSEGV in UpdateModelAnimation came from a negative boss keyframe. Crossing half health shortened attackDuration() while attackTime still held the original windup, making animation progress negative. Each attack now records its duration when it starts; enrage affects the next attack. All player, armor, boss and ordinary-enemy frame indices are bounded before calling native animation code, and empty clips fail with a Java exception. Looping frames also handle long-running timers without integer overflow.

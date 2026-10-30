@@ -403,7 +403,10 @@ public class Game {
 
     public void render() {
         drawWorld();
-        if(inventory) equipmentScreen.prepare(assets,player,progress);
+        // UI buttons can open inventory later in this render. Show it next frame,
+        // after its offscreen previews have been prepared outside the 2D overlay.
+        boolean inventoryPrepared=inventory;
+        if(inventoryPrepared) equipmentScreen.prepare(assets,player,progress);
         if(state==GameState.LOGIN)heroPortrait.prepare(assets,selectedClass);
         // Jaylib 6.0.1-0's SDL backend restores a framebuffer-pixel projection
         // after 3D. Scale the overlay to window pixels, matching GetMousePosition.
@@ -432,7 +435,7 @@ public class Game {
             if((state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY) && !inventory) drawChapterEnd();
             if(state==GameState.JOURNAL) drawJournal();
             if (workshop) drawWorkshop();
-            if (inventory) drawInventory();
+            if (inventory && inventoryPrepared) drawInventory();
             if (state == GameState.PAUSED || state == GameState.GAME_OVER) drawOverlay();
         } finally {
             EndMode2D();
@@ -744,6 +747,7 @@ public class Game {
     Progression getProgression() { return progress; }
     GameAudio audio() { return audio; }
     boolean isWorkshopOpen() { return workshop; }
+    boolean isInventoryOpen() { return inventory; }
     public boolean shouldQuit() { return quitRequested; }
     public void dispose() { persistSettings(); if (state==GameState.PLAYING||state==GameState.PAUSED||state==GameState.LEVEL_COMPLETE||state==GameState.VICTORY||state==GameState.JOURNAL&&journalReturn==GameState.PAUSED||state==GameState.SETTING_MENU&&settingsReturn==GameState.PAUSED||state==GameState.PLAYTEST_SETUP&&playtestReturn==GameState.PAUSED) saveCurrent(); audio.close();vfx.close(); assets.close();renderer.close();equipmentScreen.close();heroPortrait.close(); player.dispose(); Menu.close(); }
     public GameState getState() { return state; }
