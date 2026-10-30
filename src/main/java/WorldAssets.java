@@ -3,6 +3,7 @@ import Entities.Enemy;
 import Entities.Player;
 import Entities.BossMove;
 import Entities.ArmorSlot;
+import Entities.AnimationFrames;
 import org.bytedeco.javacpp.FloatPointer;
 import static com.raylib.Raylib.*;
 import static com.raylib.Colors.WHITE;
@@ -292,8 +293,8 @@ public final class WorldAssets implements AutoCloseable {
         String name=enemy.stun>0?"Hit_A":enemy.chargeTime>0?"Running_A":enemy.attackTime>0?
             switch(enemy.bossMove) { case CLEAVE -> "2H_Melee_Attack_Slice";case SLAM -> "2H_Melee_Attack_Chop";case CHARGE -> "Taunt";case SIGILS -> "Spellcast_Raise"; }:"Walking_D_Skeletons";
         ModelAnimation clip=new ModelAnimation(animations).position(bossClips.get(name));
-        int frame=enemy.attackTime>0?Math.min(clip.keyframeCount()-1,(int)((1-enemy.attackTime/enemy.attackDuration())*clip.keyframeCount())):
-            (int)(enemy.animationTime*45)%Math.max(1,clip.keyframeCount());
+        int frame=enemy.attackTime>0?AnimationFrames.progress(1-enemy.attackTime/enemy.attackDuration(),clip.keyframeCount()):
+            AnimationFrames.loop(enemy.animationTime*45,clip.keyframeCount());
         UpdateModelAnimation(model,clip,frame);lightModel(model);surface(.38f,.25f);
         float scale=enemy.king?2.45f:2.1f;
         Color tint=enemy.hitFlash>0?Menu.TEXT:enemy.king?Menu.color(190,190,215):Menu.color(210,184,151);
@@ -338,7 +339,7 @@ public final class WorldAssets implements AutoCloseable {
         ModelAnimation clip=new ModelAnimation(clips).position(index);
         float phase=enemy.attackTime>0?1-enemy.attackTime/enemy.attackDuration():0;
         if(!bone && enemy.variant==3 && enemy.attackTime>0) phase=enemy.attackTime>.25f?(enemy.attackDuration()-enemy.attackTime)/Math.max(.01f,enemy.attackDuration()-.25f):(.25f-enemy.attackTime)/.25f;
-        int frame=enemy.attackTime>0?Math.min(clip.keyframeCount()-1,(int)(Math.max(0,phase)*clip.keyframeCount())):(int)(enemy.animationTime*60)%Math.max(1,clip.keyframeCount());
+        int frame=enemy.attackTime>0?AnimationFrames.progress(phase,clip.keyframeCount()):AnimationFrames.loop(enemy.animationTime*60,clip.keyframeCount());
         UpdateModelAnimation(character,clip,frame);lightModel(character);
         float scale=enemy.variant==2?1.18f:1;
         Color tint=enemy.hitFlash>0?Menu.GOLD:bone?Menu.color(174,205,228):WHITE;

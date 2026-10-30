@@ -6,6 +6,7 @@ public class Enemy {
     public float attackX, attackZ;
     public BossMove bossMove=BossMove.CLEAVE;
     private int attackCycle;
+    private float startedAttackDuration;
     public float chargeTime,chargeVx,chargeVz,chargeEndX,chargeEndZ;
     public boolean chargeHit;
     public final boolean king,undead;
@@ -100,7 +101,9 @@ public class Enemy {
             chargeEndZ=Math.max(-22,Math.min(22,z+(d>.01f?dz/d*length:0)));
         }
         facing=(float)Math.toDegrees(Math.atan2(px-x,pz-z));
-        attackTime=attackDuration(); cooldown=(boss()?attackDuration()+(enraged()?.65f:1.1f):1.3f)*difficulty.cadence+personality*.35f; impactPending=true;
+        // Enrage speeds up the next attack, never the animation already in flight.
+        startedAttackDuration=nextAttackDuration();
+        attackTime=startedAttackDuration; cooldown=(boss()?startedAttackDuration+(enraged()?.65f:1.1f):1.3f)*difficulty.cadence+personality*.35f; impactPending=true;
     }
     public void hit(float damage,float px,float pz,float push) {
         health=Math.max(0,health-damage); hitFlash=.16f;
@@ -114,7 +117,8 @@ public class Enemy {
         return switch(bossMove) { case CLEAVE -> "ROYAL REAP";case SLAM -> "GRAVE FAULT";case CHARGE -> "PHANTOM RUSH";case SIGILS -> "SOUL SIGILS"; };
     }
     public boolean boss() { return variant==5; }
-    public float attackDuration() { return Math.max(.42f,(boss()?bossMove.duration*(enraged()?.82f:1):.7f)*difficulty.cadence); }
+    public float attackDuration() { return attackTime>0 && startedAttackDuration>0?startedAttackDuration:nextAttackDuration(); }
+    private float nextAttackDuration() { return Math.max(.42f,(boss()?bossMove.duration*(enraged()?.82f:1):.7f)*difficulty.cadence); }
     public float meleeRange() { return boss()?3.8f:2.2f; }
     public float meleeDamage(int wave) { return (boss()?22+wave*3:8+wave*2+(variant==2?5:0))*difficulty.damage; }
     public float siegeDamage(int wave) { return (boss()?30+wave*3:10+wave*2)*difficulty.damage; }

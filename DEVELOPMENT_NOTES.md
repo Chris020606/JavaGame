@@ -1,5 +1,13 @@
 # Development progress and future work
 
+## Boss fight crash fix
+
+The native SIGSEGV in UpdateModelAnimation came from a negative boss keyframe. Crossing half health shortened attackDuration() while attackTime still held the original windup, making animation progress negative. Each attack now records its duration when it starts; enrage affects the next attack. All player, armor, boss and ordinary-enemy frame indices are bounded before calling native animation code, and empty clips fail with a Java exception. Looping frames also handle long-running timers without integer overflow.
+
+Regression coverage crosses the enrage threshold during all four moves on both bosses and all difficulties, checks next-attack acceleration, and checks negative/nonfinite/overflow frame boundaries. The visible desktop regression renders both bosses crossing enrage during each move, plus deliberately oversized timers, through the actual native rendering path. Run the focused check with `./gradlew --offline inputSmokeTest --args=--boss-regression`; it also runs within the full desktop suite. Existing saves remain compatible.
+
+Validation: 57 unit tests pass, the full high-DPI desktop suite passes, the focused native regression passes at standard DPI, and the rebuilt macOS app exits successfully from `--playtest --smoke-test` launched outside the repository without warnings or errors.
+
 ## v2.0.0: Weapon materials, equipment browsing, mountains and changing daylight
 
 Fixed the black Dawnblade/Dawnstaff at the material source: the OBJ/MTL reader interpreted shorthand leading-dot color values as zero. Generated materials now use explicit leading-zero decimals, and a native regression checks nonzero colors on every generated weapon/terrain material. Dawn OBJ meshes include UVs; untextured material maps receive a white albedo fallback and the shader handles missing vertex colors. Real thumbnails now make equipment appearance easy to verify before equipping.

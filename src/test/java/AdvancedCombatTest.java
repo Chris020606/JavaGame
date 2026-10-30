@@ -47,7 +47,7 @@ class AdvancedCombatTest {
         for(int i=0;i<4;i++) { boss.beginAttack(0,2,true);moves.add(boss.bossMove); }
         assertEquals(4,moves.size());assertFalse(boss.enraged());
         boss.health=boss.maxHealth*.5f;assertTrue(boss.enraged());
-        boss.bossMove=BossMove.SLAM;assertTrue(boss.attackDuration()<BossMove.SLAM.duration);
+        boss.attackTime=0;boss.bossMove=BossMove.SLAM;assertTrue(boss.attackDuration()<BossMove.SLAM.duration);
         assertFalse(BossMove.SLAM.parryable);assertTrue(BossMove.CHARGE.parryable);
     }
     @Test void chargeTravelsToLockedPointAndStopsAtWorldBounds() {

@@ -100,16 +100,18 @@ public abstract class Entity {
     public void playAnimationProgress(float progress) {
         if (!hasAnimation || model == null) return;
         ModelAnimation clip = new ModelAnimation(animations).position(animationIndex);
-        currentFrame = Math.min(clip.keyframeCount()-1, (int)(Math.max(0, progress)*clip.keyframeCount()));
+        currentFrame = AnimationFrames.progress(progress,clip.keyframeCount());
         poseForDisplay(animationIndex,currentFrame);
     }
 
     protected void poseForDisplay(int index,int frame) {
-        posedAnimation=index;posedFrame=frame;
-        UpdateModelAnimation(model,new ModelAnimation(animations).position(index),frame);
+        ModelAnimation clip=new ModelAnimation(animations).position(index);
+        posedAnimation=index;posedFrame=AnimationFrames.clamp(frame,clip.keyframeCount());
+        UpdateModelAnimation(model,clip,posedFrame);
     }
     public void copyPoseTo(Model equipment) {
-        UpdateModelAnimation(equipment,new ModelAnimation(animations).position(posedAnimation),posedFrame);
+        ModelAnimation clip=new ModelAnimation(animations).position(posedAnimation);
+        UpdateModelAnimation(equipment,clip,AnimationFrames.clamp(posedFrame,clip.keyframeCount()));
     }
     public int posedFrame() { return posedFrame; }
     public ModelAnimation getAnimation() {

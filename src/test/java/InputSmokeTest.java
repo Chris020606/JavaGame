@@ -76,6 +76,27 @@ public class InputSmokeTest {
         check(game.loadCurrent(),"Advanced encounter did not load");key(game,KEY_ENTER);
         target=game.getEnemies().get(0);target.stun=100;target.cooldown=100;for(int i=0;i<20;i++)frame(game);return target;
     }
+    private static void bossEnrageRegression(Game game,java.nio.file.Path profile) throws Exception {
+        for(int wave:new int[]{5,10}) {
+            Entities.Enemy boss=encounter(game,profile,wave,5,14);
+            boss.stun=0;
+            for(Entities.BossMove move:Entities.BossMove.values()) {
+                boss.health=boss.maxHealth*.5f+1;
+                do { boss.beginAttack(boss.x,boss.z-2,true); } while(boss.bossMove!=move);
+                float windup=boss.attackDuration();
+                // Reproduce damage immediately after windup starts, before any timer tick.
+                boss.hit(2,0,8,0);boss.cooldown=100;boss.impactPending=false;
+                check(boss.enraged() && boss.attackDuration()==windup,"Boss windup changed on enrage");
+                BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();
+                for(int i=0;i<6;i++)frame(game);
+                // Over-range timers must also stay safe at the native frame boundary.
+                boss.attackTime=windup*1.5f;
+                BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();
+                boss.attackTime=0;
+            }
+        }
+        System.out.println("PASS: both bosses cross enrage during every move without invalid native frames");
+    }
     public static void main(String[] args) throws Exception {
         java.nio.file.Path profile=java.nio.file.Files.createTempDirectory(java.nio.file.Path.of("build"),"smoke-profile-");
         System.setProperty("outpost.dataDir",profile.toAbsolutePath().toString());
@@ -91,6 +112,9 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--boss-regression")) {
+                bossEnrageRegression(game,profile);return;
+            }
             if(java.util.Arrays.asList(args).contains("--sky-review")) {
                 key(game,KEY_ENTER);key(game,KEY_ENTER);for(int i=0;i<12;i++)frame(game);game.photoMode(true);
                 Camera3D skyCamera=game.getSceneManager().getOpenScene().getCameraController().getCamera();
@@ -493,6 +517,7 @@ public class InputSmokeTest {
             Entities.Enemy lungeTarget=encounter(game,profile,1,0,11.7f);
             key(game,KEY_R);for(int i=0;i<26;i++)frame(game);
             check(game.getPlayer().getPosition().z()>9 && lungeTarget.health<lungeTarget.maxHealth,"Lunge did not advance and hit at extended reach");capture("modern-lunge");
+            bossEnrageRegression(game,profile);
             Entities.Enemy slamBoss=encounter(game,profile,5,5,14);
             slamBoss.beginAttack(0,8,true);slamBoss.beginAttack(0,8,true);
             check(slamBoss.bossMove==Entities.BossMove.SLAM,"Boss slam pattern changed");slamBoss.attackTime=.30f;
