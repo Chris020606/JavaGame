@@ -60,7 +60,7 @@ The HUD tells you how many waves remain. Chapter endings give you a moment to re
 
 ## Make the warden your own
 
-Earn crystals from defeated enemies and spend them at the sanctuary workshop. Improve **health, damage, stamina, recovery, speed, defense, and sanctuary strength** separately.
+Earn crystals from defeated enemies and spend them at the sanctuary workshop. Improve **health, damage, stamina, recovery, speed, defense, and sanctuary strength** separately. The first sanctuary upgrade also builds a guardian ward: two hovering crystals fire a short-range support beam every four seconds. It weakens nearby enemies but cannot deliver the finishing blow.
 
 Forge **Iron, Runic, and Dawnsteel armor**, then mix helmets, chest armor, greaves, and boots. Equipment visibly fits each class: a full Warrior helm, an open-faced Archer helmet, and an armored Mage hat. Change your sword, longsword, axe, bow, crossbow, wand, or staff and see it on your hero.
 
@@ -150,3 +150,5 @@ Versions 1.3–2.7 are development updates rather than published releases.
 </details>
 
 Characters and animation are by KayKit; scenery is by Kenney. Music and sound were created for Outpost. Full credits are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Boss victories award **120 crystals and a class weapon unlock**. Armor comes from the forge; the all-gear playtest grants it immediately for experimenting. Defeating the Hollow King now reveals an eight-second dawn celebration before the final results.

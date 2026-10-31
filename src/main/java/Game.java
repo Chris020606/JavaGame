@@ -97,6 +97,7 @@ public class Game {
     private final ArrayList<Enemy> enemies = new ArrayList<>();
     private final ArrayList<Enemy> fallen=new ArrayList<>();
     private float outcomeTime;
+    private float guardianCooldown,guardianFlash,guardianX,guardianZ;
     private final Random random = new Random();
     private final WaveDirector director = new WaveDirector(random);
     private final GameAudio audio = new GameAudio();
@@ -155,7 +156,7 @@ public class Game {
     Campaign.Chapter chapter() { return director.chapter(); }
     int chapterIndex() { return director.chapterIndex(); }
     private void start() {
-        applyHeroModel(); storyTime=12;hudCharging=false;mastery.reset();hitPause=hitMarker=0;
+        applyHeroModel(); guardianCooldown=guardianFlash=0;storyTime=12;hudCharging=false;mastery.reset();hitPause=hitMarker=0;
         progress = playtest?Progression.playtest(selectedClass,selectedDifficulty,maxPlaytestTraining):new Progression(selectedClass,selectedDifficulty); player.setMovementSpeed(selectedClass.speed); inventory=false; fallen.clear();outcomeTime=0;heroShots.clear(); enemies.clear(); projectiles.clear(); wave = 0; nextWave = 5;
         attackCooldown = slashTime = noticeTime = heavyCharge = 0; bossHazards.clear(); workshop = false;
         player.getPosition().x(0).y(0).z(4);
@@ -194,7 +195,13 @@ public class Game {
         boolean outcome=state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY || state==GameState.GAME_OVER;
         if((state==GameState.PLAYING || outcome) && !inventory && !workshop) {
             fallen.removeIf(e->{e.deathTime+=presentationStep;return e.deathTime>CorpsePresentation.lifetime(e.boss());});
-            if(outcome) { outcomeTime+=dt;noticeTime=Math.max(0,noticeTime-dt);feedback.update(dt);vfx.update(dt);player.poseForOutcome(state!=GameState.GAME_OVER,outcomeTime); }
+            if(outcome) { outcomeTime+=dt;
+                if(state==GameState.VICTORY) {
+                    dayNight.phase(.26f+Math.min(1,outcomeTime/8)*.10f);
+                    if((int)(outcomeTime*3)!=(int)((outcomeTime-dt)*3) && outcomeTime<12) {
+                        float angle=outcomeTime*2.4f;vfx.impact(player.getPosition().x()+(float)Math.cos(angle)*4,player.getPosition().z()+(float)Math.sin(angle)*4,Menu.GOLD,true);
+                    }
+                }noticeTime=Math.max(0,noticeTime-dt);feedback.update(dt);vfx.update(dt);player.poseForOutcome(state!=GameState.GAME_OVER,outcomeTime); }
         }
         boolean titleAudio=state==GameState.PLAYTEST_SETUP && playtestReturn==GameState.MAIN_MENU || state==GameState.MAIN_MENU || state==GameState.LOGIN || state==GameState.JOURNAL && journalReturn==GameState.MAIN_MENU || state==GameState.SETTING_MENU && settingsReturn==GameState.MAIN_MENU;
         boolean battle=state==GameState.PLAYING && !inventory && !workshop && !enemies.isEmpty();
@@ -309,6 +316,16 @@ public class Game {
         float heroVx=Math.max(-15,Math.min(15,(px-lastHeroX)/Math.max(.001f,dt))),heroVz=Math.max(-15,Math.min(15,(pz-lastHeroZ)/Math.max(.001f,dt)));
         lastHeroX=px;lastHeroZ=pz;
         if (nearBase()) progress.heal(dt);
+        guardianFlash=Math.max(0,guardianFlash-dt);guardianCooldown=Math.max(0,guardianCooldown-dt);
+        if(tutorial==null && progress.baseLevel()>=2 && guardianCooldown<=0) {
+            Enemy target=null;
+            for(Enemy candidate:enemies)if(candidate.health>1 && candidate.distance(0,0)<9 && (target==null || candidate.distance(0,0)<target.distance(0,0)))target=candidate;
+            if(target!=null) {
+                float damage=Math.min(target.health-1,Math.min(14,6+progress.baseLevel()*2));
+                target.health-=damage;target.hitFlash=.16f;guardianX=target.x;guardianZ=target.z;guardianFlash=.28f;guardianCooldown=4;
+                vfx.impact(target.x,target.z,Menu.TEAL,false);feedback.add(target.x,target.z,"WARD -"+Math.round(damage),Menu.TEAL);audio.play("ward");
+            }
+        }
         // Impact occurs part-way through the swing, once only, in the locked facing arc.
         if (impactPending) {
             attackElapsed+=dt;
@@ -373,7 +390,7 @@ public class Game {
                 if(fallen.size()>=48)fallen.remove(0);fallen.add(enemy);
                 vfx.impact(enemy.x,enemy.z,enemy.boss()?Menu.GOLD:Menu.TEAL,enemy.boss());
                 feedback.add(enemy.x,enemy.z,"+"+enemy.reward()+" crystals",Menu.TEAL);
-                if (enemy.boss()) notifyPlayer(chapter().title()+" DEFEATED / "+progress.weaponName(progress.weaponUnlocked())+" in inventory");
+                if (enemy.boss()) notifyPlayer(chapter().title()+" DEFEATED / "+progress.weaponName(progress.weaponUnlocked())+" unlocked / +120 crystals / Armor is forged");
                 continue;
             }
             if(tutorial!=null) { enemy.health=9999;if(tutorial.step()!=Tutorial.Step.PARRY) { enemy.stun=.2f;enemy.attackTime=0;enemy.impactPending=false; } }
@@ -623,6 +640,11 @@ public class Game {
         for(Enemy enemy:enemies) assets.drawEnemy(enemy);
         for(Enemy enemy:fallen)assets.drawEnemy(enemy);
         assets.drawFieldEvent(progress.fieldEvent(),(float)GetTime());
+        if(progress.baseLevel()>=2) {
+            float pulse=(float)Math.sin(GetTime()*2)*.08f;
+            DrawSphere(v(-2,1.7f+pulse,0),.22f,Menu.TEAL);DrawSphere(v(2,1.7f-pulse,0),.22f,Menu.GOLD);
+        }
+        if(guardianFlash>0)DrawCylinderEx(v(guardianX<0?-2:2,1.7f,0),v(guardianX,1,guardianZ),.035f,.015f,8,Fade(Menu.TEAL,guardianFlash/.28f));
     }
     private void drawSanctuaryRing() {
         Color ring=Fade(Menu.TEAL,.62f);float radius=6;int segments=64;
@@ -658,7 +680,7 @@ public class Game {
         if(w>=1000)drawMinimap(w-184,102);
         if(state==GameState.PLAYING && !inventory && !workshop)drawCombatCues();
         int sy=compact?h-178:112,sw=compact?130:208;
-        Menu.panel(16,sy,sw,72);Menu.text("SANCTUARY",28,sy+8,compact?10:13,Menu.GOLD);
+        Menu.panel(16,sy,sw,72);Menu.text(progress.baseLevel()>=2?"SANCTUARY / WARD":"SANCTUARY",28,sy+8,compact?10:13,Menu.GOLD);
         Menu.text((int)progress.baseHealth()+" / "+progress.maxBaseHealth(),28,sy+26,12,Menu.TEXT);
         Menu.bar(28,sy+44,sw-24,progress.baseHealth(),progress.maxBaseHealth(),Menu.GOLD);
         String sanctuaryCue=nearBase()?(compact?"+12 HP/s  "+settings.controls.label(INTERACT)+" +100/30CR":"+"+Math.round(progress.healRate())+" HP/s / "+settings.controls.label(INTERACT)+" +100 / 30 CR"):"CENTER "+String.format("%.0f",sanctuaryDistance())+"m / RADAR";
@@ -798,10 +820,10 @@ public class Game {
         Menu.text(playtest?"Separate playtest save / Campaign save is preserved.":"Closing the game also saves an active defense.",x,y+380,15,Menu.MUTED);
     }
     private void drawChapterEnd() {
-        if(chapter().bossOnly() && outcomeTime<1.6f) {
+        if(chapter().bossOnly() && outcomeTime<(state==GameState.VICTORY?8f:1.6f)) {
             int center=GetScreenWidth()/2;
             Menu.panel(center-270,186,540,80);Menu.center(chapter().title().toUpperCase()+" DEFEATED",center,201,27,Menu.GOLD);
-            Menu.center("The ember endures. Congratulations, warden!",center,239,16,Menu.TEXT);
+            Menu.center(state==GameState.VICTORY?"The curse breaks. Watch the valley wake beneath the dawn.":"The ember endures. Congratulations, warden!",center,239,16,Menu.TEXT);
             return;
         }
         dim();int x=(GetScreenWidth()-660)/2,y=(GetScreenHeight()-480)/2;
@@ -819,8 +841,12 @@ public class Game {
             Campaign.Chapter next=Campaign.CHAPTERS[Math.min(3,chapterIndex()+1)];
             Menu.text("NEXT / "+next.title()+(next.bossOnly()?" / BOSS DUEL":" / "+next.waves()+" WAVES"),x,y+205,21,Menu.TEAL);
             Menu.wrapped(next.story(),x,y+244,640,18,Menu.MUTED);
-        } else Menu.text(progress.kills()+" enemies defeated / The sanctuary endures.",x,y+230,19,Menu.TEAL);
-        Menu.text(chapter().bossOnly()?"BOSS DEFEATED / "+progress.weaponName(progress.weaponUnlocked())+" unlocked":"CHAPTER COMPLETE / The ember burns brighter.",x,y+310,17,Menu.TEAL);
+        } else {
+            Menu.text("THE LONG NIGHT IS OVER",x,y+205,24,Menu.GOLD);
+            Menu.text(progress.kills()+" enemies defeated / "+progress.crystals()+" crystals carried home",x,y+245,18,Menu.TEAL);
+            Menu.text("Your watch is complete. The valley remembers its warden.",x,y+276,16,Menu.TEXT);
+        }
+        Menu.text(chapter().bossOnly()?"BOSS / +120 CRYSTALS / WEAPON UNLOCK / ARMOR: FORGE":"CHAPTER COMPLETE / The ember burns brighter.",x,y+310,17,Menu.TEAL);
         if(Menu.button(state==GameState.VICTORY?"MAIN MENU [ENTER]":"CONTINUE [ENTER]",x,y+350,380,true)) continueCampaign();
         if(state!=GameState.VICTORY && Menu.button("INVENTORY",x+400,y+350,240,true)) inventory=true;
         Menu.text(playtest?"Your playtest has been saved separately.":"Your campaign progress has been saved.",x,y+424,16,Menu.MUTED);
@@ -962,7 +988,7 @@ public class Game {
             state=director.levelCleared(enemies.size())?(wave>=10?GameState.VICTORY:GameState.LEVEL_COMPLETE):GameState.PAUSED;
             if(state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY)outcomeTime=3;
 
-        hudCharging=false;mastery.reset();hitPause=hitMarker=0;
+        hudCharging=false;guardianCooldown=guardianFlash=0;mastery.reset();hitPause=hitMarker=0;
     }
     WeaponTrail weaponTrail() { return vfx.blade(); }
     Combat.Attack currentAttack() { return activeAttack; }
