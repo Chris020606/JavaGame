@@ -52,6 +52,8 @@ Boss duels have a driving battle score that intensifies when the boss becomes en
 
 Fallen enemies remain on the ground, then fade where they fell. The meadow river continues into wooded banks beyond the clearing.
 
+Trees, large stones, and standing columns now have physical footprints. Dashes stop at them, and enemies steer around them. Foliage and open tents remain traversable.
+
 Mountains rise beyond the clearing. Over an eight-minute cycle, the sun crosses the sky, daylight warms into sunset, and the moon and stars take over. Light and shadows change with them. The clock beside the radar shows the time, and your save remembers it.
 
 ![Moonlight and stars over the mountains](docs/images/player-moonlight.png)
@@ -119,7 +121,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.8.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.8.1**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -130,6 +132,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **2.8.1:** physical tree, stone and column footprints; collision-safe dashes; enemies steer around scenery.
 - **2.8:** chapter-entry checkpoints and retry, gold-marked elites with bonus crystals, and readable HUD backing on bright terrain.
 - **2.7:** clean health/stamina bars, clearer sanctuary healing and repair guidance, higher sanctuary integrity with chapter resupply, and the Dawnweaver charged support weapon.
 - **2.6:** original iron-and-parchment interface, clickable six-slot action belt, framed backpack/armor slots and matching workshop/menus.

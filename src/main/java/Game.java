@@ -301,6 +301,8 @@ public class Game {
         boolean wasDodging=player.isDodging();float beforeMoveX=player.getPosition().x(),beforeMoveZ=player.getPosition().z();
         if(!overBelt && (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || heavyDown))aimCursor();
         sceneManager.getOpenScene().updatesEntities(dt);
+        ArenaNavigation.Position heroMove=ArenaNavigation.move(chapterIndex(),beforeMoveX,beforeMoveZ,player.getPosition().x(),player.getPosition().z(),.38f);
+        player.getPosition().x(heroMove.x()).z(heroMove.z());
         if(progress.heroClass()==HeroClass.WARRIOR && player.isAttacking() && dt>0) {
             float elapsed=activeAttack.duration()-player.attackRemaining();
             if(elapsed>=activeAttack.impact()-.07f && elapsed<=activeAttack.impact()+(activeHeavy?.20f:.14f))
@@ -403,7 +405,12 @@ public class Game {
                 if(d>.01f && d<2.5f) { float force=(2.5f-d)/2.5f;separationX+=dx/d*force;separationZ+=dz/d*force; }
             }
             float ex=enemy.x,ez=enemy.z;boolean charging=enemy.chargeTime>0;
-            enemy.navigate(tx,tz,separationX,separationZ,dt);
+            ArenaNavigation.Position avoidance=ArenaNavigation.steering(chapterIndex(),enemy.x,enemy.z,tx,tz);
+            enemy.navigate(tx,tz,separationX+avoidance.x(),separationZ+avoidance.z(),dt);
+            {
+                ArenaNavigation.Position moved=ArenaNavigation.move(chapterIndex(),ex,ez,enemy.x,enemy.z,enemy.boss()?.8f:.4f);
+                enemy.x=moved.x();enemy.z=moved.z();
+            }
             if(enemy.variant==4 && enemy.healCooldown<=0 && enemy.stun<=0 && enemy.attackTime<=0) {
                 Enemy ally=SquadTactics.woundedAlly(enemy,enemies);
                 if(ally!=null) { enemy.healingTarget=ally;enemy.attackTime=.9f;enemy.impactPending=true;enemy.healCooldown=8;enemy.cooldown=1.5f;audio.play("ward"); }
