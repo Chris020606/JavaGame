@@ -11,7 +11,7 @@ public enum HeroClass {
     }
     public Combat.Attack attack(int combo,boolean heavy) {
         if (this==WARRIOR) return Combat.attack(combo,heavy);
-        if (this==ARCHER) return new Combat.Attack(heavy?.85f:.4f,heavy?.3f:.12f,heavy?16:12,4,heavy?2: .85f,heavy?"POWER SHOT":"ARROW");
-        return new Combat.Attack(heavy?1.1f:.65f,heavy?.4f:.22f,heavy?12:10,6,heavy?2.2f:1.1f,heavy?"ARCANE SURGE":"MAGIC BOLT");
+        if (this==ARCHER) return new Combat.Attack(heavy?.95f:.68f,heavy?.4f:.32f,heavy?16:12,4,heavy?2: .85f,heavy?"POWER SHOT":"ARROW");
+        return new Combat.Attack(heavy?1.1f:.74f,heavy?.4f:.28f,heavy?12:10,6,heavy?2.2f:1.1f,heavy?"ARCANE SURGE":"MAGIC BOLT");
     }
 }

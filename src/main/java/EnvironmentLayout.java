@@ -22,6 +22,13 @@ public final class EnvironmentLayout {
             n(p,"statue_columnDamaged",9,14,11,3.4f);n(p,"statue_columnDamaged",13,16,82,2.5f);
             n(p,"statue_obelisk",11,19,-9,3.1f);
             n(p,"bridge_wood",-4,-28,90,4.2f);
+            // Layered riverbank groves conceal the distant seam from low orbit angles.
+            for(int side:new int[]{-1,1})for(int i=0;i<14;i++) {
+                float x=side*(31+i*2.8f+(random.nextFloat()-.5f)*1.4f),z=-24+(i%3)*4.2f+(random.nextFloat()-.5f)*2;
+                n(p,i%3==0?"tree_oak":"tree_pineTallA_detailed",x,z,random.nextFloat()*360,5.5f+random.nextFloat()*2.5f);
+                n(p,"plant_bushDetailed",x-side*1.7f,-17+(i%2)*2,random.nextFloat()*360,2.4f+random.nextFloat());
+                if(i%3==0)n(p,"stone_largeA",x,-23,random.nextFloat()*360,3.2f);
+            }
             n(p,"tree_oak",-19,6,110,3.2f);n(p,"tree_pineRoundC",18,-15,35,3.7f);n(p,"tree_oak",20,15,210,3.3f);
             n(p,"stump_old",-15,12,16,2.3f);n(p,"log_large",-17,15,58,2.1f);
             for(int i=0;i<72;i++) {
@@ -104,6 +111,7 @@ public final class EnvironmentLayout {
         }
     }
     public record RiverTile(String model,int yaw) {}
+    public static final int RIVER_EXTENT=44;
     public static RiverTile riverTile(int x,int z) {
         if(z==-5 && (x<-4 || x>3) || z==-7 && x>-4 && x<3)return new RiverTile("ground_riverStraight",90);
         if(z==-6 && (x==-4 || x==3))return new RiverTile("ground_riverStraight",0);

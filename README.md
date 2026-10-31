@@ -18,7 +18,13 @@ Name your warden, choose **Easy, Normal, Hard, or Extreme**, and light the beaco
 
 ## Every swing matters
 
+New to the valley? Your first adventure opens a safe, hands-on tutorial. Practice movement, aiming, attacks, dodging, charging, parrying, equipment, and sanctuary healing. Lessons advance when you perform the action. Replay **Tutorial / Safe Practice** from the main menu or pause menu, or skip whenever you are ready. Your campaign stays separate.
+
 Watch your stamina. Sprint to reach a threatened gate, dodge through danger, or save enough strength for a heavy attack. Time your next light strike to continue a combo. A well-timed parry opens the way for a stronger riposte.
+
+Point at a target and click to aim and strike; hold the mouse button to repeat basic attacks. Tap near the end of a swing to chain the next strike. Space attacks toward your facing. Bows visibly draw and release, crossbows have a full reload, and Mages raise and fire their staff. Two-handed Warrior weapons use their own swings. Movement settles during the strike and returns through recovery.
+
+Each class has a combat reward. **Warrior:** parry to empower your next strike by 20%. **Archer:** dodge through an incoming hit to empower your next shot by 30%. **Mage:** light hits build up to three resonance stacks, each adding 20% to your next heavy cast. Bonuses expire, so watch the mastery cue above the action bar. The charge bar highlights the perfect release window; a contact marker and brief melee impact pause make hits easier to read.
 
 Enemies have plans of their own: scouts flank, brutes push forward, archers retreat and reposition, and spellcasters can heal wounded allies. Read their attack warnings and interrupt them before they finish.
 
@@ -34,7 +40,9 @@ Your journey starts in a meadow camp among wildflowers, fallen logs, and a windi
 
 Hold the sanctuary through two four-wave sieges, then face the **Ash Warden** and **Hollow King** in their own boss-only chapters. Slams, rushes, expanding shockwaves, and delayed spell seals keep those duels moving. Below half health, the bosses become more dangerous.
 
-Boss duels have a driving battle score that intensifies when the boss becomes enraged. Defeated foes fall instead of disappearing; skeleton bosses collapse into bones. Clear a chapter to hear the victory fanfare, see your warden celebrate, and collect congratulations and new weapon unlocks. Crossbows now visibly aim, fire, and reload between shots.
+Boss duels have a driving battle score that intensifies when the boss becomes enraged. Defeated foes fall instead of disappearing; armored foes settle into a grounded resting pose. Clear a chapter to hear the victory fanfare, see your warden celebrate, and collect congratulations and new weapon unlocks. Crossbows now visibly aim, fire, and reload between shots.
+
+Fallen enemies remain on the ground, then fade where they fell. The meadow river continues into wooded banks beyond the clearing.
 
 Mountains rise beyond the clearing. Over an eight-minute cycle, the sun crosses the sky, daylight warms into sunset, and the moon and stars take over. Light and shadows change with them. The clock beside the radar shows the time, and your save remembers it.
 
@@ -99,7 +107,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.2.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.4.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -110,6 +118,8 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **2.4:** safe interactive tutorial, class mastery bonuses, charge/contact/recovery HUD cues, ground shading and chapter atmosphere, and rendering optimizations.
+- **2.3:** grounded corpses, extended wooded riverbanks, smooth class/weapon animation transitions, mouse aiming, better attack timing and clearer releases.
 - **2.2:** optional supplies, survivor escorts and waystone defenses, persistent ember blessing builds, distinct siege formations, and a reproducible extended gameplay trailer.
 - **2.1:** dedicated boss/enrage music, animated deaths and celebrations, victory fanfare and congratulations, crossbow reloads, and fixes for boss-enrage and post-boss inventory crashes.
 - **2.0:** corrected Dawn weapon colors, real inventory thumbnails and comparisons, a bridge that crosses the stream, mountain scenery, and a saved day/night cycle.
@@ -124,7 +134,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–2.2 are development updates rather than published releases.
+Versions 1.3–2.4 are development updates rather than published releases.
 
 </details>
 

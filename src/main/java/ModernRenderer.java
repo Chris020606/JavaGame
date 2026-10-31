@@ -9,6 +9,7 @@ public final class ModernRenderer implements AutoCloseable {
     private final Shader post=LoadShader(null,AssetPaths.path("resources/outpost/post.fs"));
     private final Camera3D sun=new Camera3D()._position(new Vector3().x(-35).y(55).z(28))
         .target(new Vector3()).up(new Vector3().y(1)).projection(CAMERA_ORTHOGRAPHIC).fovy(78);
+    private final int shadowTime=GetShaderLocation(shadowShader,"uTime"),postResolution=GetShaderLocation(post,"resolution"),postBloom=GetShaderLocation(post,"bloomStrength");
     private RenderTexture shadow,scene;
     private Matrix sunVP;
     private int width,height,shadowSize;
@@ -32,7 +33,7 @@ public final class ModernRenderer implements AutoCloseable {
         sun._position().x(light.lightX()*75).y(light.lightY()*75).z(light.lightZ()*75);
         BeginTextureMode(shadow);ClearBackground(WHITE);BeginMode3D(sun);
         sunVP=MatrixMultiply(rlGetMatrixModelview(),rlGetMatrixProjection());
-        values.put(0,time);SetShaderValue(shadowShader,GetShaderLocation(shadowShader,"uTime"),values,SHADER_UNIFORM_FLOAT);
+        values.put(0,time);SetShaderValue(shadowShader,shadowTime,values,SHADER_UNIFORM_FLOAT);
     }
     public void endShadow() { EndMode3D();EndTextureMode(); }
     public Matrix sunVP() { return sunVP; }
@@ -52,8 +53,8 @@ public final class ModernRenderer implements AutoCloseable {
     public int height() { return height; }
     public void present() {
         EndTextureMode();
-        values.put(0,width).put(1,height);SetShaderValue(post,GetShaderLocation(post,"resolution"),values,SHADER_UNIFORM_VEC2);
-        values.put(0,high?.16f:.06f);SetShaderValue(post,GetShaderLocation(post,"bloomStrength"),values,SHADER_UNIFORM_FLOAT);
+        values.put(0,width).put(1,height);SetShaderValue(post,postResolution,values,SHADER_UNIFORM_VEC2);
+        values.put(0,high?.16f:.06f);SetShaderValue(post,postBloom,values,SHADER_UNIFORM_FLOAT);
         screen.zoom((float)GetRenderWidth()/Math.max(1,GetScreenWidth()));
         BeginMode2D(screen);BeginShaderMode(post);
         DrawTexturePro(scene.texture(),new Rectangle().width(width).height(-height),

@@ -25,6 +25,9 @@ public final class WorldAssets implements AutoCloseable {
     private final Model mountains=LoadModel(AssetPaths.path("resources/outpost/landscape/mountains.obj")),frostMountains=LoadModel(AssetPaths.path("resources/outpost/landscape/mountains-frost.obj"));
     private final Texture skyGlow=LoadTexture(AssetPaths.path("resources/outpost/effects/soft.png"));
     private float currentDay=1;
+    private float viewerX,viewerZ,heroX,heroZ;
+    private Camera3D viewCamera;
+    public void view(Player player,Camera3D camera) { viewCamera=camera;heroX=player.getPosition().x();heroZ=player.getPosition().z();viewerX=camera._position().x();viewerZ=camera._position().z(); }
     private ChapterLook look=ChapterLook.MEADOW;
     private final Model skeletonMinion=LoadModel(AssetPaths.path("resources/outpost/bosses/Skeleton_Minion.glb"));
     private final Model skeletonRogue=LoadModel(AssetPaths.path("resources/outpost/bosses/Skeleton_Rogue.glb"));
@@ -51,15 +54,18 @@ public final class WorldAssets implements AutoCloseable {
     private final ModelAnimation bossAnimations=LoadModelAnimations(AssetPaths.path("resources/outpost/bosses/Skeleton_Warrior.glb"),bossCount);
     private final ModelAnimation kingAnimations=LoadModelAnimations(AssetPaths.path("resources/outpost/bosses/Hollow_King.glb"),kingCount);
     private final java.util.Map<String,Integer> bossClips=new java.util.HashMap<>();
+    private final java.util.Map<String,Integer> uniformLocations=new java.util.HashMap<>();
+    private int uniform(String name) { return uniformLocations.computeIfAbsent(name,n->GetShaderLocation(daylight,n)); }
     private Shader passShader=daylight;
     private Texture shadowTexture;
     private boolean shadowPass;
     private final FloatPointer uniforms=new FloatPointer(4);
-    private final int surfaceLoc=GetShaderLocation(daylight,"material");
+    private final int surfaceLoc=uniform("material");
     private int run, chop;
+    private final java.util.Set<Model> verifiedArmor=new java.util.HashSet<>();
     public WorldAssets() {
         if(!IsShaderValid(daylight)) throw new IllegalStateException("Surface shader did not compile");
-        daylight.locs().put(SHADER_LOC_MAP_BRDF,GetShaderLocation(daylight,"shadowMap"));
+        daylight.locs().put(SHADER_LOC_MAP_BRDF,uniform("shadowMap"));
         for(Model model:new Model[]{bossWarrior,bossKing,bossAxe,bossStaff})
             if(model.meshCount()==0) throw new IllegalStateException("Missing skeleton boss asset");
         if(bossCount[0]==0 || kingCount[0]!=bossCount[0]) throw new IllegalStateException("Boss animation clips missing");
@@ -151,18 +157,18 @@ public final class WorldAssets implements AutoCloseable {
     }
     public void litPass(ModernRenderer renderer,Camera3D camera,float time,Enemy boss,DayNightCycle.Frame light) {
         currentDay=light.daylight();shadowTexture=renderer.shadowTexture();pass(daylight,false);
-        SetShaderValueMatrix(daylight,GetShaderLocation(daylight,"sunVP"),renderer.sunVP());
+        SetShaderValueMatrix(daylight,uniform("sunVP"),renderer.sunVP());
         uniforms.put(0,camera._position().x()).put(1,camera._position().y()).put(2,camera._position().z());
-        SetShaderValue(daylight,GetShaderLocation(daylight,"viewPos"),uniforms,SHADER_UNIFORM_VEC3);
-        uniforms.put(0,time);SetShaderValue(daylight,GetShaderLocation(daylight,"uTime"),uniforms,SHADER_UNIFORM_FLOAT);
-        uniforms.put(0,light.lightX()).put(1,light.lightY()).put(2,light.lightZ());SetShaderValue(daylight,GetShaderLocation(daylight,"lightDir"),uniforms,SHADER_UNIFORM_VEC3);
-        uniforms.put(0,light.light().r()).put(1,light.light().g()).put(2,light.light().b());SetShaderValue(daylight,GetShaderLocation(daylight,"lightColor"),uniforms,SHADER_UNIFORM_VEC3);
-        uniforms.put(0,light.daylight());SetShaderValue(daylight,GetShaderLocation(daylight,"dayAmount"),uniforms,SHADER_UNIFORM_FLOAT);
-        uniforms.put(0,lookIndex);SetShaderValue(daylight,GetShaderLocation(daylight,"environment"),uniforms,SHADER_UNIFORM_FLOAT);
-        uniforms.put(0,renderer.shadowSize());SetShaderValue(daylight,GetShaderLocation(daylight,"shadowSize"),uniforms,SHADER_UNIFORM_FLOAT);
+        SetShaderValue(daylight,uniform("viewPos"),uniforms,SHADER_UNIFORM_VEC3);
+        uniforms.put(0,time);SetShaderValue(daylight,uniform("uTime"),uniforms,SHADER_UNIFORM_FLOAT);
+        uniforms.put(0,light.lightX()).put(1,light.lightY()).put(2,light.lightZ());SetShaderValue(daylight,uniform("lightDir"),uniforms,SHADER_UNIFORM_VEC3);
+        uniforms.put(0,light.light().r()).put(1,light.light().g()).put(2,light.light().b());SetShaderValue(daylight,uniform("lightColor"),uniforms,SHADER_UNIFORM_VEC3);
+        uniforms.put(0,light.daylight());SetShaderValue(daylight,uniform("dayAmount"),uniforms,SHADER_UNIFORM_FLOAT);
+        uniforms.put(0,lookIndex);SetShaderValue(daylight,uniform("environment"),uniforms,SHADER_UNIFORM_FLOAT);
+        uniforms.put(0,renderer.shadowSize());SetShaderValue(daylight,uniform("shadowSize"),uniforms,SHADER_UNIFORM_FLOAT);
         uniforms.put(0,boss==null?0:boss.x).put(1,2).put(2,boss==null?0:boss.z);
-        SetShaderValue(daylight,GetShaderLocation(daylight,"bossPos"),uniforms,SHADER_UNIFORM_VEC3);
-        uniforms.put(0,boss==null?0:boss.enraged()?1.2f:.5f);SetShaderValue(daylight,GetShaderLocation(daylight,"bossGlow"),uniforms,SHADER_UNIFORM_FLOAT);
+        SetShaderValue(daylight,uniform("bossPos"),uniforms,SHADER_UNIFORM_VEC3);
+        uniforms.put(0,boss==null?0:boss.enraged()?1.2f:.5f);SetShaderValue(daylight,uniform("bossGlow"),uniforms,SHADER_UNIFORM_FLOAT);
     }
     public void finishLitPass() { rlActiveTextureSlot(10);rlDisableTexture();rlActiveTextureSlot(0); }
     private void surface(float rough,float metal) {
@@ -231,6 +237,13 @@ public final class WorldAssets implements AutoCloseable {
     private void drawCemetery(boolean necropolis,float time) { drawAuthoredLayout(necropolis?3:1,time); }
     private void drawFrozen(float time) { drawAuthoredLayout(2,time); }
     private void drawAuthoredLayout(int chapter,float time) {
+        if(chapter==0)for(int x=-EnvironmentLayout.RIVER_EXTENT;x<=EnvironmentLayout.RIVER_EXTENT;x++) {
+            if(Math.abs(x)<=8 || shadowPass && Math.abs(x)>16)continue;
+            for(int z=-6;z<=-4;z++) {
+                var river=EnvironmentLayout.riverTile(x,z);
+                scenery(river==null?"ground_grass":river.model(),x*4,z*4,river==null?0:river.yaw(),4);
+            }
+        }
         for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) {
             var river=chapter==0?EnvironmentLayout.riverTile(x,z):null;
             if(river!=null) { surface(.26f,.1f);scenery(river.model(),x*4,z*4,river.yaw(),4);surface(.82f,.02f); }
@@ -272,12 +285,21 @@ public final class WorldAssets implements AutoCloseable {
             float x=-24+(i*7.13f+time*1.5f)%48,z=-24+(i*11.71f)%48,y=12-(time*.8f+i*.34f)%12;
             DrawSphere(v(x,y,z),.035f,Menu.TEXT);
         }
+        if(chapter==1 || chapter==3)for(int i=0;i<24;i++) {
+            float x=-24+(i*7.13f+time*.14f)%48,z=-24+(i*11.71f)%48,y=.3f+(float)Math.sin(time*.7f+i)*.2f;
+            Color mote=chapter==1?Menu.color(208,151,100):Menu.color(127,151,230);
+            DrawBillboard(viewCamera,skyGlow,v(x,y,z),chapter==1?.20f:.36f,Fade(mote,.22f+.14f*(float)Math.sin(time+i)));
+        }
+        if(chapter==0 && currentDay<.5f)for(int i=0;i<18;i++) {
+            float x=(i%2==0?-15:17)+(float)Math.sin(time*.3f+i)*3,z=-12+(i%6)*5;
+            DrawSphere(v(x,1+(float)Math.sin(time+i)*.4f,z),.035f,Fade(Menu.GOLD,(.5f-currentDay)*1.5f));
+        }
     }
     private void grave(String name,float x,float z,float angle,float scale) {
         graveAt(name,x,name.equals("road")?-.28f:0,z,angle,scale);
     }
     private void graveAt(String name,float x,float y,float z,float angle,float scale) {
-        Model model=graveyard.get(name);lightModel(model);
+        Model model=graveyard.get(name);
         Color tint=name.equals("grave")?Menu.color(132,142,126):name.equals("pine-crooked")?Menu.color(118,142,128):WHITE;
         DrawModelEx(model,v(x,y,z),v(0,1,0),angle,v(scale,scale,scale),tint);
     }
@@ -291,17 +313,26 @@ public final class WorldAssets implements AutoCloseable {
     private void drawBoss(Enemy enemy) {
         Model model=enemy.king?bossKing:bossWarrior;
         ModelAnimation animations=enemy.king?kingAnimations:bossAnimations;
-        String name=enemy.health<=0?"Death_C_Skeletons":enemy.stun>0?"Hit_A":enemy.chargeTime>0?"Running_A":enemy.attackTime>0?
+        String name=enemy.health<=0?"Death_A":enemy.stun>0?"Hit_A":enemy.chargeTime>0?"Running_A":enemy.attackTime>0?
             switch(enemy.bossMove) { case CLEAVE -> "2H_Melee_Attack_Slice";case SLAM -> "2H_Melee_Attack_Chop";case CHARGE -> "Taunt";case SIGILS -> "Spellcast_Raise"; }:"Walking_D_Skeletons";
         ModelAnimation clip=new ModelAnimation(animations).position(bossClips.get(name));
-        int frame=enemy.health<=0?AnimationFrames.progress(enemy.deathTime/1.6f,clip.keyframeCount()):enemy.attackTime>0?AnimationFrames.progress(1-enemy.attackTime/enemy.attackDuration(),clip.keyframeCount()):
-            AnimationFrames.loop(enemy.animationTime*45,clip.keyframeCount());
-        UpdateModelAnimation(model,clip,frame);lightModel(model);surface(.38f,.25f);
+        float frame=enemy.health<=0?AnimationFrames.sample(enemy.deathTime/1.6f,clip.keyframeCount()):enemy.attackTime>0?AnimationFrames.sample(1-enemy.attackTime/enemy.attackDuration(),clip.keyframeCount()):
+            AnimationFrames.looping(enemy.animationTime*45,clip.keyframeCount());
+        if(enemy.health<=0)poseCorpse(model,animations,clip,frame,bossClips.get("Lie_Pose"),enemy.deathTime,true);
+        else UpdateModelAnimation(model,clip,frame);
+        lightModel(model);surface(.38f,.25f);
         float scale=enemy.king?2.45f:2.1f;
         Color tint=enemy.hitFlash>0?Menu.TEXT:enemy.king?Menu.color(190,190,215):Menu.color(210,184,151);
-        float modelY=enemy.health<=0?-Math.max(0,enemy.deathTime-1.8f)*3:0;
+        float opacity=1;
+        if(!shadowPass && enemy.health>0) {
+            float dx=viewerX-heroX,dz=viewerZ-heroZ,t=((enemy.x-heroX)*dx+(enemy.z-heroZ)*dz)/Math.max(.001f,dx*dx+dz*dz);
+            if(t>0 && t<1)opacity=.30f+.70f*Entities.AttackMotion.smooth((Combat.segmentDistance(enemy.x,enemy.z,heroX,heroZ,viewerX,viewerZ)-.8f)/1.4f);
+            tint=Fade(tint,opacity);
+        }
+        if(enemy.health<=0)tint=Fade(tint,CorpsePresentation.opacity(enemy.deathTime,true));
+        float modelY=enemy.health<=0?corpseSupport(enemy,model,scale):0;
         DrawModelEx(model,v(enemy.x,modelY,enemy.z),v(0,1,0),enemy.facing,v(scale,scale,scale),tint);
-        if(enemy.health>0)drawWeapon(model,v(enemy.x,0,enemy.z),enemy.facing,enemy.king?bossStaff:bossAxe,WHITE,scale);
+        if(enemy.health>0)drawWeapon(model,v(enemy.x,0,enemy.z),enemy.facing,enemy.king?bossStaff:bossAxe,Fade(WHITE,opacity),scale);
         if(shadowPass || enemy.health<=0) return;
         Color energy=enemy.enraged()?Menu.RED:enemy.king?Menu.color(185,105,255):Menu.GOLD;
         DrawCylinderWires(v(enemy.x,.08f,enemy.z),1.35f,1.35f,.1f,32,energy);
@@ -331,7 +362,7 @@ public final class WorldAssets implements AutoCloseable {
         if(event.kind()==FieldEvent.Kind.SURVIVOR) {
             String name=event.status()==FieldEvent.Status.ACTIVE?"Walking_A.001":"Melee_2H_Idle";
             ModelAnimation clip=new ModelAnimation(animations).position(humanClips.get(raider).get(name));
-            UpdateModelAnimation(raider,clip,AnimationFrames.loop(time*40,clip.keyframeCount()));lightModel(raider);
+            UpdateModelAnimation(raider,clip,AnimationFrames.looping(time*40,clip.keyframeCount()));lightModel(raider);
             DrawModelEx(raider,v(event.x(),0,event.z()),v(0,1,0),event.facing(),v(.9f,.9f,.9f),Menu.TEAL);
         } else if(event.kind()==FieldEvent.Kind.SUPPLIES) {
             lightModel(supplyCache);DrawModelEx(supplyCache,v(event.x(),0,event.z()),v(0,1,0),25,v(1.4f,1.4f,1.4f),WHITE);
@@ -352,34 +383,51 @@ public final class WorldAssets implements AutoCloseable {
         else if(enemy.locomotion<.1f) clipName=bone?"Idle_Combat":"Melee_2H_Idle";
         else if(enemy.action.equals("STRAFE")) clipName="Running_Strafe_Left";
         else clipName=enemy.variant==1?"Running_A":bone?"Walking_D_Skeletons":"Walking_A.001";
-        if(enemy.health<=0)clipName=bone?"Death_C_Skeletons":"Death_A";
+        if(enemy.health<=0)clipName="Death_A";
         Integer index=(bone?bossClips:humanClips.get(character)).get(clipName);
         if(index==null) throw new IllegalStateException("Missing enemy clip "+clipName);
         ModelAnimation clip=new ModelAnimation(clips).position(index);
         float phase=enemy.attackTime>0?1-enemy.attackTime/enemy.attackDuration():0;
         if(!bone && enemy.variant==3 && enemy.attackTime>0) phase=enemy.attackTime>.25f?(enemy.attackDuration()-enemy.attackTime)/Math.max(.01f,enemy.attackDuration()-.25f):(.25f-enemy.attackTime)/.25f;
-        int frame=enemy.health<=0?AnimationFrames.progress(enemy.deathTime,clip.keyframeCount()):enemy.attackTime>0?AnimationFrames.progress(phase,clip.keyframeCount()):AnimationFrames.loop(enemy.animationTime*60,clip.keyframeCount());
-        UpdateModelAnimation(character,clip,frame);lightModel(character);
+        float frame=enemy.health<=0?AnimationFrames.sample(enemy.deathTime,clip.keyframeCount()):enemy.attackTime>0?AnimationFrames.sample(phase,clip.keyframeCount()):AnimationFrames.looping(enemy.animationTime*60,clip.keyframeCount());
+        if(enemy.health<=0)poseCorpse(character,clips,clip,frame,(bone?bossClips:humanClips.get(character)).get(bone?"Lie_Pose":"Lie_Idle"),enemy.deathTime,false);
+        else UpdateModelAnimation(character,clip,frame);
+        lightModel(character);
         float scale=enemy.variant==2?1.18f:1;
         Color tint=enemy.hitFlash>0?Menu.GOLD:bone?Menu.color(174,205,228):WHITE;
-        DrawModelEx(character,v(enemy.x,enemy.health<=0?-Math.max(0,enemy.deathTime-1.2f)*3:0,enemy.z),v(0,1,0),enemy.facing,v(scale,scale,scale),tint);
+        if(enemy.health<=0)tint=Fade(tint,CorpsePresentation.opacity(enemy.deathTime,false));
+        DrawModelEx(character,v(enemy.x,enemy.health<=0?corpseSupport(enemy,character,scale):0,enemy.z),v(0,1,0),enemy.facing,v(scale,scale,scale),tint);
         if(enemy.health>0)drawWeapon(character,v(enemy.x,0,enemy.z),enemy.facing,enemy.variant==3?bow:enemy.variant==4?staff:enemy.variant==2?waraxe:sword,WHITE,scale);
+    }
+    private float corpseSupport(Enemy enemy,Model model,float scale) {
+        if(!enemy.corpseSettled) {
+            float[] bounds=Entities.SkinBounds.vertical(model);
+            enemy.corpseLift=CorpsePresentation.support(bounds[0],scale);enemy.corpseHeight=(bounds[1]-bounds[0])*scale;
+            enemy.corpseMinimum=bounds[0]*scale+enemy.corpseLift;
+            enemy.corpseSettled=enemy.deathTime>=(enemy.boss()?1.6f:1.2f);
+        }
+        return enemy.corpseLift;
+    }
+    private void poseCorpse(Model model,ModelAnimation clips,ModelAnimation fall,float frame,int restIndex,float age,boolean boss) {
+        float settle=Entities.AttackMotion.smooth((age-(boss?1.1f:.8f))/(boss?.5f:.4f));
+        ModelAnimation rest=new ModelAnimation(clips).position(restIndex);
+        UpdateModelAnimationEx(model,fall,frame,rest,0,settle);
     }
     public void drawArmor(Player player,Progression progress) {
         surface(.35f,.55f);
         for(ArmorSlot slot:ArmorSlot.values()) {
             int tier=progress.armorTier(slot);if(tier==0)continue;
             Model armor=equipment.get(progress.heroClass().name().toLowerCase(java.util.Locale.ROOT)+"-"+slot.icon()+"-"+tier);
-            if(!IsModelAnimationValid(armor,new ModelAnimation(player.getAnimation()).position(player.getAnimationIndex())))throw new IllegalStateException("Fitted armor rig mismatch");
+            if(verifiedArmor.add(armor) && !IsModelAnimationValid(armor,new ModelAnimation(player.getAnimation()).position(player.getAnimationIndex())))throw new IllegalStateException("Fitted armor rig mismatch");
             player.copyPoseTo(armor);lightModel(armor);
-            DrawModelEx(armor,player.getPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),WHITE);
+            DrawModelEx(armor,player.renderPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),WHITE);
         }
     }
     public void drawHeroSilhouette(Player player) {
         Model model=player.getModel();
         for(int i=0;i<model.materialCount();i++) new Material(model.materials()).position(i).shader().put(silhouette);
         rlDisableDepthTest();rlDisableDepthMask();
-        DrawModelEx(model,player.getPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),WHITE);
+        DrawModelEx(model,player.renderPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),WHITE);
         rlEnableDepthMask();rlEnableDepthTest();lightModel(model);
     }
     public void preparePlayer(Player player) { lightModel(player.getModel());surface(.48f,.15f); }
@@ -400,7 +448,7 @@ public final class WorldAssets implements AutoCloseable {
             Mesh mesh=new Mesh(model.meshes()).position(hidden[i]);triangles[i]=mesh.triangleCount();vertices[i]=mesh.vertexCount();
             mesh.triangleCount(0).vertexCount(0);
         }
-        try { DrawModelEx(model,player.getPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),tint); }
+        try { DrawModelEx(model,player.renderPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),tint); }
         finally { for(int i=0;i<hidden.length;i++)new Mesh(model.meshes()).position(hidden[i]).triangleCount(triangles[i]).vertexCount(vertices[i]); }
     }
     private Model weaponModel(int style,int tier) { return style==1?(tier==0?bow:tier==1?stringBow:crossbow):style==2?(tier==0?staff:tier==1?wand:tier==2?bossStaff:equipment.get("dawnstaff")):(tier==0?sword:tier==1?longsword:tier==2?waraxe:equipment.get("dawnblade")); }
@@ -422,7 +470,13 @@ public final class WorldAssets implements AutoCloseable {
         DrawModelEx(model,v(0,0,0),v(1,0,0),bow?90:0,v(1,1,1),WHITE);model.transform(original);
     }
     public void drawPlayerWeapon(Player player,int style,int tier) {
-        Model weapon=weaponModel(style,tier);drawWeapon(player.getModel(),player.getPosition(),player.getRotation().y(),weapon,WHITE);
+        Model weapon=weaponModel(style,tier);drawWeapon(player.getModel(),player.renderPosition(),player.getRotation().y(),weapon,WHITE);
+        if(player.isDrawingBow()) {
+            Vector3 from=player.handPosition("handslot.r"),bowHand=player.handPosition("handslot.l");double a=Math.toRadians(player.getRotation().y());
+            Vector3 tip=v(from.x()+(float)Math.sin(a)*.95f,bowHand.y()+.03f,from.z()+(float)Math.cos(a)*.95f);
+            DrawCylinderEx(from,tip,.012f,.010f,5,Menu.color(181,141,90));
+            DrawCylinderEx(tip,v(tip.x()+(float)Math.sin(a)*.12f,tip.y(),tip.z()+(float)Math.cos(a)*.12f),.045f,0,4,WHITE);
+        }
     }
     private void drawWeapon(Model character,Vector3 position,float facing,Model weapon) {
         drawWeapon(character,position,facing,weapon,WHITE);

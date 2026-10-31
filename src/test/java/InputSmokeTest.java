@@ -2,6 +2,7 @@ import static com.raylib.Raylib.*;
 
 /** Run with ./gradlew inputSmokeTest on a desktop; no OS input permissions needed. */
 public class InputSmokeTest {
+    private static boolean corpseOnly;
     // raylib AutomationEventType, from src/rcore.c:
     // https://github.com/raysan5/raylib/blob/master/src/rcore.c
     private static final int KEY_UP = 1, KEY_DOWN = 2, MOUSE_UP = 5, MOUSE_DOWN = 6, MOUSE_POSITION = 7;
@@ -155,7 +156,8 @@ public class InputSmokeTest {
             for(int i=0;i<75;i++)frame(game);capture("victory-"+hero.name().toLowerCase()+"-congratulations");
             check(game.getProgression().kills()==kills,"Death animation awarded duplicate loot");
             check(game.getPlayer().getAnimationIndex()>=0,"Hero celebration pose missing");
-            for(int i=0;i<100;i++)frame(game);check(game.fallenCount()==0,"Death visuals did not expire");
+            for(int i=0;i<100;i++)frame(game);check(game.fallenCount()==1,"Corpse vanished before its ground hold finished");
+            for(int i=0;i<400;i++)game.update(.05f);check(game.fallenCount()==0,"Death visuals did not expire after their ground hold");
             check(game.saveCurrent(),"Completed chapter save failed");
             check(game.loadCurrent() && game.getState()==GameState.LEVEL_COMPLETE,"Completed chapter failed to restore");
             int x=(GetScreenWidth()-660)/2,y=(GetScreenHeight()-480)/2;click(game,x+510,y+370);
@@ -163,10 +165,13 @@ public class InputSmokeTest {
             // Render the actual player death clip, including fitted armor, and hold its last frame.
             game.setState(GameState.PLAYING);game.getProgression().damagePlayer(10000);frame(game);
             check(game.getState()==GameState.GAME_OVER,"Player defeat did not trigger");
+            float[] initialSkin=Entities.SkinBounds.vertical(game.getPlayer().getModel());
             float[] start=handPose(game);for(int i=0;i<35;i++)frame(game);capture("victory-"+hero.name().toLowerCase()+"-death-motion");
             for(int i=0;i<50;i++)frame(game);float[] end=handPose(game);
             check(Math.abs(start[0]-end[0])+Math.abs(start[1]-end[1])+Math.abs(start[2]-end[2])>.1f,"Player death did not animate for "+hero);
             for(int i=0;i<40;i++)frame(game);float[] held=handPose(game);
+            float[] fallenSkin=Entities.SkinBounds.vertical(game.getPlayer().getModel());
+            check(fallenSkin[1]-fallenSkin[0]<(initialSkin[1]-initialSkin[0])*.8f,"Deformed character mesh returned to standing at the terminal frame");
             check(Math.abs(end[0]-held[0])+Math.abs(end[1]-held[1])+Math.abs(end[2]-held[2])<.001f,"Player death restarted instead of holding");
             capture("victory-"+hero.name().toLowerCase()+"-player-defeat");
         }
@@ -215,6 +220,109 @@ public class InputSmokeTest {
         }
         System.out.println("PASS: optional supplies, vulnerable escort, beacon defense, persistent blessing drafts and paused event timers");
     }
+    private static void combatMotionRegression(Game game,java.nio.file.Path profile,java.util.concurrent.atomic.AtomicBoolean click) throws Exception {
+        for(HeroClass hero:corpseOnly?new HeroClass[0]:HeroClass.values())for(int tier:new int[]{0,3}) {
+            Progression p=Progression.playtest(hero,Entities.Difficulty.NORMAL,false);p.equipWeapon(tier);
+            Entities.Enemy boss=new Entities.Enemy(0,13,5,5,.5f);
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Motion",0,8,180,p,new WaveDirector.State(5,0,1,8,0,21,0),java.util.List.of(boss),Arena.HIGHLANDS));
+            check(game.loadCurrent(),"Motion fixture did not load");key(game,KEY_ENTER);boss=game.getEnemies().get(0);boss.stun=boss.cooldown=100;
+            for(int i=0;i<20;i++)frame(game);game.pointerAim(true);
+            Vector2 target=GetWorldToScreen(new Vector3().x(0).y(1.1f).z(13),game.getSceneManager().getOpenScene().getCameraController().getCamera());
+            event(MOUSE_POSITION,(int)target.x(),(int)target.y());event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);click.set(true);frame(game);
+            check(Math.abs(Math.IEEEremainder(game.getPlayer().getRotation().y(),360))<2,"Mouse aim did not face the target for "+hero);
+            event(KEY_DOWN,KEY_D,0);float[] last=handPose(game);float maximumStep=0;boolean fractional=false;
+            Model armor=LoadModel(assets.AssetPaths.path("resources/outpost/equipment/"+hero.name().toLowerCase()+"-chest-3.glb"));
+            try {
+                for(int i=0;i<68;i++) {
+                    target=GetWorldToScreen(new Vector3().x(boss.x).y(1.1f).z(boss.z),game.getSceneManager().getOpenScene().getCameraController().getCamera());
+                    event(MOUSE_POSITION,(int)target.x(),(int)target.y());frame(game);
+                    float[] now=handPose(game);maximumStep=Math.max(maximumStep,(float)Math.sqrt(Math.pow(now[0]-last[0],2)+Math.pow(now[1]-last[1],2)+Math.pow(now[2]-last[2],2)));last=now;
+                    float f=game.getPlayer().sampledFrame();fractional|=Math.abs(f-Math.round(f))>.01f;
+                    game.getPlayer().copyPoseTo(armor);
+                    for(int b=0;b<armor.skeleton().boneCount();b++) {
+                        Vector3 a=new Transform(armor.currentPose()).position(b).translation(),body=new Transform(game.getPlayer().getModel().currentPose()).position(b).translation();
+                        check(Math.abs(a.x()-body.x())+Math.abs(a.y()-body.y())+Math.abs(a.z()-body.z())<.0001f,"Armor did not copy blended pose");
+                    }
+                    if(i==10 || i==30)capture("motion-"+hero.name().toLowerCase()+"-"+tier+"-"+i);
+                }
+            } finally { UnloadModel(armor); }
+            check(fractional,"Animation still steps in whole frames");check(maximumStep<.70f,"Weapon hand teleported between poses: "+hero+" / "+maximumStep);
+            event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);event(KEY_UP,KEY_D,0);frame(game);game.pointerAim(false);
+            for(int i=0;i<65;i++)frame(game);
+            event(KEY_DOWN,KEY_Q,0);for(int i=0;i<35;i++)frame(game);
+            String charging=new ModelAnimation(game.getPlayer().getAnimation()).position(game.getPlayer().getAnimationIndex()).name().getString();
+            check(!charging.equals("Melee_Block"),"Charging still uses the shield-block pose");capture("motion-charge-"+hero.name().toLowerCase()+"-"+tier);
+            event(KEY_UP,KEY_Q,0);for(int i=0;i<75;i++)frame(game);
+        }
+        for(int variant:new int[]{0,5}) {
+            Entities.Enemy body=encounter(game,profile,variant==5?5:1,variant,12);body.health=0;frame(game);
+            game.setState(GameState.PAUSED);game.photoMode(true);
+            Camera3D view=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+            view._position().x(6).y(4).z(17);view.target().x(0).y(.4f).z(12);
+            for(float age:new float[]{1.8f,8}) {
+                body.deathTime=age;BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();capture("grounded-corpse-"+variant+"-"+(int)age);
+                check(Math.abs(body.corpseMinimum)<.001f && body.corpseHeight<(variant==5?3.5f:1.6f),"Rendered corpse is standing or lacks deformed-mesh floor support");
+            }
+        }
+        game.pointerAim(false);game.photoMode(true);game.setState(GameState.PAUSED);
+        Camera3D camera=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+        for(int side:new int[]{-1,1}) {
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("River",side*20,-14,0,new Progression(),new WaveDirector.State(0,0,0,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
+            check(game.loadCurrent(),"River review did not load");game.photoMode(true);
+            camera._position().x(side*28).y(6).z(-8);camera.target().x(side*55).y(.2f).z(-20);
+            BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();capture("river-bank-"+side);
+        }
+        game.photoMode(false);
+        System.out.println(corpseOnly?"PASS: actual collapsed mesh bounds, floor support and river-bank views":"PASS: fractional crossfades, all class/weapon motion, mouse aim while moving, matched armor, class charge poses and extended river banks");
+    }
+    private static void tutorialRegression(Game game,java.nio.file.Path profile) throws Exception {
+        game.setState(GameState.MAIN_MENU);game.pointerAim(true);
+        key(game,KEY_ENTER);key(game,KEY_ENTER);
+        check(game.tutorial()!=null,"First adventure did not offer interactive practice");
+        game.finishTutorial();check(game.getState()==GameState.PLAYING,"First practice did not return to new adventure");game.pointerAim(false);
+        Settings bindings=new Settings();bindings.load(profile.resolve("settings.properties"));
+        int forward=bindings.controls.key(Config.Controls.Action.FORWARD),strike=bindings.controls.key(Config.Controls.Action.SLASH),dodge=bindings.controls.key(Config.Controls.Action.DODGE),charge=bindings.controls.key(Config.Controls.Action.HEAVY),parry=bindings.controls.key(Config.Controls.Action.PARRY),gear=bindings.controls.key(Config.Controls.Action.INVENTORY);
+        for(HeroClass hero:HeroClass.values()) {
+            Progression campaign=new Progression(hero,Entities.Difficulty.NORMAL);
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Learner",0,4,0,campaign,new WaveDirector.State(0,0,0,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
+            byte[] saved=java.nio.file.Files.readAllBytes(profile.resolve("save.properties"));
+            check(game.loadCurrent(),"Tutorial campaign did not load");game.beginTutorial();frame(game);
+            check(!game.saveCurrent(),"Practice overwrote campaign");
+            check(java.util.Arrays.equals(saved,java.nio.file.Files.readAllBytes(profile.resolve("save.properties"))),"Practice changed campaign bytes");
+            capture("tutorial-"+hero.name().toLowerCase()+"-move");
+            event(KEY_DOWN,forward,0);for(int i=0;i<100 && game.tutorial().step()==Tutorial.Step.MOVE;i++)frame(game);event(KEY_UP,forward,0);
+            for(int i=0;i<12;i++)frame(game);
+            check(game.tutorial().step()==Tutorial.Step.STRIKE,"Walking did not advance practice");
+            for(int n=0;n<2;n++) {
+                Entities.Enemy partner=game.getEnemies().getFirst();game.getPlayer().aimAt(partner.x,partner.z);
+                key(game,strike);for(int i=0;i<70;i++)frame(game);
+            }
+            check(game.tutorial().step()==Tutorial.Step.DODGE,"Practice hits did not register: "+hero);
+            key(game,dodge);for(int i=0;i<35;i++)frame(game);
+            check(game.tutorial().step()==Tutorial.Step.CHARGE,"Practice dodge did not register");
+            Entities.Enemy partner=game.getEnemies().getFirst();game.getPlayer().aimAt(partner.x,partner.z);
+            event(KEY_DOWN,charge,0);for(int i=0;i<54;i++)frame(game);capture("tutorial-"+hero.name().toLowerCase()+"-charge");
+            event(KEY_UP,charge,0);for(int i=0;i<85;i++)frame(game);
+            check(game.tutorial().step()==Tutorial.Step.PARRY,"Charged hit did not register: "+hero);
+            for(int i=0;i<360 && game.tutorial().step()==Tutorial.Step.PARRY;i++) {
+                partner=game.getEnemies().getFirst();game.getPlayer().aimAt(partner.x,partner.z);
+                if(partner.attackTime>.27f && partner.attackTime<.40f && !game.getPlayer().discipline().parrying())key(game,parry);
+                else frame(game);
+            }
+            check(game.tutorial().step()==Tutorial.Step.GEAR,"Timed practice parry did not register: "+hero);
+            key(game,gear);check(game.isInventoryOpen(),"Practice inventory did not open");key(game,gear);
+            game.getPlayer().getPosition().x(0).z(4);
+            for(int i=0;i<195;i++)frame(game);
+            check(game.tutorial().complete(),"Sanctuary practice did not complete");capture("tutorial-"+hero.name().toLowerCase()+"-complete");
+            game.finishTutorial();
+            check(game.tutorial()==null && game.getState()==GameState.PAUSED,"Practice did not return to paused campaign");
+            check(game.getProgression()==campaign || game.getProgression().heroClass()==hero,"Practice changed campaign class");
+            check(game.getProgression().kills()==0 && game.getProgression().health()==campaign.health(),"Practice rewards/damage leaked");
+            check(java.util.Arrays.equals(saved,java.nio.file.Files.readAllBytes(profile.resolve("save.properties"))),"Practice completion overwrote campaign");
+            game.beginTutorial();frame(game);game.finishTutorial();check(game.getState()==GameState.PAUSED,"Skipping practice failed");
+        }
+        System.out.println("PASS: every tutorial action in all three classes, safe misses, completion/skip, inventory and campaign preservation");
+    }
     public static void main(String[] args) throws Exception {
         java.nio.file.Path profile=java.nio.file.Files.createTempDirectory(java.nio.file.Path.of("build"),"smoke-profile-");
         System.setProperty("outpost.dataDir",profile.toAbsolutePath().toString());
@@ -230,6 +338,13 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--tutorial-review")) { tutorialRegression(game,profile);return; }
+            if(java.util.Arrays.asList(args).contains("--corpse-review")) {
+                corpseOnly=true;combatMotionRegression(game,profile,combatClick);return;
+            }
+            if(java.util.Arrays.asList(args).contains("--combat-motion")) {
+                combatMotionRegression(game,profile,combatClick);return;
+            }
             if(java.util.Arrays.asList(args).contains("--living-review")) {
                 livingExpeditionRegression(game,profile);return;
             }
@@ -624,7 +739,7 @@ public class InputSmokeTest {
             parryTarget.beginAttack(0,8,true);parryTarget.attackTime=.33f;
             float parryHp=game.getProgression().health();key(game,KEY_F);for(int i=0;i<8;i++)frame(game);
             check(game.getProgression().health()==parryHp && game.getPlayer().discipline().riposteReady(),"Timed parry did not defend and open a riposte");
-            key(game,KEY_SPACE);check(game.currentAttack().label().equals("RIPOSTE"),"Parry reward was not consumed by the next strike");
+            key(game,KEY_SPACE);check(game.currentAttack().label().contains("RIPOSTE") && game.currentAttack().multiplier()>1.75f,"Parry and Warrior mastery did not empower the next strike");
             for(int i=0;i<40;i++)frame(game);check(parryTarget.health<=7,"Riposte did not increase damage");
             game.getPlayer().discipline().stamina(0);key(game,KEY_SPACE);
             check(!game.getPlayer().isAttacking(),"Empty stamina still allowed an attack");
@@ -770,6 +885,8 @@ public class InputSmokeTest {
             chapterInventoryRegression(game,profile);
             victoryPresentationRegression(game,profile);
             livingExpeditionRegression(game,profile);
+            combatMotionRegression(game,profile,combatClick);
+            tutorialRegression(game,profile);
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

@@ -2,6 +2,8 @@
 
 The edit uses actual gameplay and the original Outpost soundtrack. It shows the current development build, with equipment and training available through its all-gear playtest. It has no stock gameplay, paid-store claims, or invented release date.
 
+The delivered video shows v2.2 gameplay. New footage has been recorded for the animation rebuild, but refreshing the edited export is deferred while gameplay development continues.
+
 ## Suggested upload copy
 
 **Title:** OUTPOST — Guard the Last Light | Extended Gameplay Trailer

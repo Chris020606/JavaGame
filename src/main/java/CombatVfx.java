@@ -54,8 +54,8 @@ public final class CombatVfx implements AutoCloseable {
         }
     }
     public void slash(float x,float z,float facing,float radius,float halfAngle,float phase,Color color) {
-        ribbon(x,z,facing,radius,halfAngle,.07f,color,.12f);
-        if(phase>.60f)ribbon(x,z,facing-halfAngle+phase*halfAngle*2,radius*.82f,halfAngle*.55f,.9f,color,.8f*(1-phase));
+        if(phase<0 || phase>1)return;
+        ribbon(x,z,facing-halfAngle+phase*halfAngle*2,radius*.82f,halfAngle*.50f,1.0f,color,.85f*(float)Math.sin(phase*Math.PI));
     }
     public void shield(Camera3D camera,float x,float z,float time,Color color) {
         DrawBillboard(camera,rune,v(x,1.1f,z),2.2f,Fade(color,.6f));glow(camera,x,1.1f,z,2.7f,color,.12f);
@@ -106,13 +106,16 @@ public final class CombatVfx implements AutoCloseable {
         }
     }
     public void projectile(Camera3D camera,float x,float z,float vx,float vz,boolean magic,Color color,float time) {
+        projectile(camera,x,z,vx,vz,magic,color,time,1);
+    }
+    public void projectile(Camera3D camera,float x,float z,float vx,float vz,boolean magic,Color color,float time,float height) {
         if(magic) {
-            for(int i=5;i>=0;i--)glow(camera,x-vx*i*.026f,1+(float)Math.sin(time*14+i)*.035f,z-vz*i*.026f,.24f+(5-i)*.07f,color,.20f+(5-i)*.08f);
-            glow(camera,x,1,z,.18f,Menu.TEXT,.9f);
+            for(int i=5;i>=0;i--)glow(camera,x-vx*i*.026f,height+(float)Math.sin(time*14+i)*.035f,z-vz*i*.026f,.24f+(5-i)*.07f,color,.20f+(5-i)*.08f);
+            glow(camera,x,height,z,.18f,Menu.TEXT,.9f);
         } else {
-            DrawCylinderEx(v(x-vx*.045f,1,z-vz*.045f),v(x,1,z),.018f,.012f,5,Menu.TEXT);
-            DrawCylinderEx(v(x,1,z),v(x+vx*.012f,1,z+vz*.012f),.05f,0,5,color);
-            for(int i=1;i<4;i++)glow(camera,x-vx*i*.025f,1,z-vz*i*.025f,.10f,color,.18f/i);
+            DrawCylinderEx(v(x-vx*.045f,height,z-vz*.045f),v(x,height,z),.018f,.012f,5,Menu.TEXT);
+            DrawCylinderEx(v(x,height,z),v(x+vx*.012f,height,z+vz*.012f),.05f,0,5,color);
+            for(int i=1;i<4;i++)glow(camera,x-vx*i*.025f,height,z-vz*i*.025f,.10f,color,.18f/i);
         }
     }
     public void particles(Camera3D camera) {

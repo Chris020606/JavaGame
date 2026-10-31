@@ -7,7 +7,12 @@ public final class HeroShot {
     public float x,z,previousX,previousZ,remaining;
     public final float vx,vz,damage;
     public final boolean magic;
+    public boolean charged,heavy;
     private final Set<Enemy> struck=new HashSet<>();
+    private float age;
+    private float startHeight=1;
+    public float height() { return startHeight+(1-startHeight)*Math.min(1,age/.15f); }
+    public void startHeight(float height) { startHeight=height; }
     public HeroShot(float x,float z,float facing,Combat.Attack attack,int damage,boolean magic) {
         this.x=previousX=x;this.z=previousZ=z;this.magic=magic;
         float speed=magic?12:20;
@@ -15,7 +20,7 @@ public final class HeroShot {
         remaining=attack.range()/speed;this.damage=Math.round(damage*attack.multiplier());
     }
     public void update(float dt) {
-        float step=Math.min(dt,Math.max(0,remaining));previousX=x;previousZ=z;x+=vx*step;z+=vz*step;remaining-=dt;
+        float step=Math.min(dt,Math.max(0,remaining));age+=step;previousX=x;previousZ=z;x+=vx*step;z+=vz*step;remaining-=dt;
     }
     public boolean hit(Enemy enemy) {
         if (enemy.health<=0 || struck.contains(enemy)) return false;

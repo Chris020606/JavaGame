@@ -6,7 +6,7 @@ import java.util.Properties;
 public final class Settings {
     public final Controls controls=new Controls();
     public float volume=.6f, sensitivity=.15f;
-    public boolean muted, fullscreen, highQuality=true;
+    public boolean muted, fullscreen, highQuality=true, tutorialSeen;
     public Entities.Difficulty difficulty=Entities.Difficulty.NORMAL;
     public String playerName="Warden", warning="";
     public void load(Path file) {
@@ -19,6 +19,7 @@ public final class Settings {
             difficulty=Entities.Difficulty.valueOf(p.getProperty("difficulty","NORMAL"));
             controls.restore(p); volume=v; sensitivity=s;
             highQuality=Boolean.parseBoolean(p.getProperty("highQuality","true"));
+            tutorialSeen=Boolean.parseBoolean(p.getProperty("tutorialSeen","false"));
             muted=Boolean.parseBoolean(p.getProperty("muted")); fullscreen=Boolean.parseBoolean(p.getProperty("fullscreen"));
             playerName=cleanName(p.getProperty("name","Warden"));
         } catch (IOException|IllegalArgumentException e) { warning="Settings could not be read; using defaults."; }
@@ -27,6 +28,7 @@ public final class Settings {
         Properties p=new Properties(); p.setProperty("version","1");p.setProperty("difficulty",difficulty.name());
         p.setProperty("volume",volume+""); p.setProperty("sensitivity",sensitivity+"");
         p.setProperty("highQuality",highQuality+"");
+        p.setProperty("tutorialSeen",tutorialSeen+"");
         p.setProperty("muted",muted+""); p.setProperty("fullscreen",fullscreen+"");
         p.setProperty("name",cleanName(playerName)); controls.store(p); AppData.write(file,p);
     }

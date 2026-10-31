@@ -34,6 +34,11 @@ void main() {
     vec4 tex=texture(texture0,uv)*colDiffuse*tint;
     vec3 albedo=pow(max(tex.rgb,vec3(0.0)),vec3(2.2));
     vec3 n=normalize(normal);
+    // Subtle world-space ground variation avoids repeating flat tile colors.
+    if(material.x>.7 && n.y>.75) {
+        float patches=sin(world.x*.61+sin(world.z*.37))*sin(world.z*.73-world.x*.21);
+        albedo*=1.0+patches*.055;
+    }
     if(material.x<.28 && material.y<.15 && colDiffuse.b>colDiffuse.g && colDiffuse.b>colDiffuse.r*1.4)
         n=normalize(n+vec3(sin(world.x*3.0+uTime*1.6)*.065,0,cos(world.z*4.0+uTime*1.2)*.055));
     vec3 v=normalize(viewPos-world),l=normalize(lightDir),h=normalize(v+l);

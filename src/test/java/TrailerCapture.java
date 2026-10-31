@@ -64,7 +64,7 @@ public final class TrailerCapture {
                 Enemy boss=new Enemy(1,11,shot.wave,5,.5f);if(shot.mode.equals("victory"))boss.health=80;
                 if(shot.mode.equals("counter"))boss.health=boss.maxHealth*.55f;enemies.add(boss);
             } else {
-                int count=shot.mode.equals("combat")?10:shot.mode.equals("beacon")?5:3;
+                int count=shot.mode.equals("combat")?6:shot.mode.equals("beacon")?5:3;
                 for(int i=0;i<count;i++) {
                     double a=i*Math.PI*2/count;
                     float x=(float)Math.sin(a)*(shot.mode.equals("combat")?11:15),z=(float)Math.cos(a)*11;
@@ -139,7 +139,14 @@ public final class TrailerCapture {
             if(objective && shot.mode.equals("beacon") && Math.hypot(tx-field.x(),tz-field.z())>4) { tx=field.x();tz=field.z(); }
             steer(game,tx,tz,distance>9);
         }
-        if(!player.isAttacking())player.getRotation().y((float)Math.toDegrees(Math.atan2(nearest.x-px,nearest.z-pz)));
+        player.aimAt(nearest.x,nearest.z);
+        // Give ranged movement a real opening instead of filming repeated attacks
+        // while the director lets melee enemies crowd the hero at the sanctuary.
+        if(shot.mode.equals("combat") && shot.hero!=HeroClass.WARRIOR && distance<desired*.72f) {
+            hold(KEY_Q,false);
+            if(frame%30==0)tap(KEY_LEFT_CONTROL);
+            return;
+        }
         if(game.getProgression().health()<game.getProgression().maxHealth()*.52f && frame%24==0)tap(KEY_H);
         boolean danger=nearest.attackTime>.15f && nearest.attackTime<.42f && distance<nearest.meleeRange()+1;
         if(danger) {
@@ -162,8 +169,9 @@ public final class TrailerCapture {
             c._position().x((float)Math.sin(angle)*r).y(10+(float)Math.sin(t*.08f)*2).z((float)Math.cos(angle)*r);
             c.target().x(0).y(1.6f).z(0);
         } else {
-            float px=game.getPlayer().getPosition().x(),pz=game.getPlayer().getPosition().z(),angle=.38f+(float)Math.sin(t*.15f)*.10f;
-            c._position().x(px+(float)Math.sin(angle)*14).y(10).z(pz+(float)Math.cos(angle)*14);c.target().x(px*.65f).y(.8f).z(pz*.65f);
+            boolean duel=shot.mode.equals("boss") || shot.mode.equals("counter") || shot.mode.equals("victory");
+            float px=game.getPlayer().getPosition().x(),pz=game.getPlayer().getPosition().z(),angle=(duel?-2.65f:.38f)+(float)Math.sin(t*.15f)*.10f;
+            c._position().x(px+(float)Math.sin(angle)*12).y(8.2f).z(pz+(float)Math.cos(angle)*12);c.target().x(px*.65f).y(.8f).z(pz*.65f);
         }
     }
     public static void main(String[] args) throws Exception {

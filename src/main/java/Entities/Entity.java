@@ -11,8 +11,10 @@ public abstract class Entity {
     private ModelSkeleton modelSkeleton;
     private boolean hasAnimation = false;
     private int animationIndex = 0;
-    private int currentFrame = 0;
-    private int posedAnimation,posedFrame;
+    private float currentFrame;
+    private int posedAnimation,posedFromAnimation,transitionFrom;
+    private float posedFrame,posedFromFrame,posedBlend=1,transitionFrame,transitionTime;
+    private boolean displayedPose;
     private int[] animationCount = new int[1];
     private float animationTimer = 0.0f;
     private float animationFPS = 24.0f;
@@ -87,6 +89,7 @@ public abstract class Entity {
         if (animationIndex == index) {
             return;
         }
+        beginPoseTransition();
         animationIndex = index;
         currentFrame = 0;
         animationTimer = 0.0f;
@@ -100,27 +103,44 @@ public abstract class Entity {
     public void playAnimationProgress(float progress) {
         if (!hasAnimation || model == null) return;
         ModelAnimation clip = new ModelAnimation(animations).position(animationIndex);
-        currentFrame = AnimationFrames.progress(progress,clip.keyframeCount());
+        currentFrame = AnimationFrames.sample(progress,clip.keyframeCount());
         poseForDisplay(animationIndex,currentFrame);
     }
 
-    protected void poseForDisplay(int index,int frame) {
+    protected void advancePose(float dt) { transitionTime=Math.max(0,transitionTime-Math.max(0,dt)); }
+    protected void beginPoseTransition() { if(displayedPose) { transitionFrom=posedAnimation;transitionFrame=posedFrame;transitionTime=.09f; } }
+    protected void poseStill(int index,float frame) { transitionTime=0;poseForDisplay(index,frame); }
+    protected void poseForDisplay(int index,float frame) {
         ModelAnimation clip=new ModelAnimation(animations).position(index);
-        posedAnimation=index;posedFrame=AnimationFrames.clamp(frame,clip.keyframeCount());
-        UpdateModelAnimation(model,clip,posedFrame);
+        posedAnimation=index;posedFrame=Math.max(0,Math.min(clip.keyframeCount()-1,frame));displayedPose=true;
+        posedBlend=transitionTime>0?1-transitionTime/.09f:1;posedFromAnimation=transitionFrom;posedFromFrame=transitionFrame;
+        applyPose(model);
+    }
+    private void applyPose(Model target) {
+        ModelAnimation clip=new ModelAnimation(animations).position(posedAnimation);
+        if(posedBlend<1) {
+            ModelAnimation from=new ModelAnimation(animations).position(posedFromAnimation);
+            UpdateModelAnimationEx(target,from,Math.max(0,Math.min(from.keyframeCount()-1,posedFromFrame)),clip,posedFrame,posedBlend);
+        } else UpdateModelAnimation(target,clip,posedFrame);
+    }
+    protected void blendLocomotion(int index,float frames,float amount) {
+        if(amount<=0)return;
+        posedFromAnimation=posedAnimation;posedFromFrame=posedFrame;
+        posedAnimation=index;posedFrame=AnimationFrames.looping(frames,new ModelAnimation(animations).position(index).keyframeCount());posedBlend=Math.min(1,amount);
+        applyPose(model);
     }
     public void copyPoseTo(Model equipment) {
-        ModelAnimation clip=new ModelAnimation(animations).position(posedAnimation);
-        UpdateModelAnimation(equipment,clip,AnimationFrames.clamp(posedFrame,clip.keyframeCount()));
+        applyPose(equipment);
     }
-    public int posedFrame() { return posedFrame; }
+    public int posedFrame() { return (int)posedFrame; }
+    public float sampledFrame() { return posedFrame; }
     public ModelAnimation getAnimation() {
         return animations;
     }
 
     public void loadAnimations(String path) {
 
-        animationIndices.clear(); hasAnimation=false; animationIndex=0; restartAnimation();
+        animationIndices.clear(); hasAnimation=false;displayedPose=false;transitionTime=0;posedBlend=1;animationIndex=0; restartAnimation();
         animations = LoadModelAnimations(path, animationCount);
 
         for (int i = 0; i < animationCount[0]; i++) {
@@ -144,18 +164,8 @@ public abstract class Entity {
 
         ModelAnimation animation = new ModelAnimation(animations).position(animationIndex);
 
-        animationTimer += dt;
-        float frameTime = 1.0f / animationFPS;
-
         if (animation.keyframeCount() <= 0) return;
-        while (animationTimer >= frameTime) {
-            animationTimer -= frameTime;
-            currentFrame++;
-            if (currentFrame >= animation.keyframeCount()) {
-                currentFrame = 0;
-            }
-        }
-
+        advancePose(dt);animationTimer=(animationTimer+Math.max(0,dt)*animationFPS)%animation.keyframeCount();currentFrame=AnimationFrames.looping(animationTimer,animation.keyframeCount());
         poseForDisplay(animationIndex,currentFrame);
     }
 

@@ -19,7 +19,47 @@ import static com.raylib.Colors.WHITE;
 
 public class Game {
     private final java.util.function.BooleanSupplier mouseAttack;
+    private boolean pointerAim;
+    void pointerAim(boolean enabled) { pointerAim=enabled; }
     private final Settings settings=new Settings();
+    private Tutorial tutorial;
+    private SaveGame.Snapshot practiceReturn;
+    private GameState practiceReturnState;
+    private boolean practiceReturnPlaytest;
+    private Tutorial.Step preparedStep;
+    private final CombatMastery mastery=new CombatMastery();
+    private float hitPause,hitMarker;
+    private boolean activeHeavy,activeCharged;
+    private final ArrayList<Enemy> shotTargets=new ArrayList<>();
+    Tutorial tutorial() { return tutorial; }
+    void beginTutorial() {
+        if(tutorial!=null)return;
+        practiceReturnState=state;practiceReturnPlaytest=playtest;
+        practiceReturn=new SaveGame.Snapshot(player.getName(),player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),progress,director.snapshot(),java.util.List.copyOf(enemies),Arena.HIGHLANDS,player.discipline().stamina(),dayNight.phase());
+        tutorial=new Tutorial();preparedStep=null;playtest=false;start();storyTime=0;
+    }
+    void finishTutorial() {
+        if(tutorial==null)return;
+        tutorial=null;settings.tutorialSeen=true;persistSettings();
+        restoreSnapshot(practiceReturn,practiceReturnPlaytest);state=practiceReturnState;practiceReturn=null;
+        notifyPlayer("PRACTICE COMPLETE / Your adventure is ready.");
+    }
+    private void prepareTutorial() {
+        if(tutorial==null || preparedStep==tutorial.step())return;
+        preparedStep=tutorial.step();enemies.clear();heroShots.clear();projectiles.clear();
+        player.discipline().reset();
+        if(preparedStep==Tutorial.Step.STRIKE || preparedStep==Tutorial.Step.CHARGE || preparedStep==Tutorial.Step.PARRY) {
+            Enemy partner=new Enemy(player.getPosition().x()+2.2f,player.getPosition().z(),1,0,.5f,Difficulty.EASY);
+            partner.health=9999;enemies.add(partner);player.aimAt(partner.x,partner.z);
+        }
+        if(preparedStep==Tutorial.Step.HAVEN)progress.damagePlayer(25);
+        audio.play("upgrade");
+    }
+    private void connected(Enemy enemy,boolean heavy,boolean charged) {
+        hitMarker=.16f;if(progress.heroClass()==HeroClass.WARRIOR)hitPause=Math.max(hitPause,heavy?.045f:.025f);
+        if(!heavy)mastery.lightHit(progress.heroClass());
+        if(tutorial!=null)tutorial.hit(charged);
+    }
     private final Path settingsPath=AppData.directory().resolve("settings.properties"), savePath=AppData.directory().resolve("save.properties");
     private final Path playtestSavePath=AppData.directory().resolve("playtest-save.properties");
     private boolean playtest,maxPlaytestTraining=true;
@@ -73,7 +113,7 @@ public class Game {
     void photoMode(boolean enabled) { photoMode=enabled; }
     private final Camera2D uiCamera = new Camera2D().zoom(1);
 
-    public Game() { this(()->IsMouseButtonPressed(MOUSE_BUTTON_LEFT)); }
+    public Game() { this(()->IsMouseButtonPressed(MOUSE_BUTTON_LEFT));pointerAim=true; }
     Game(java.util.function.BooleanSupplier mouseAttack) {
         this.mouseAttack=mouseAttack;
         settings.load(settingsPath);selectedDifficulty=settings.difficulty; menuMessage=settings.warning;
@@ -113,7 +153,7 @@ public class Game {
     Campaign.Chapter chapter() { return director.chapter(); }
     int chapterIndex() { return director.chapterIndex(); }
     private void start() {
-        applyHeroModel(); storyTime=12;
+        applyHeroModel(); storyTime=12;mastery.reset();hitPause=hitMarker=0;
         progress = playtest?Progression.playtest(selectedClass,selectedDifficulty,maxPlaytestTraining):new Progression(selectedClass,selectedDifficulty); player.setMovementSpeed(selectedClass.speed); inventory=false; fallen.clear();outcomeTime=0;heroShots.clear(); enemies.clear(); projectiles.clear(); wave = 0; nextWave = 5;
         attackCooldown = slashTime = noticeTime = heavyCharge = 0; bossHazards.clear(); workshop = false;
         player.getPosition().x(0).y(0).z(4);
@@ -126,16 +166,29 @@ public class Game {
         player.setName(settings.playerName); menuMessage="";
         state = GameState.PLAYING;
     }
-    private void applyProgression() { player.setCrossbow(progress.heroClass()==HeroClass.ARCHER && progress.weaponTier()>=2);player.setMovementSpeed(progress.movementSpeed());player.setDodgeRecovery(1.5f-.15f*progress.expedition().rank(Expedition.Blessing.WAYFARER));player.discipline().configure(progress.maxStamina(),progress.staminaRecovery()); }
+    private void applyProgression() { player.setCrossbow(progress.heroClass()==HeroClass.ARCHER && progress.weaponTier()>=2);player.setWeaponTier(progress.weaponTier());player.setMovementSpeed(progress.movementSpeed());player.setDodgeRecovery(1.5f-.15f*progress.expedition().rank(Expedition.Blessing.WAYFARER));player.discipline().configure(progress.maxStamina(),progress.staminaRecovery()); }
+    private void aimCursor() {
+        if(!pointerAim || IsMouseButtonDown(MOUSE_BUTTON_RIGHT))return;
+        Ray ray=GetScreenToWorldRay(GetMousePosition(),sceneManager.getOpenScene().getCameraController().getCamera());
+        if(Math.abs(ray.direction().y())<.0001f)return;
+        float t=(1.1f-ray._position().y())/ray.direction().y();
+        if(t>0)player.aimAt(ray._position().x()+ray.direction().x()*t,ray._position().z()+ray.direction().z()*t);
+    }
     private boolean nearBase() { return Math.hypot(player.getPosition().x(), player.getPosition().z()) < 6; }
     private void notifyPlayer(String message) { notice = message; noticeTime = 3; }
 
     public void update(float dt) {
         dt = Math.max(0, Math.min(dt, .05f));applyProgression();
+        hitMarker=Math.max(0,hitMarker-dt);
+        if(state==GameState.PLAYING && !inventory && !workshop) {
+            mastery.tick(dt);
+            if(hitPause>0) { float held=Math.min(dt,hitPause);hitPause-=held;dt-=held; }
+        }
+        prepareTutorial();
         final float presentationStep=dt;
         boolean outcome=state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY || state==GameState.GAME_OVER;
         if((state==GameState.PLAYING || outcome) && !inventory && !workshop) {
-            fallen.removeIf(e->{e.deathTime+=presentationStep;return e.deathTime>(e.boss()?3.2f:2.3f);});
+            fallen.removeIf(e->{e.deathTime+=presentationStep;return e.deathTime>CorpsePresentation.lifetime(e.boss());});
             if(outcome) { outcomeTime+=dt;noticeTime=Math.max(0,noticeTime-dt);feedback.update(dt);vfx.update(dt);player.poseForOutcome(state!=GameState.GAME_OVER,outcomeTime); }
         }
         boolean titleAudio=state==GameState.PLAYTEST_SETUP && playtestReturn==GameState.MAIN_MENU || state==GameState.MAIN_MENU || state==GameState.LOGIN || state==GameState.JOURNAL && journalReturn==GameState.MAIN_MENU || state==GameState.SETTING_MENU && settingsReturn==GameState.MAIN_MENU;
@@ -194,14 +247,14 @@ public class Game {
             return;
         }
         if ((state==GameState.PLAYING||state==GameState.PAUSED)&&settings.controls.pressed(SAVE)) { saveCurrent(); return; }
-        if (settings.controls.pressed(LOAD)) { loadActive(); return; }
+        if (tutorial==null && settings.controls.pressed(LOAD)) { loadActive(); return; }
         if (IsKeyPressed(KEY_ENTER)) {
             if (state == GameState.MAIN_MENU) { requestNewGame(); return; }
             if (state == GameState.GAME_OVER) { start(); return; }
             if (state == GameState.PAUSED) { state = GameState.PLAYING; return; }
         }
         if (state != GameState.PLAYING) return;
-        if (settings.controls.pressed(INVENTORY)) { inventory=!inventory; workshop=false; }
+        if (settings.controls.pressed(INVENTORY)) { inventory=!inventory; workshop=false;if(tutorial!=null && inventory)tutorial.inventory(); }
         if (inventory) return;
         if (settings.controls.pressed(POTION)) {
             notifyPlayer(progress.usePotion()?"Potion used / +60 HP":"Need missing health and a potion.");
@@ -218,9 +271,14 @@ public class Game {
         comboWindow=Math.max(0,comboWindow-dt);
         inputBuffer=Math.max(0,inputBuffer-dt);
         feedback.update(dt);vfx.update(dt);dayNight.update(dt);
-        boolean wasDodging=player.isDodging();
+        boolean wasDodging=player.isDodging();float beforeMoveX=player.getPosition().x(),beforeMoveZ=player.getPosition().z();
+        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) || settings.controls.down(HEAVY))aimCursor();
         sceneManager.getOpenScene().updatesEntities(dt);
-        if(!wasDodging && player.isDodging())audio.play("dash");
+        if(!wasDodging && player.isDodging()) { audio.play("dash");if(tutorial!=null)tutorial.dodge(); }
+        if(tutorial!=null) {
+            tutorial.movement((float)Math.hypot(player.getPosition().x()-beforeMoveX,player.getPosition().z()-beforeMoveZ));
+            tutorial.healing(dt,nearBase());
+        }
         float px = player.getPosition().x(), pz = player.getPosition().z();
         FieldEvent event=progress.fieldEvent();FieldEvent.Status previousEventStatus=event.status();event.update(dt,px,pz,settings.controls.down(INTERACT));
         if(event.claim()) { progress.rewardObjective();audio.play("upgrade");vfx.impact(event.x(),event.z(),Menu.GOLD,true);notifyPlayer("OBJECTIVE COMPLETE / +65 CRYSTALS / +1 EMBER BLESSING / SUPPLIES");saveCurrent(); }
@@ -239,17 +297,19 @@ public class Game {
             heavyCharge=Math.min(1.4f,heavyCharge+dt);player.setCharging(true);
         } else if(heavyCharge>0 && !settings.controls.down(HEAVY)) {
             releasedCharge=heavyCharge;heavyCharge=0;player.setCharging(false);
-            bufferedHeavy=true;bufferedLunge=false;inputBuffer=.14f;
+            bufferedHeavy=true;bufferedLunge=false;inputBuffer=.22f;
         }
-        boolean lightInput=settings.controls.pressed(SLASH);lightInput|=mouseAttack.getAsBoolean();
+        boolean mousePressed=mouseAttack.getAsBoolean();
+        boolean mouseHeld=pointerAim && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !IsMouseButtonDown(MOUSE_BUTTON_RIGHT) && attackCooldown<=0;
+        boolean lightInput=settings.controls.pressed(SLASH)||mousePressed||mouseHeld;
+        if(mousePressed || mouseHeld || heavyCharge>0)aimCursor();
         if(lightInput && !finishingChapter && heavyCharge<=0) {
             bufferedHeavy=bufferedLunge=false;
-            bufferedTimed=combo>0 && comboWindow>0 && attackCooldown<=.14f;
-            if(attackCooldown>.14f) { combo=0;comboWindow=0; }
-            inputBuffer=.14f;
+            bufferedTimed=(!mouseHeld || mousePressed) && combo>0 && comboWindow>0 && attackCooldown<=.22f;
+            inputBuffer=.22f;
         }
         if(!finishingChapter && settings.controls.pressed(LUNGE) && heavyCharge<=0) {
-            bufferedLunge=true;bufferedHeavy=false;inputBuffer=.14f;
+            bufferedLunge=true;bufferedHeavy=false;inputBuffer=.22f;
         }
         if(inputBuffer>0 && attackCooldown<=0 && !player.isDodging() && heavyCharge<=0 && player.discipline().recovery()<=0) {
             float cost=bufferedLunge?CombatDiscipline.LUNGE:bufferedHeavy?CombatDiscipline.HEAVY:CombatDiscipline.LIGHT;
@@ -258,6 +318,10 @@ public class Game {
             else {
                 combo=bufferedLunge||bufferedHeavy?0:bufferedTimed?combo%3+1:1;
                 activeAttack=bufferedLunge?Combat.lunge(progress.heroClass()):progress.heroClass().attack(combo,bufferedHeavy);
+                if(!bufferedLunge && progress.heroClass()==HeroClass.ARCHER && progress.weaponTier()>=2)
+                    activeAttack=new Combat.Attack(bufferedHeavy?1.1f:.84f,bufferedHeavy?.20f:.16f,activeAttack.range(),activeAttack.halfAngle(),activeAttack.multiplier(),activeAttack.label());
+                if(bufferedHeavy && releasedCharge>.35f)
+                    activeAttack=new Combat.Attack(activeAttack.duration(),progress.heroClass()==HeroClass.WARRIOR?.18f:.12f,activeAttack.range(),activeAttack.halfAngle(),activeAttack.multiplier(),activeAttack.label());
                 if(bufferedHeavy)activeAttack=Combat.scale(activeAttack,1+.12f*progress.expedition().rank(Expedition.Blessing.KINDLING),activeAttack.label());
                 if(bufferedHeavy) {
                     boolean perfect=releasedCharge>=.75f && releasedCharge<=1.05f;
@@ -266,11 +330,12 @@ public class Game {
                 } else if(combo>1) activeAttack=Combat.scale(activeAttack,1.12f,"TIMED CHAIN "+combo+" / 3");
                 float riposte=player.discipline().consumeRiposte();
                 if(riposte>1) activeAttack=Combat.scale(activeAttack,riposte,"RIPOSTE");
+                float classBonus=mastery.attackBonus(progress.heroClass(),bufferedHeavy);
+                if(classBonus>1)activeAttack=Combat.scale(activeAttack,classBonus,"EMPOWERED "+activeAttack.label());
                 attackCooldown=activeAttack.duration();comboWindow=attackCooldown+.23f;
-                attackElapsed=0;impactPending=true;
-                if(bufferedLunge) { player.lunge(activeAttack.duration());audio.play("dash"); }
-                else player.attack(combo,bufferedHeavy,activeAttack.duration());
-                audio.play(progress.heroClass()==HeroClass.ARCHER?"bow":progress.heroClass()==HeroClass.MAGE?"magic":"swing");
+                attackElapsed=0;impactPending=true;activeHeavy=bufferedHeavy;activeCharged=bufferedHeavy && releasedCharge>=.75f;
+                if(bufferedLunge) { player.lunge(activeAttack.duration(),activeAttack.impact());audio.play("dash"); }
+                else player.attack(combo,bufferedHeavy,activeAttack.duration(),activeAttack.impact(),bufferedHeavy?releasedCharge:0);
             }
         }
         Iterator<Enemy> iterator = enemies.iterator();
@@ -279,13 +344,15 @@ public class Game {
             if (enemy.health <= 0) {
                 iterator.remove(); progress.rewardEnemy(enemy.boss()); audio.play(enemy.boss()?"boss-fall":"kill");
                 enemy.attackTime=enemy.chargeTime=enemy.stun=enemy.hitFlash=0;enemy.healingTarget=null;enemy.deathTime=0;
+                enemy.corpseSettled=false;
                 if(fallen.size()>=48)fallen.remove(0);fallen.add(enemy);
                 vfx.impact(enemy.x,enemy.z,enemy.boss()?Menu.GOLD:Menu.TEAL,enemy.boss());
                 feedback.add(enemy.x,enemy.z,"+"+enemy.reward()+" crystals",Menu.TEAL);
                 if (enemy.boss()) notifyPlayer(chapter().title()+" DEFEATED / "+progress.weaponName(progress.weaponUnlocked())+" in inventory");
                 continue;
             }
-            boolean huntsPlayer=enemy.chooseHero(px,pz,dt);
+            if(tutorial!=null) { enemy.health=9999;if(tutorial.step()!=Tutorial.Step.PARRY) { enemy.stun=.2f;enemy.attackTime=0;enemy.impactPending=false; } }
+            boolean huntsPlayer=tutorial!=null || enemy.chooseHero(px,pz,dt);
             boolean huntsTraveler=!enemy.boss() && event.vulnerable() && enemy.distance(event.x(),event.z())<9 && (!huntsPlayer || enemy.distance(event.x(),event.z())<enemy.distance(px,pz)*.75f);
             if(huntsTraveler)huntsPlayer=false;
             float tx=huntsTraveler?event.x():huntsPlayer?px:0,tz=huntsTraveler?event.z():huntsPlayer?pz:0,separationX=0,separationZ=0;
@@ -351,12 +418,12 @@ public class Game {
             HeroShot shot=shots.next(); shot.update(dt);
             boolean stopped=false;
             // Nearest intersections first, regardless of enemy spawn order.
-            var targets=new ArrayList<>(enemies);
-            targets.sort(java.util.Comparator.comparingDouble(e -> Math.hypot(e.x-shot.previousX,e.z-shot.previousZ)));
-            for (Enemy enemy:targets) if (shot.hit(enemy)) {
+            shotTargets.clear();shotTargets.addAll(enemies);
+            shotTargets.sort(java.util.Comparator.comparingDouble(e -> (e.x-shot.previousX)*(e.x-shot.previousX)+(e.z-shot.previousZ)*(e.z-shot.previousZ)));
+            for (Enemy enemy:shotTargets) if (shot.hit(enemy)) {
                 float damage=Math.min(enemy.health,shot.damage);
                 enemy.hit(damage,shot.previousX,shot.previousZ,.25f);vfx.impact(enemy.x,enemy.z,shot.magic?Menu.TEAL:Menu.GOLD,false);
-                feedback.add(enemy.x,enemy.z,"-"+Math.round(damage),Menu.GOLD); audio.play("hit");
+                feedback.add(enemy.x,enemy.z,"-"+Math.round(damage),Menu.GOLD); audio.play("hit");connected(enemy,shot.heavy,shot.charged);
                 if (!shot.magic) { stopped=true;break; }
             }
             if (stopped || shot.remaining<=0) shots.remove();
@@ -383,6 +450,7 @@ public class Game {
         if(event.status()==FieldEvent.Status.FAILED && previousEventStatus!=FieldEvent.Status.FAILED)notifyPlayer("OPTIONAL OBJECTIVE LOST / The sanctuary still needs you.");
         if (progress.defeated()) { state = GameState.GAME_OVER;outcomeTime=0;player.resetCombat();impactPending=false;heavyCharge=0;player.poseForOutcome(false,0); return; }
         if(wave>0 && director.total()>0 && director.remaining()==0 && enemies.isEmpty() && progress.expedition().waveCleared(wave))notifyPlayer("EMBER BLESSING EARNED / Return to the sanctuary and press "+settings.controls.label(INTERACT));
+        if(tutorial!=null)return;
         WaveDirector.Spawn spawn=director.update(dt,enemies.size());
         if (director.wave()!=wave) { wave=director.wave();progress.fieldEvent().begin(wave);audio.play("wave"); notifyPlayer(chapter().bossOnly()?chapter().title()+" / BOSS DUEL":"WAVE "+(wave-chapter().first()+1)+" / "+WaveFormation.label(wave)); }
         if (spawn!=null) enemies.add(new Enemy(spawn.x(),spawn.z(),spawn.wave(),spawn.variant(),random.nextFloat(),progress.difficulty()));
@@ -397,12 +465,14 @@ public class Game {
     }
     private void strikeHero(float damage,float sourceX,float sourceZ,boolean parryable,Enemy attacker) {
         float px=player.getPosition().x(),pz=player.getPosition().z();
-        if(player.invulnerable()) { feedback.add(px,pz,"EVADE",Menu.TEAL);return; }
+        if(player.invulnerable()) { mastery.evade(progress.heroClass());feedback.add(px,pz,progress.heroClass()==HeroClass.ARCHER?"EVADE / FOCUS":"EVADE",Menu.TEAL);return; }
         if(parryable && Combat.inArc(px,pz,player.getRotation().y(),sourceX,sourceZ,1000,75) && player.discipline().deflect()) {
             if(attacker!=null) { attacker.stun=1.1f;attacker.attackTime=attacker.chargeTime=0;attacker.impactPending=false;attacker.cooldown=1.3f; }
+            mastery.parry(progress.heroClass());if(tutorial!=null)tutorial.parry();
             player.discipline().stamina(player.discipline().stamina()+10*progress.expedition().rank(Expedition.Blessing.SECOND_WIND));
             vfx.impact(px,pz,Menu.TEAL,true);feedback.add(px,pz,"PARRY / RIPOSTE",Menu.GOLD);audio.play("parry");return;
         }
+        if(tutorial!=null) { feedback.add(px,pz,"SAFE PRACTICE / TRY AGAIN",Menu.TEAL);return; }
         float before=progress.health();progress.damagePlayer(damage);progress.fieldEvent().interrupt();vfx.impact(px,pz,Menu.RED,false);
         feedback.add(px,pz,"-"+Math.round(before-progress.health()),Menu.RED);hurtFlash=.25f;audio.play("hurt");
     }
@@ -414,15 +484,18 @@ public class Game {
     }
     private void resolvePlayerHit(float px,float pz) {
         slashTime=.16f;
+        audio.play(progress.heroClass()==HeroClass.WARRIOR?"swing":progress.heroClass()==HeroClass.ARCHER?"bow":"magic");
         if (progress.heroClass()!=HeroClass.WARRIOR) {
-            heroShots.add(new HeroShot(px,pz,player.getRotation().y(),activeAttack,Math.round(progress.damage()*(1+.10f*progress.expedition().rank(Expedition.Blessing.HUNTERS_MARK))),progress.heroClass()==HeroClass.MAGE));
+            Vector3 origin=player.projectileOrigin();
+            HeroShot shot=new HeroShot(origin.x(),origin.z(),player.getRotation().y(),activeAttack,Math.round(progress.damage()*(1+.10f*progress.expedition().rank(Expedition.Blessing.HUNTERS_MARK))),progress.heroClass()==HeroClass.MAGE);
+            shot.startHeight(origin.y());shot.heavy=activeHeavy;shot.charged=activeCharged;heroShots.add(shot);
             return;
         }
         boolean hit=false;
         for (Enemy enemy:enemies) if (enemy.health>0 && Combat.inArc(px,pz,player.getRotation().y(),enemy.x,enemy.z,activeAttack.range(),activeAttack.halfAngle())) {
             float damage=Math.min(enemy.health,Math.round(progress.damage()*activeAttack.multiplier()));
             enemy.hit(damage,px,pz,activeAttack.multiplier()>1?.8f:.35f);vfx.impact(enemy.x,enemy.z,Menu.GOLD,activeAttack.multiplier()>1);
-            feedback.add(enemy.x,enemy.z,"-"+Math.round(damage),Menu.GOLD); hit=true;
+            feedback.add(enemy.x,enemy.z,"-"+Math.round(damage),Menu.GOLD);connected(enemy,activeHeavy,activeCharged); hit=true;
         }
         if (hit) audio.play("hit");
     }
@@ -465,7 +538,8 @@ public class Game {
                 DrawRectangle(0,0,9,GetScreenHeight(),tint); DrawRectangle(GetScreenWidth()-9,0,9,GetScreenHeight(),tint);
             }
             drawHud();
-            if(storyTime>0 && state==GameState.PLAYING && !inventory && !workshop) {
+            if(tutorial!=null && !inventory && !workshop)drawTutorial();
+            if(tutorial==null && storyTime>0 && state==GameState.PLAYING && !inventory && !workshop) {
                 Menu.panel(24,190,270,132);
                 Menu.text("CHAPTER "+(chapterIndex()+1)+" / "+chapter().title(),38,200,14,Menu.GOLD);
                 Menu.wrapped(chapter().story(),38,228,240,16,Menu.TEXT);
@@ -483,6 +557,7 @@ public class Game {
     private static Color skyColor(DayNightCycle.Rgb c) { return Menu.color(Math.round(c.r()*255),Math.round(c.g()*255),Math.round(c.b()*255)); }
     private void drawWorld() {
         float time=(float)GetTime();Camera3D camera=sceneManager.getOpenScene().getCameraController().getCamera();
+        assets.view(player,camera);
         DayNightCycle.Frame light=dayNight.frame();
         renderer.beginShadow(time,light);assets.pass(renderer.shadowShader,true);
         assets.drawEnvironment(chapterIndex(),time);drawActors();renderer.endShadow();
@@ -492,19 +567,16 @@ public class Game {
         Enemy boss=enemies.stream().filter(e->e.boss() && e.health>0).findFirst().orElse(null);
         assets.drawSky(camera,light);
         assets.litPass(renderer,camera,time,boss,light);assets.drawEnvironment(chapterIndex(),time);drawActors();
-        if(boss!=null) {
-            float hx=player.getPosition().x(),hz=player.getPosition().z(),cx=camera._position().x()-hx,cz=camera._position().z()-hz;
-            float t=((boss.x-hx)*cx+(boss.z-hz)*cz)/Math.max(.001f,cx*cx+cz*cz);
-            if(t>0 && t<1 && Combat.segmentDistance(boss.x,boss.z,hx,hz,camera._position().x(),camera._position().z())<1.5f)
-                assets.drawHeroSilhouette(player);
-        }
         if (director.warning()) {
             DrawCylinderWires(v(director.x(),.08f,director.z()),1.4f,1.4f,.15f,24,Menu.RED);
             DrawLine3D(v(director.x(),0,director.z()),v(director.x(),3,director.z()),Menu.GOLD);
         }
         vfx.begin();
-        for(HeroShot shot:heroShots)vfx.projectile(camera,shot.x,shot.z,shot.vx,shot.vz,shot.magic,shot.magic?Menu.TEAL:Menu.GOLD,time);
-        if(player.isAttacking())vfx.slash(player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),activeAttack.range(),activeAttack.halfAngle(),1-player.attackRemaining()/activeAttack.duration(),slashTime>0?Menu.GOLD:Menu.TEAL);
+        for(HeroShot shot:heroShots)vfx.projectile(camera,shot.x,shot.z,shot.vx,shot.vz,shot.magic,shot.magic?Menu.TEAL:Menu.GOLD,time,shot.height());
+        if(player.isAttacking() && progress.heroClass()==HeroClass.WARRIOR) {
+            float swing=(activeAttack.duration()-player.attackRemaining()-activeAttack.impact()+.08f)/.20f;
+            vfx.slash(player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),activeAttack.range(),activeAttack.halfAngle(),combo==2?1-swing:swing,Menu.GOLD);
+        }
         if(player.discipline().parrying())vfx.shield(camera,player.getPosition().x(),player.getPosition().z(),time,Menu.TEAL);
         if(heavyCharge>0)vfx.charge(player.getPosition().x(),player.getPosition().z(),heavyCharge,heavyCharge>=.75f && heavyCharge<=1.05f?Menu.GOLD:Menu.TEAL);
         for(Enemy enemy:enemies)vfx.enemy(camera,enemy,time);
@@ -525,8 +597,8 @@ public class Game {
         for (Enemy enemy : enemies) {
             Vector2 screen = GetWorldToScreen(v(enemy.x, enemy.boss()?(enemy.king?6.0f:5.2f):2.1f, enemy.z), sceneManager.getOpenScene().getCameraController().getCamera());
             Menu.bar((int)screen.x()-22, (int)screen.y(), 44, enemy.health, enemy.maxHealth, enemy.boss()||enemy.variant==2?Menu.GOLD:Menu.RED);
-            String label=enemy.attackTime>.25f?"! ATTACK":enemy.boss()?(wave==10?"HOLLOW KING":wave==5?"ASH WARDEN":"WARLORD"):enemy.label();
-            Menu.text(label,(int)screen.x()-Menu.measure(label,10)/2,(int)screen.y()-14,10,enemy.attackTime>.25f?Menu.RED:Menu.TEXT);
+            String label=tutorial!=null?enemy.attackTime>.25f?"PARRY THE GOLD STRIKE":"PRACTICE PARTNER":enemy.attackTime>.25f?"! ATTACK":enemy.boss()?(wave==10?"HOLLOW KING":wave==5?"ASH WARDEN":"WARLORD"):enemy.label();
+            Menu.text(label,(int)screen.x()-Menu.measure(label,10)/2,(int)screen.y()-14,10,tutorial!=null?Menu.GOLD:enemy.attackTime>.25f?Menu.RED:Menu.TEXT);
         }
     }
     private void drawHud() {
@@ -541,32 +613,38 @@ public class Game {
         Menu.bar(158,124,114,player.discipline().stamina(),progress.maxStamina(),player.discipline().stamina()<24?Menu.RED:Menu.GOLD);
         int top=w/2-145;
         Menu.panel(top,20,290,82);
-        Menu.center("LEVEL "+(chapterIndex()+1)+" / "+chapter().title(),w/2,29,17,Menu.GOLD);
+        Menu.center(tutorial!=null?"TUTORIAL / SAFE PRACTICE":"LEVEL "+(chapterIndex()+1)+" / "+chapter().title(),w/2,29,17,Menu.GOLD);
         int left=chapter().waves()-chapter().cleared(wave,director.remaining(),enemies.size(),director.total());
-        Menu.center(chapter().bossOnly()?"BOSS ONLY  /  "+enemies.size()+" HOSTILES":"WAVE "+Math.max(0,wave-chapter().first()+1)+" / "+chapter().waves()+"   -   "+left+" LEFT",w/2,54,17,Menu.TEXT);
-        Menu.center(state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY?"THE SANCTUARY ENDURES":director.remaining()>0?director.remaining()+" reinforcements approaching":enemies.isEmpty()?"Next raid in "+(int)Math.ceil(nextWave)+"s":"Protect the sanctuary",w/2,77,13,Menu.MUTED);
+        Menu.center(tutorial!=null?"LESSON "+Math.min(8,tutorial.step().ordinal()+1)+" OF 8":chapter().bossOnly()?"BOSS ONLY  /  "+enemies.size()+" HOSTILES":"WAVE "+Math.max(0,wave-chapter().first()+1)+" / "+chapter().waves()+"   -   "+left+" LEFT",w/2,54,17,Menu.TEXT);
+        Menu.center(tutorial!=null?"No raids / Your campaign is safe":state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY?"THE SANCTUARY ENDURES":director.remaining()>0?director.remaining()+" reinforcements approaching":enemies.isEmpty()?"Next raid in "+(int)Math.ceil(nextWave)+"s":"Protect the sanctuary",w/2,77,13,Menu.MUTED);
         Menu.panel(w-200,20,176,62);
         Menu.text("CRYSTALS",w-182,27,12,Menu.MUTED);
         Menu.text(String.valueOf(progress.crystals()),w-182,43,29,Menu.GOLD);
         drawMinimap(w-184,102);
+        if(state==GameState.PLAYING && !inventory && !workshop)drawCombatCues();
         Menu.panel(24,h-106,242,82);
         Menu.text("SANCTUARY",40,h-98,18,Menu.GOLD);
         Menu.text((int)progress.baseHealth()+" / "+progress.maxBaseHealth()+" integrity",40,h-72,15,Menu.TEXT);
         Menu.bar(40,h-43,210,progress.baseHealth(),progress.maxBaseHealth(),Menu.GOLD);
         int bx=w/2-200;
         Menu.panel(bx,h-116,400,92);
-        String timing=player.discipline().riposteReady()?"RIPOSTE READY / 1.75x":heavyCharge>0?"RELEASE Q AT .75 - 1.05s / "+String.format("%.2fs",heavyCharge):combo>0 && comboWindow>0 && attackCooldown<=.14f?"CHAIN NOW":"TIME YOUR STRIKES";
+        String timing=player.discipline().riposteReady()?"RIPOSTE READY / 1.75x":heavyCharge>0?"RELEASE "+settings.controls.label(HEAVY)+" IN GOLD / "+String.format("%.2fs",heavyCharge):combo>0 && comboWindow>0 && attackCooldown<=.22f?"CHAIN NOW":"TIME YOUR STRIKES";
         Menu.text(timing,bx+16,h-108,12,Menu.GOLD);
         String[] keys={settings.controls.label(SLASH),settings.controls.label(HEAVY),settings.controls.label(POTION),settings.controls.label(INVENTORY)};
-        String[] actions={"STRIKE","CHARGE","HEAL "+progress.potions(),"GEAR"};
+        String[] actions={progress.heroClass()==HeroClass.WARRIOR?"STRIKE":progress.heroClass()==HeroClass.ARCHER?"SHOOT":"CAST","CHARGE","HEAL "+progress.potions(),"GEAR"};
         for(int i=0;i<4;i++) {
             int x=bx+12+i*96;
             DrawRectangleRounded(new Rectangle().x(x).y(h-86).width(88).height(48),.18f,6,Menu.color(43,58,64));
-            Menu.icon(i==0?"sword":i==1?"crown":i==2?"heart":"bag",x+8,h-80,15,Menu.TEAL);
+            Menu.icon(i==0?(progress.heroClass()==HeroClass.WARRIOR?"sword":progress.heroClass()==HeroClass.ARCHER?"bow":"staff"):i==1?"crown":i==2?"heart":"bag",x+8,h-80,15,Menu.TEAL);
             Menu.center(keys[i],x+52,h-83,16,Menu.TEXT);
             Menu.center(actions[i],x+44,h-60,12,i==2?Menu.TEAL:Menu.MUTED);
         }
-        Menu.bar(bx+12,h-32,376,activeAttack.duration()-attackCooldown,activeAttack.duration(),Menu.TEAL);
+        float timeline=heavyCharge>0?heavyCharge:activeAttack.duration()-attackCooldown;
+        float maximum=heavyCharge>0?1.4f:activeAttack.duration();
+        Menu.bar(bx+12,h-32,376,timeline,maximum,heavyCharge>0?Menu.GOLD:Menu.TEAL);
+        if(heavyCharge>0)DrawRectangle(bx+12+(int)(376*.75f/1.4f),h-33,(int)(376*.3f/1.4f),10,Fade(Menu.GOLD,.65f));
+        else if(player.isAttacking())DrawRectangle(bx+12+(int)(376*activeAttack.impact()/maximum),h-35,2,14,Menu.GOLD);
+        Menu.center(mastery.label(progress.heroClass()),w/2,h-142,12,mastery.stacks()>0?Menu.GOLD:Menu.TEAL);
         Menu.text(settings.controls.label(PARRY)+" PARRY / "+settings.controls.label(LUNGE)+" LUNGE",w-265,h-80,14,Menu.GOLD);
         Menu.text(settings.controls.label(WORKSHOP)+"  WORKSHOP    "+settings.controls.label(SAVE)+"  SAVE    ESC  PAUSE",w-265,h-57,13,Menu.TEXT);
         Menu.text(settings.controls.label(SPRINT)+" SPRINT / "+settings.controls.label(DODGE)+" DODGE"+(player.discipline().stamina()<22?" TIRED":player.dodgeCooldown()>0?" "+String.format("%.1fs",player.dodgeCooldown()):" READY"),w-265,h-34,12,Menu.MUTED);
@@ -593,6 +671,28 @@ public class Game {
             int nw=Math.min(w-80,Menu.measure(notice,18)+40);
             Menu.panel((w-nw)/2,184,nw,38);
             Menu.center(notice,w/2,192,18,Menu.TEXT);
+        }
+    }
+    private void drawTutorial() {
+        int x=24,y=190,width=Math.min(330,GetScreenWidth()/3);
+        Menu.panel(x,y,width,296);
+        Menu.text("TRAINING / "+Math.min(8,tutorial.step().ordinal()+1)+" OF 8",x+16,y+12,13,Menu.TEAL);
+        Menu.text(tutorial.title(),x+16,y+40,19,Menu.GOLD);
+        Menu.wrapped(tutorial.instruction(settings.controls,progress.heroClass()),x+16,y+78,width-32,16,Menu.TEXT);
+        Menu.bar(x+16,y+234,width-32,tutorial.step().ordinal(),7,Menu.TEAL);
+        if(Menu.button(tutorial.complete()?"FINISH PRACTICE":"SKIP / RETURN",x+16,y+246,width-32,true))finishTutorial();
+    }
+    private void drawCombatCues() {
+        if(pointerAim && !IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+            Vector2 mouse=GetMousePosition();int x=(int)mouse.x(),y=(int)mouse.y();Color color=hitMarker>0?Menu.GOLD:Fade(Menu.TEXT,.65f);
+            int r=hitMarker>0?10:6;DrawCircleLines(x,y,r,color);
+            DrawLine(x-r-4,y,x-r,y,color);DrawLine(x+r,y,x+r+4,y,color);
+            DrawLine(x,y-r-4,x,y-r,color);DrawLine(x,y+r,x,y+r+4,color);
+        }
+        if(hitMarker>0)Menu.center("HIT",GetScreenWidth()/2,GetScreenHeight()/2+35,13,Menu.GOLD);
+        if(player.isAttacking()) {
+            String phase=attackElapsed<activeAttack.impact()?"WINDUP":player.attackRemaining()>=activeAttack.duration()*.48f?"CONTACT":player.attackRemaining()>.12f?"RECOVER / DODGE TO DISENGAGE":"CHAIN WINDOW";
+            Menu.center(phase,GetScreenWidth()/2,GetScreenHeight()-164,11,Menu.MUTED);
         }
     }
     private void drawMinimap(int x,int y) {
@@ -622,7 +722,7 @@ public class Game {
         if (Menu.button("SETTINGS",x,y+344,200,true)) openSettings();
         if(Menu.button("CHRONICLE / THE LAST EMBER",x+220,y+344,400,true)) { journalReturn=state;state=GameState.JOURNAL; }
         if(Menu.button("PLAYTEST / ALL GEAR",x,y+402,280,true))openPlaytestSetup();
-        Menu.text("All classes, armor, weapons and chapters.",x+300,y+416,16,Menu.TEAL);
+        if(Menu.button("TUTORIAL / SAFE PRACTICE",x+300,y+402,320,true))beginTutorial();
         Menu.text(menuMessage.isEmpty()?"Hold right mouse to orbit. ESC pauses.":menuMessage, x, y+462, 15, Menu.MUTED);
     }
     private void drawInventory() { dim();if(equipmentScreen.draw(progress,settings.controls.label(INVENTORY))) inventory=false; }
@@ -662,15 +762,15 @@ public class Game {
         Menu.text(lost?(progress.health()<=0?"WARDEN FALLEN":"OUTPOST FALLEN"):"DEFENSE PAUSED",x,y,36,Menu.TEXT);
         Menu.text(lost?"Wave "+wave+" / "+progress.kills()+" defeated":player.getName()+" / Wave "+wave,x,y+54,20,Menu.MUTED);
         if (Menu.button(lost?"TRY AGAIN":"RESUME",x,y+100,440,true)) { if (lost) start(); else state=GameState.PLAYING; }
-        if (Menu.button(playtest?"SAVE PLAYTEST":"SAVE GAME",x,y+154,212,!lost)) saveCurrent();
-        if (Menu.button(playtest?"LOAD PLAYTEST":"LOAD GAME",x+228,y+154,212,Files.exists(playtest?playtestSavePath:savePath)))loadActive();
+        if (Menu.button(playtest?"SAVE PLAYTEST":"SAVE GAME",x,y+154,212,!lost && tutorial==null)) saveCurrent();
+        if (Menu.button(playtest?"LOAD PLAYTEST":"LOAD GAME",x+228,y+154,212,tutorial==null && Files.exists(playtest?playtestSavePath:savePath)))loadActive();
         if (Menu.button("SETTINGS",x,y+208,212,true)) openSettings();
         if (Menu.button("CHRONICLE",x+228,y+208,212,true)) { journalReturn=state;state=GameState.JOURNAL; }
         if (Menu.button("SAVE & MAIN MENU",x,y+262,440,!lost)) { if (saveCurrent()) state=GameState.MAIN_MENU; }
         if (lost && Menu.button("MAIN MENU",x,y+262,440,true)) state=GameState.MAIN_MENU;
         if(playtest) { if(Menu.button("PLAYTEST TOOLS / CLASS + CHAPTER",x,y+318,440,true))openPlaytestSetup(); }
-        else Menu.text(lost?"The valley still needs its warden. Rise again.":menuMessage,x,y+325,15,Menu.GOLD);
-        Menu.text(playtest?"Separate playtest save / Campaign save is preserved.":"Closing the game also saves an active defense.",x,y+(playtest?380:356),15,Menu.MUTED);
+        else if(!lost && Menu.button(tutorial!=null?"LEAVE PRACTICE":"TUTORIAL / SAFE PRACTICE",x,y+318,440,true)) { if(tutorial!=null)finishTutorial();else beginTutorial(); }
+        Menu.text(playtest?"Separate playtest save / Campaign save is preserved.":"Closing the game also saves an active defense.",x,y+380,15,Menu.MUTED);
     }
     private void drawChapterEnd() {
         if(chapter().bossOnly() && outcomeTime<1.6f) {
@@ -721,6 +821,7 @@ public class Game {
     }
     private void confirmName() {
         settings.playerName=Settings.cleanName(nameDraft);settings.difficulty=selectedDifficulty; persistSettings(); start();
+        if(pointerAim && !settings.tutorialSeen)beginTutorial();
     }
     void startPlaytest() { playtest=true;start(); }
     boolean isPlaytest() { return playtest; }
@@ -808,6 +909,7 @@ public class Game {
         }
     }
     boolean saveCurrent() {
+        if(tutorial!=null) { notifyPlayer("Practice stays separate / Your campaign save is safe.");return false; }
         if (progress.defeated()) return false;
         try {
             SaveGame.write(playtest?playtestSavePath:savePath,new SaveGame.Snapshot(player.getName(),player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),progress,director.snapshot(),enemies.stream().filter(e->e.health>0).toList(),Arena.HIGHLANDS,player.discipline().stamina(),dayNight.phase()));
@@ -819,6 +921,10 @@ public class Game {
     private boolean loadFrom(Path path,boolean sandbox) {
         try {
             SaveGame.Snapshot saved=SaveGame.read(path);
+            restoreSnapshot(saved,sandbox);menuMessage="Game loaded. Press Enter to resume.";return true;
+        } catch (IOException e) { menuMessage="Could not load game. Current defense was kept.";notifyPlayer(menuMessage);System.err.println(e.getMessage());return false; }
+    }
+    private void restoreSnapshot(SaveGame.Snapshot saved,boolean sandbox) {
             playtest=sandbox;
             progress=saved.progression();selectedDifficulty=progress.difficulty();director.difficulty(progress.difficulty());director.restore(saved.wave());fallen.clear();outcomeTime=0;enemies.clear();enemies.addAll(saved.enemies());projectiles.clear();heroShots.clear();inventory=false;
             selectedClass=progress.heroClass();
@@ -830,8 +936,8 @@ public class Game {
             sceneManager.getOpenScene().getCameraController().update(0);
             state=director.levelCleared(enemies.size())?(wave>=10?GameState.VICTORY:GameState.LEVEL_COMPLETE):GameState.PAUSED;
             if(state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY)outcomeTime=3;
-            menuMessage="Game loaded. Press Enter to resume.";return true;
-        } catch (IOException e) { menuMessage="Could not load game. Current defense was kept.";notifyPlayer(menuMessage);System.err.println(e.getMessage());return false; }
+
+        mastery.reset();hitPause=hitMarker=0;
     }
     Combat.Attack currentAttack() { return activeAttack; }
     java.util.List<BossHazard> getBossHazards() { return java.util.Collections.unmodifiableList(bossHazards); }

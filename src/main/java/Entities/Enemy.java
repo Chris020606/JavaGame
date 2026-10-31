@@ -4,6 +4,10 @@ public class Enemy {
     public float x, z, health, cooldown;
     public float facing, animationTime, attackTime, hitFlash, stun;
     public float deathTime;
+    public float corpseLift=Float.NaN;
+    public float corpseHeight;
+    public float corpseMinimum;
+    public boolean corpseSettled;
     public float attackX, attackZ;
     public BossMove bossMove=BossMove.CLEAVE;
     private int attackCycle;
