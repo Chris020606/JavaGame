@@ -78,5 +78,7 @@ public final class WorkshopScreen {
             Menu.icon("potion",x+CONTENT+137+i*70,y+286,20,i<p.potions()?Menu.RED:Menu.LINE);
         }
         if(Menu.button("RESTOCK / 30 CRYSTALS",x+CONTENT+120,y+368,340,p.crystals()>=30 && p.potions()<5) && p.buyPotion())audio.play("upgrade");
+        Menu.text("SANCTUARY / "+Math.round(p.baseHealth())+" OF "+p.maxBaseHealth()+" INTEGRITY",x+CONTENT+120,y+426,16,Menu.TEXT);
+        if(Menu.button("REPAIR +100 / 30 CRYSTALS",x+CONTENT+120,y+459,340,p.crystals()>=30 && p.baseHealth()<p.maxBaseHealth()) && p.repairBase())audio.play("upgrade");
     }
 }

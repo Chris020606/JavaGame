@@ -60,7 +60,7 @@ The HUD tells you how many waves remain. Chapter endings give you a moment to re
 
 ## Make the warden your own
 
-Earn crystals from defeated enemies and spend them at the sanctuary workshop. Improve **health, damage, stamina, recovery, speed, defense, and sanctuary strength** separately. The first sanctuary upgrade also builds a guardian ward: two hovering crystals fire a short-range support beam every four seconds. It weakens nearby enemies but cannot deliver the finishing blow.
+Earn crystals from defeated enemies and spend them at the sanctuary workshop. Improve **health, damage, stamina, recovery, speed, defense, and sanctuary strength** separately. The first sanctuary upgrade also builds a guardian ward: two hovering crystals fire a short-range support beam every four seconds. It weakens nearby enemies but cannot deliver the finishing blow. Its HUD meter shows when the next shot is ready. The workshop Supplies tab also offers a clearly priced sanctuary repair button. Between raids, the chapter banner previews the incoming formation.
 
 Forge **Iron, Runic, and Dawnsteel armor**, then mix helmets, chest armor, greaves, and boots. Equipment visibly fits each class: a full Warrior helm, an open-faced Archer helmet, and an armored Mage hat. Change your sword, longsword, axe, bow, crossbow, wand, or staff and see it on your hero.
 

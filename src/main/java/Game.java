@@ -318,11 +318,10 @@ public class Game {
         if (nearBase()) progress.heal(dt);
         guardianFlash=Math.max(0,guardianFlash-dt);guardianCooldown=Math.max(0,guardianCooldown-dt);
         if(tutorial==null && progress.baseLevel()>=2 && guardianCooldown<=0) {
-            Enemy target=null;
-            for(Enemy candidate:enemies)if(candidate.health>1 && candidate.distance(0,0)<9 && (target==null || candidate.distance(0,0)<target.distance(0,0)))target=candidate;
+            Enemy target=SanctuaryWard.target(enemies);
             if(target!=null) {
-                float damage=Math.min(target.health-1,Math.min(14,6+progress.baseLevel()*2));
-                target.health-=damage;target.hitFlash=.16f;guardianX=target.x;guardianZ=target.z;guardianFlash=.28f;guardianCooldown=4;
+                float damage=SanctuaryWard.damage(progress.baseLevel(),target.health);
+                target.health-=damage;target.hitFlash=.16f;guardianX=target.x;guardianZ=target.z;guardianFlash=.28f;guardianCooldown=SanctuaryWard.INTERVAL;
                 vfx.impact(target.x,target.z,Menu.TEAL,false);feedback.add(target.x,target.z,"WARD -"+Math.round(damage),Menu.TEAL);audio.play("ward");
             }
         }
@@ -674,7 +673,7 @@ public class Game {
         Menu.center(tutorial!=null?"TUTORIAL / SAFE PRACTICE":"LEVEL "+(chapterIndex()+1)+" / "+chapter().title(),w/2,29,14,Menu.GOLD);
         int left=chapter().waves()-chapter().cleared(wave,director.remaining(),enemies.size(),director.total());
         Menu.center(tutorial!=null?"LESSON "+Math.min(8,tutorial.step().ordinal()+1)+" OF 8":chapter().bossOnly()?"BOSS ONLY  /  "+enemies.size()+" HOSTILES":"WAVE "+Math.max(0,wave-chapter().first()+1)+" / "+chapter().waves()+"   -   "+left+" LEFT",w/2,54,14,Menu.TEXT);
-        Menu.center(tutorial!=null?"No raids / Your campaign is safe":state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY?"THE SANCTUARY ENDURES":director.remaining()>0?director.remaining()+" reinforcements approaching":enemies.isEmpty()?"Next raid in "+(int)Math.ceil(nextWave)+"s":"Protect the sanctuary",w/2,77,11,Menu.MUTED);
+        Menu.center(tutorial!=null?"No raids / Your campaign is safe":state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY?"THE SANCTUARY ENDURES":director.remaining()>0?director.remaining()+" reinforcements approaching":enemies.isEmpty()?WaveFormation.label(wave+1)+" / "+(int)Math.ceil(nextWave)+"s":"Protect the sanctuary",w/2,77,11,Menu.MUTED);
         Menu.panel(w-156,20,140,62);Menu.icon("crystal",w-144,38,20,Menu.GOLD);
         Menu.text("CRYSTALS",w-114,29,10,Menu.MUTED);Menu.text(String.valueOf(progress.crystals()),w-114,46,20,Menu.GOLD);
         if(w>=1000)drawMinimap(w-184,102);
@@ -683,8 +682,13 @@ public class Game {
         Menu.panel(16,sy,sw,72);Menu.text(progress.baseLevel()>=2?"SANCTUARY / WARD":"SANCTUARY",28,sy+8,compact?10:13,Menu.GOLD);
         Menu.text((int)progress.baseHealth()+" / "+progress.maxBaseHealth(),28,sy+26,12,Menu.TEXT);
         Menu.bar(28,sy+44,sw-24,progress.baseHealth(),progress.maxBaseHealth(),Menu.GOLD);
-        String sanctuaryCue=nearBase()?(compact?"+12 HP/s  "+settings.controls.label(INTERACT)+" +100/30CR":"+"+Math.round(progress.healRate())+" HP/s / "+settings.controls.label(INTERACT)+" +100 / 30 CR"):"CENTER "+String.format("%.0f",sanctuaryDistance())+"m / RADAR";
+        String sanctuaryCue=nearBase()?(compact?"+"+Math.round(progress.healRate())+" HP/s  "+settings.controls.label(INTERACT)+" +100/30CR":"+"+Math.round(progress.healRate())+" HP/s / "+settings.controls.label(INTERACT)+" +100 / 30 CR"):"CENTER "+String.format("%.0f",sanctuaryDistance())+"m / RADAR";
         Menu.text(sanctuaryCue,28,sy+58,compact?8:9,nearBase()?Menu.TEAL:Menu.MUTED);
+        if(progress.baseLevel()>=2 && !compact && storyTime<=0) {
+            Menu.panel(16,sy+78,208,43);
+            Menu.text(guardianCooldown>0?"WARD RECHARGING":"WARD READY / 9m RANGE",28,sy+85,10,Menu.TEAL);
+            Menu.bar(28,sy+106,184,SanctuaryWard.INTERVAL-guardianCooldown,SanctuaryWard.INTERVAL,Menu.TEAL);
+        }
         hudScreen.draw(progress,player,settings.controls,new HudScreen.CombatState(attackCooldown,activeAttack.duration(),activeAttack.impact(),heavyCharge,combo,comboWindow,mastery.label(progress.heroClass()),mastery.stacks()>0));
         if(!compact) {
             Menu.text(settings.controls.label(DODGE)+" DODGE / "+settings.controls.label(SPRINT)+" SPRINT",w-220,h-75,12,Menu.TEXT);

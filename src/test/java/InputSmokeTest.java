@@ -276,7 +276,7 @@ public class InputSmokeTest {
         System.out.println(corpseOnly?"PASS: actual collapsed mesh bounds, floor support and river-bank views":"PASS: fractional crossfades, all class/weapon motion, mouse aim while moving, matched armor, class charge poses and extended river banks");
     }
     private static void hudRegression(Game game,java.nio.file.Path profile) throws Exception {
-        Progression kit=Progression.playtest(HeroClass.WARRIOR,Entities.Difficulty.NORMAL,false);kit.damagePlayer(40);
+        Progression kit=Progression.playtest(HeroClass.WARRIOR,Entities.Difficulty.NORMAL,false);kit.damagePlayer(40);kit.purchase(Progression.Upgrade.BASE);
         SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Ember",0,8,180,kit,new WaveDirector.State(1,0,1,8,0,21,0),java.util.List.of(new Entities.Enemy(-18,-18,1,0,.5f)),Arena.HIGHLANDS));
         check(game.loadCurrent(),"Belt setup did not load");key(game,KEY_ENTER);game.getEnemies().getFirst().stun=game.getEnemies().getFirst().cooldown=100;
         for(int i=0;i<25;i++)frame(game);game.pointerAim(true);
