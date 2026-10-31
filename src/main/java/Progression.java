@@ -102,6 +102,7 @@ public class Progression {
         restoreHealth(expedition.rank(Expedition.Blessing.BLOODROOT)*3);
         if (boss) weaponUnlocked=Math.min(3,weaponUnlocked+1);
     }
+    public void rewardElite() { if(!defeated())crystals+=25; }
     public int crystals() { return crystals; }
     public int kills() { return kills; }
     public int baseLevel() { return baseLevel; }

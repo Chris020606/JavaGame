@@ -34,6 +34,8 @@ Each class has a combat reward. **Warrior:** parry to empower your next strike b
 
 Enemies have plans of their own: scouts flank, brutes push forward, archers retreat and reposition, and spellcasters can heal wounded allies. Read their attack warnings and interrupt them before they finish.
 
+From the third wave onward, some raiders arrive as **elites**. Gold ground rings, labels, health bars, and radar marks identify them. They have 50% more health and award 40 crystals instead of 15.
+
 Each siege has a different formation: fast scout raids, armored siege columns, hexers with bodyguards, and mixed ambushes. Decide which threat to deal with first.
 
 **Gold boss attacks can be parried. Red and purple attacks must be evaded.**
@@ -91,6 +93,8 @@ Choose **PLAYTEST / ALL GEAR** on the title screen to start with:
 
 The inventory opens immediately. **Pause → Playtest Tools** lets you switch class/chapter, choose morning, noon, sunset, or midnight, or reset your kit. The playtest has its own save, so your campaign stays safe.
 
+Defeated? **Retry Chapter** restores your equipment and upgrades from chapter entry. New campaigns and playtests keep separate checkpoints. Older saves without a checkpoint offer a clearly labeled new run.
+
 ## Pick up and play
 
 | Action | Default input |
@@ -115,7 +119,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.7.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.8.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -126,6 +130,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **2.8:** chapter-entry checkpoints and retry, gold-marked elites with bonus crystals, and readable HUD backing on bright terrain.
 - **2.7:** clean health/stamina bars, clearer sanctuary healing and repair guidance, higher sanctuary integrity with chapter resupply, and the Dawnweaver charged support weapon.
 - **2.6:** original iron-and-parchment interface, clickable six-slot action belt, framed backpack/armor slots and matching workshop/menus.
 - **2.5:** short, soft trails follow the actual Warrior blade instead of a floating attack arc; pooled impact particles and cached hand attachments/text layout.
@@ -145,7 +150,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–2.7 are development updates rather than published releases.
+Versions 1.3–2.8 are development updates rather than published releases.
 
 </details>
 

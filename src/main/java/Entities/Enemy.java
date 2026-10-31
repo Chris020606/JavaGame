@@ -15,6 +15,7 @@ public class Enemy {
     public float chargeTime,chargeVx,chargeVz,chargeEndX,chargeEndZ;
     public boolean chargeHit;
     public final boolean king,undead;
+    public final boolean elite;
     public final Difficulty difficulty;
     public Enemy healingTarget;
     public float locomotion,sideStepTime,healCooldown;
@@ -45,7 +46,8 @@ public class Enemy {
     public Enemy(float x,float z,int wave,int variant,float personality) { this(x,z,wave,variant,personality,Difficulty.NORMAL); }
     public Enemy(float x,float z,int wave,int variant,float personality,Difficulty difficulty) {
         this.x=x; this.z=z; king=wave>=10;undead=wave>=5;this.difficulty=difficulty; this.variant=variant; this.personality=personality;
-        maxHealth=(40+wave*10)*(variant==5?5:variant==2?1.4f:variant==1||variant==3?.8f:variant==4?1.1f:1)*difficulty.health;
+        elite=variant!=5 && wave>=3 && personality>=.88f;
+        maxHealth=(elite?1.5f:1)*(40+wave*10)*(variant==5?5:variant==2?1.4f:variant==1||variant==3?.8f:variant==4?1.1f:1)*difficulty.health;
         health=maxHealth;
         speed=Math.min(3.5f,1.4f+wave*.12f)*(variant==5?.7f:variant==1?1.35f:variant==2?.8f:1)*(.9f+personality*.2f)*difficulty.speed;
         healCooldown=3+personality*3;cooldown=personality*.6f; animationTime=personality*3;
@@ -128,8 +130,9 @@ public class Enemy {
     public float meleeRange() { return boss()?3.8f:2.2f; }
     public float meleeDamage(int wave) { return (boss()?22+wave*3:8+wave*2+(variant==2?5:0))*difficulty.damage; }
     public float siegeDamage(int wave) { return (boss()?30+wave*3:10+wave*2)*difficulty.damage; }
-    public int reward() { return boss()?120:15; }
+    public int reward() { return boss()?120:elite?40:15; }
     public boolean ranged() { return variant==3 || variant==4; }
     public float attackRange() { return ranged()?8:boss()?12:1.9f; }
-    public String label() { if(undead && !boss()) return switch(variant) { case 1 -> "RATTLESCOUT";case 2 -> "FROST REAVER";case 3 -> "BONE ARCHER";case 4 -> "FROST HEXER";default -> "BONEGUARD"; };return switch(variant) { case 1 -> "SCOUT"; case 2 -> "BRUTE"; case 3 -> "ARCHER"; case 4 -> "SHAMAN"; case 5 -> "WARLORD"; default -> "RAIDER"; }; }
+    public String label() { return (elite?"ELITE ":"")+baseLabel(); }
+    private String baseLabel() { if(undead && !boss()) return switch(variant) { case 1 -> "RATTLESCOUT";case 2 -> "FROST REAVER";case 3 -> "BONE ARCHER";case 4 -> "FROST HEXER";default -> "BONEGUARD"; };return switch(variant) { case 1 -> "SCOUT"; case 2 -> "BRUTE"; case 3 -> "ARCHER"; case 4 -> "SHAMAN"; case 5 -> "WARLORD"; default -> "RAIDER"; }; }
 }

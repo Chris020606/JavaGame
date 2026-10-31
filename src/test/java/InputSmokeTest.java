@@ -424,6 +424,18 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--quality-review")) {
+                game.startPlaytest();key(game,KEY_TAB);
+                check(java.nio.file.Files.exists(profile.resolve("playtest-checkpoint.properties")),"Playtest checkpoint missing");
+                game.getProgression().damagePlayer(60);game.retryChapter();
+                check(game.getProgression().health()==game.getProgression().maxHealth(),"Retry failed to restore entry health");
+                check(game.isPlaytest() && game.getState()==GameState.PLAYING,"Retry changed campaign mode");
+                Entities.Enemy elite=new Entities.Enemy(0,12,6,2,.95f);
+                SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Quality",0,8,0,new Progression(),new WaveDirector.State(6,0,1,8,0,21,0),java.util.List.of(elite),Arena.HIGHLANDS));
+                check(game.loadCurrent() && game.getEnemies().getFirst().elite,"Elite identity lost on save/load");key(game,KEY_ENTER);
+                for(int f=0;f<20;f++)frame(game);capture("quality-elite");
+                System.out.println("PASS: separate chapter checkpoint, retry restores entry kit, elite save/load and presentation");return;
+            }
             if(java.util.Arrays.asList(args).contains("--hud-review")) { hudRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--support-review")) { restorativeWeaponRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--blade-review")) { bladeRegression(game,profile);return; }

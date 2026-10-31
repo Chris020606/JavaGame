@@ -9,7 +9,9 @@ public final class HudScreen {
     private static final Controls.Action[] ACTIONS={SLASH,HEAVY,PARRY,LUNGE,POTION,INVENTORY};
     public void draw(Progression p,Player player,Controls controls,CombatState state) {
         HudLayout layout=new HudLayout(GetScreenWidth(),GetScreenHeight());int x=layout.x(),y=layout.y(),span=layout.span();
+        Menu.frame(x-8,y-114,span+16,76,Menu.color(24,31,30),Menu.LINE);
         int healthY=y-104;
+        DrawRectangle(x-8,y-140,span+16,23,Fade(Menu.INK,.85f));
         Menu.center(state.mastery(),GetScreenWidth()/2,y-132,11,state.empowered()?Menu.GOLD:Menu.MUTED);
         int labelSize=layout.cell()<56?9:10;
         Menu.text("HEALTH",x,healthY,labelSize,Menu.MUTED);
