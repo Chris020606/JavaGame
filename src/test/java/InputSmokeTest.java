@@ -309,6 +309,19 @@ public class InputSmokeTest {
         SetWindowSize(1280,800);for(int i=0;i<4;i++)frame(game);game.pointerAim(false);game.getPlayer().getPosition().x(0).z(4);key(game,KEY_E);for(int i=0;i<3;i++)frame(game);capture("ironwood-workshop");key(game,KEY_ESCAPE);
         System.out.println("PASS: six clickable belt actions, held charge capture, gap/input isolation, inventory and responsive HUD layouts");
     }
+    private static void restorativeWeaponRegression(Game game,java.nio.file.Path profile) throws Exception {
+        Progression kit=Progression.playtest(HeroClass.MAGE,Entities.Difficulty.NORMAL,false);kit.equipWeapon(3);
+        FieldEvent survivor=kit.fieldEvent();survivor.begin(2);survivor.update(0,survivor.x(),survivor.z(),true);survivor.damage(70);
+        float x=survivor.x();
+        SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Mender",x,0,0,kit,new WaveDirector.State(2,0,0,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
+        check(game.loadCurrent(),"Dawnweaver setup did not load");key(game,KEY_ENTER);game.getPlayer().getRotation().y(0);game.getPlayer().getPosition().x(x).z(0);
+        FieldEvent loaded=game.getProgression().fieldEvent();check(loaded.health()==30 && loaded.vulnerable(),"Wounded survivor fixture was not restored");
+        event(KEY_DOWN,KEY_Q,0);for(int i=0;i<50;i++)frame(game);event(KEY_UP,KEY_Q,0);
+        boolean wardShot=false;for(int i=0;i<100;i++) { frame(game);for(HeroShot shot:game.getHeroShots())wardShot|=shot.restorative; }
+        check(wardShot && loaded.health()>30,"Charged Dawnweaver shot failed to heal its allied survivor");
+        check(game.getProgression().weaponName(3).contains("Dawnweaver"),"Mage tier-three weapon name is missing");
+        System.out.println("PASS: charged Mage Dawnweaver shot restores an active survivor");
+    }
     private static void bladeRegression(Game game,java.nio.file.Path profile) throws Exception {
         try(CombatVfx burst=new CombatVfx()) {
             for(int i=0;i<2000;i++) { burst.impact(0,0,Menu.GOLD,true);if(i%5==0)burst.update(.016f); }
@@ -412,6 +425,7 @@ public class InputSmokeTest {
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
             if(java.util.Arrays.asList(args).contains("--hud-review")) { hudRegression(game,profile);return; }
+            if(java.util.Arrays.asList(args).contains("--support-review")) { restorativeWeaponRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--blade-review")) { bladeRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--tutorial-review")) { tutorialRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--corpse-review")) {

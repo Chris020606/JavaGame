@@ -51,6 +51,10 @@ public final class FieldEvent {
     }
     public void interrupt() { if(kind==Kind.SUPPLIES)progress=0; }
     public void damage(float amount) { if(vulnerable()) { health=Math.max(0,health-Math.max(0,amount));if(health<=0)status=Status.FAILED; } }
+    public boolean support(float amount) {
+        if(!vulnerable() || kind!=Kind.SURVIVOR || !Float.isFinite(amount) || amount<=0 || health>=100)return false;
+        health=Math.min(100,health+amount);return true;
+    }
     public boolean claim() { if(status!=Status.COMPLETE || rewarded)return false;rewarded=true;return true; }
     public void store(Properties p) {
         p.setProperty("event.wave",wave+"");p.setProperty("event.kind",kind.name());p.setProperty("event.status",status.name());

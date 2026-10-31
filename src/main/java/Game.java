@@ -177,6 +177,7 @@ public class Game {
         if(t>0)player.aimAt(ray._position().x()+ray.direction().x()*t,ray._position().z()+ray.direction().z()*t);
     }
     private boolean nearBase() { return Math.hypot(player.getPosition().x(), player.getPosition().z()) < 6; }
+    private float sanctuaryDistance() { return (float)Math.hypot(player.getPosition().x(),player.getPosition().z()); }
     private void notifyPlayer(String message) { notice = message; noticeTime = 3; }
 
     public void update(float dt) {
@@ -203,6 +204,12 @@ public class Game {
             if(IsKeyPressed(KEY_ESCAPE))state=blessingReturn;
             else if(settings.controls.pressed(SAVE))saveCurrent();
             else for(int i=0;i<progress.expedition().offers().size();i++)if(IsKeyPressed(KEY_ONE+i)) { chooseBlessing(i);break; }
+            return;
+        }
+        if(state==GameState.PLAYING && settings.controls.pressed(INTERACT) && nearBase() && progress.baseHealth()<progress.maxBaseHealth() && (enemies.size()>0 || progress.expedition().embers()==0 || progress.expedition().offers().isEmpty())) {
+            if(progress.repairBase()) { audio.play("upgrade");vfx.impact(0,0,Menu.TEAL,true);notifyPlayer("SANCTUARY REPAIRED / +100 INTEGRITY");saveCurrent(); }
+            else if(progress.crystals()<30)notifyPlayer("SANCTUARY REPAIR NEEDS 30 CRYSTALS");
+            else notifyPlayer("SANCTUARY INTEGRITY IS ALREADY FULL");
             return;
         }
         if((state==GameState.PLAYING || state==GameState.LEVEL_COMPLETE) && settings.controls.pressed(INTERACT) && nearBase() && enemies.isEmpty() && director.remaining()==0 && progress.expedition().embers()>0 && !progress.expedition().offers().isEmpty()) {
@@ -435,8 +442,16 @@ public class Game {
         for (Iterator<HeroShot> shots=heroShots.iterator();shots.hasNext();) {
             HeroShot shot=shots.next(); shot.update(dt);
             boolean stopped=false;
+            if(shot.restorative) {
+                FieldEvent ally=progress.fieldEvent();
+                if(ally.kind()==FieldEvent.Kind.SURVIVOR && ally.vulnerable() && shot.intersects(ally.x(),ally.z(),.9f) && ally.support(shot.damage*.65f)) {
+                    stopped=true;vfx.impact(ally.x(),ally.z(),Menu.TEAL,true);feedback.add(ally.x(),ally.z(),"ALLY +"+Math.round(shot.damage*.65f),Menu.TEAL);audio.play("ward");
+                } else if(shot.intersects(0,0,2.0f) && progress.restoreBase(shot.damage*.8f)) {
+                    stopped=true;vfx.impact(0,0,Menu.TEAL,true);feedback.add(0,0,"SANCTUARY +"+Math.round(shot.damage*.8f),Menu.TEAL);audio.play("ward");
+                }
+            }
             // Nearest intersections first, regardless of enemy spawn order.
-            shotTargets.clear();shotTargets.addAll(enemies);
+            shotTargets.clear();if(!stopped)shotTargets.addAll(enemies);
             shotTargets.sort(java.util.Comparator.comparingDouble(e -> (e.x-shot.previousX)*(e.x-shot.previousX)+(e.z-shot.previousZ)*(e.z-shot.previousZ)));
             for (Enemy enemy:shotTargets) if (shot.hit(enemy)) {
                 float damage=Math.min(enemy.health,shot.damage);
@@ -497,8 +512,9 @@ public class Game {
     private void continueCampaign() {
         if(state==GameState.VICTORY) { state=GameState.MAIN_MENU;return; }
         director.advanceLevel(); storyTime=12; inventory=workshop=false;fallen.clear();outcomeTime=0;
+        float sanctuaryBefore=progress.baseHealth();progress.chapterRespite();
         player.getPosition().x(0).y(0).z(4);player.resetCombat();
-        state=GameState.PLAYING;saveCurrent();
+        state=GameState.PLAYING;notifyPlayer("CHAPTER SUPPLIES / SANCTUARY +"+Math.round(progress.baseHealth()-sanctuaryBefore)+" INTEGRITY");saveCurrent();
     }
     private void resolvePlayerHit(float px,float pz) {
         slashTime=.16f;
@@ -506,7 +522,7 @@ public class Game {
         if (progress.heroClass()!=HeroClass.WARRIOR) {
             Vector3 origin=player.projectileOrigin();
             HeroShot shot=new HeroShot(origin.x(),origin.z(),player.getRotation().y(),activeAttack,Math.round(progress.damage()*(1+.10f*progress.expedition().rank(Expedition.Blessing.HUNTERS_MARK))),progress.heroClass()==HeroClass.MAGE);
-            shot.startHeight(origin.y());shot.heavy=activeHeavy;shot.charged=activeCharged;heroShots.add(shot);
+            shot.startHeight(origin.y());shot.heavy=activeHeavy;shot.charged=activeCharged;shot.restorative=progress.heroClass()==HeroClass.MAGE && progress.weaponTier()>=3 && activeHeavy;heroShots.add(shot);
             return;
         }
         boolean hit=false;
@@ -584,13 +600,13 @@ public class Game {
         BeginMode3D(camera);
         Enemy boss=enemies.stream().filter(e->e.boss() && e.health>0).findFirst().orElse(null);
         assets.drawSky(camera,light);
-        assets.litPass(renderer,camera,time,boss,light);assets.drawEnvironment(chapterIndex(),time);drawActors();
+        assets.litPass(renderer,camera,time,boss,light);assets.drawEnvironment(chapterIndex(),time);drawActors();drawSanctuaryRing();
         if (director.warning()) {
             DrawCylinderWires(v(director.x(),.08f,director.z()),1.4f,1.4f,.15f,24,Menu.RED);
             DrawLine3D(v(director.x(),0,director.z()),v(director.x(),3,director.z()),Menu.GOLD);
         }
         vfx.begin();
-        for(HeroShot shot:heroShots)vfx.projectile(camera,shot.x,shot.z,shot.vx,shot.vz,shot.magic,shot.magic?Menu.TEAL:Menu.GOLD,time,shot.height());
+        for(HeroShot shot:heroShots)vfx.projectile(camera,shot.x,shot.z,shot.vx,shot.vz,shot.magic,shot.restorative?Menu.color(132,255,205):shot.magic?Menu.TEAL:Menu.GOLD,time,shot.height());
         if(progress.heroClass()==HeroClass.WARRIOR)vfx.drawBlade();
         if(player.discipline().parrying())vfx.shield(camera,player.getPosition().x(),player.getPosition().z(),time,Menu.TEAL);
         if(heavyCharge>0)vfx.charge(player.getPosition().x(),player.getPosition().z(),heavyCharge,heavyCharge>=.75f && heavyCharge<=1.05f?Menu.GOLD:Menu.TEAL);
@@ -607,6 +623,14 @@ public class Game {
         for(Enemy enemy:enemies) assets.drawEnemy(enemy);
         for(Enemy enemy:fallen)assets.drawEnemy(enemy);
         assets.drawFieldEvent(progress.fieldEvent(),(float)GetTime());
+    }
+    private void drawSanctuaryRing() {
+        Color ring=Fade(Menu.TEAL,.62f);float radius=6;int segments=64;
+        for(int i=0;i<segments;i++) {
+            double a=i*Math.PI*2/segments,b=(i+1)*Math.PI*2/segments;
+            DrawLine3D(v((float)Math.cos(a)*radius,.10f,(float)Math.sin(a)*radius),v((float)Math.cos(b)*radius,.10f,(float)Math.sin(b)*radius),ring);
+        }
+        DrawCylinderWires(v(0,.10f,0),.52f,.52f,.08f,12,Menu.GOLD);
     }
     private void drawEnemyHealth() {
         for (Enemy enemy : enemies) {
@@ -633,17 +657,18 @@ public class Game {
         Menu.text("CRYSTALS",w-114,29,10,Menu.MUTED);Menu.text(String.valueOf(progress.crystals()),w-114,46,20,Menu.GOLD);
         if(w>=1000)drawMinimap(w-184,102);
         if(state==GameState.PLAYING && !inventory && !workshop)drawCombatCues();
-        int sy=compact?h-178:112,sw=compact?110:208;
-        Menu.panel(16,sy,sw,56);Menu.text("SANCTUARY",28,sy+8,compact?10:13,Menu.GOLD);
+        int sy=compact?h-178:112,sw=compact?130:208;
+        Menu.panel(16,sy,sw,72);Menu.text("SANCTUARY",28,sy+8,compact?10:13,Menu.GOLD);
         Menu.text((int)progress.baseHealth()+" / "+progress.maxBaseHealth(),28,sy+26,12,Menu.TEXT);
         Menu.bar(28,sy+44,sw-24,progress.baseHealth(),progress.maxBaseHealth(),Menu.GOLD);
+        String sanctuaryCue=nearBase()?(compact?"+12 HP/s  "+settings.controls.label(INTERACT)+" +100/30CR":"+"+Math.round(progress.healRate())+" HP/s / "+settings.controls.label(INTERACT)+" +100 / 30 CR"):"CENTER "+String.format("%.0f",sanctuaryDistance())+"m / RADAR";
+        Menu.text(sanctuaryCue,28,sy+58,compact?8:9,nearBase()?Menu.TEAL:Menu.MUTED);
         hudScreen.draw(progress,player,settings.controls,new HudScreen.CombatState(attackCooldown,activeAttack.duration(),activeAttack.impact(),heavyCharge,combo,comboWindow,mastery.label(progress.heroClass()),mastery.stacks()>0));
         if(!compact) {
             Menu.text(settings.controls.label(DODGE)+" DODGE / "+settings.controls.label(SPRINT)+" SPRINT",w-220,h-75,12,Menu.TEXT);
             Menu.text(settings.controls.label(WORKSHOP)+" WORKSHOP / ESC PAUSE",w-220,h-49,11,Menu.MUTED);
             Menu.text(settings.controls.label(SAVE)+" SAVE / "+settings.controls.label(INTERACT)+" INTERACT",w-220,h-27,10,Menu.MUTED);
         }
-        if(nearBase()) Menu.text("+ HEALING HAVEN / +"+(3+progress.baseLevel())+" HP/s",28,174,11,Menu.TEAL);
         if(progress.expedition().embers()>0) {
             if(compact)Menu.text(progress.expedition().embers()+" EMBERS / "+settings.controls.label(INTERACT),28,110,11,Menu.GOLD);
             else {
@@ -700,6 +725,7 @@ public class Game {
         Menu.text(dayNight.frame().label()+" / "+dayNight.frame().clock(),x+12,y+143,11,Menu.GOLD);
         int cx=x+80,cy=y+90;
         DrawCircleLines(cx,cy,59,Menu.LINE);
+        DrawCircleLines(cx,cy,15,Fade(Menu.TEAL,.8f));
         DrawLine(cx-59,cy,cx+59,cy,Menu.LINE); DrawLine(cx,cy-59,cx,cy+59,Menu.LINE);
         DrawCircle(cx,cy,5,Menu.TEAL);
         if(progress.fieldEvent().visible())DrawCircle(cx+(int)(progress.fieldEvent().x()*2.5f),cy+(int)(progress.fieldEvent().z()*2.5f),4,Menu.TEAL);
@@ -940,6 +966,7 @@ public class Game {
     }
     WeaponTrail weaponTrail() { return vfx.blade(); }
     Combat.Attack currentAttack() { return activeAttack; }
+    java.util.List<HeroShot> getHeroShots() { return java.util.List.copyOf(heroShots); }
     java.util.List<BossHazard> getBossHazards() { return java.util.Collections.unmodifiableList(bossHazards); }
     boolean weaponMaterialsValid() { return assets.weaponMaterialsValid(); }
     boolean shadowAtlasValid() { return renderer.shadowAtlasValid(); }

@@ -38,6 +38,15 @@ class LivingExpeditionTest {
         assertEquals(FieldEvent.Status.FAILED,killed.status());assertFalse(killed.claim());
         FieldEvent abandoned=new FieldEvent();abandoned.begin(2);abandoned.update(65,0,0,false);assertEquals(FieldEvent.Status.FAILED,abandoned.status());
     }
+    @Test void restorativeSupportShotCanMendOnlyAnActiveWoundedSurvivor() {
+        FieldEvent event=new FieldEvent();event.begin(2);
+        assertFalse(event.support(20));event.update(.1f,event.x(),event.z(),true);
+        event.damage(70);assertEquals(30,event.health());
+        assertTrue(event.support(45));assertEquals(75,event.health());
+        assertTrue(event.support(50));assertEquals(100,event.health());
+        assertFalse(event.support(10));
+        event.begin(3);assertFalse(event.support(20));
+    }
     @Test void beaconRequiresARealDefenseAndSavedTimersResume() {
         FieldEvent event=new FieldEvent();event.begin(3);event.update(.1f,event.x(),event.z(),true);event.damage(30);
         event.update(5,0,0,false);Properties p=new Properties();event.store(p);FieldEvent loaded=FieldEvent.restore(p);

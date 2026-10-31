@@ -45,7 +45,7 @@ public class Progression {
     private int crystals, kills, baseLevel = 1, armorLevel = 1, characterLevel = 1;
     private final HeroClass heroClass;
     private int potions=2, weaponUnlocked, weaponTier;
-    private float health, baseHealth = 250;
+    private float health, baseHealth = 400;
     public Progression() { this(HeroClass.WARRIOR); }
     public Progression(HeroClass heroClass) { this(heroClass,Difficulty.NORMAL); }
     public Progression(HeroClass heroClass,Difficulty difficulty) { this.heroClass=heroClass;this.difficulty=difficulty;health=maxHealth(); }
@@ -91,7 +91,7 @@ public class Progression {
     public int weaponBonus(int tier) { return tier*8; }
     public String weaponName(int tier) {
         String quality=switch(tier) { case 1 -> "Forged"; case 2 -> "Runic"; case 3 -> "Legendary"; default -> "Starter"; };
-        return quality+" "+switch(heroClass) { case WARRIOR -> tier==1?"Longsword":tier==2?"Waraxe":tier==3?"Dawnblade":"Sword"; case ARCHER -> tier>=2?"Crossbow":"Bow"; case MAGE -> tier==1?"Wand":"Staff"; };
+        return quality+" "+switch(heroClass) { case WARRIOR -> tier==1?"Longsword":tier==2?"Waraxe":tier==3?"Dawnblade":"Sword"; case ARCHER -> tier>=2?"Crossbow":"Bow"; case MAGE -> tier==3?"Dawnweaver":tier==1?"Wand":"Staff"; };
     }
     public boolean equipWeapon(int tier) {
         if (tier<0 || tier>weaponUnlocked || defeated()) return false;
@@ -108,7 +108,7 @@ public class Progression {
     public int armorLevel() { return armorLevel; }
     public int characterLevel() { return characterLevel+vitality+power+endurance+recovery+agility-5; }
     public int maxHealth() { return heroClass.health + (characterLevel - 1) * 25 + (vitality-1)*20; }
-    public int maxBaseHealth() { return 250 + (baseLevel - 1) * 100; }
+    public int maxBaseHealth() { return 400 + (baseLevel - 1) * 100; }
     public int damage() { return 25 + (characterLevel - 1) * 10 + weaponBonus(weaponTier)+(power-1)*5; }
     public int defense() { int total=(armorLevel-1)*2;for(ArmorSlot slot:ArmorSlot.values()) total+=armorBonus(slot,armorTier(slot));return total; }
     public float health() { return health; }
@@ -138,5 +138,16 @@ public class Progression {
     }
     public void damagePlayer(float amount) { if (amount > 0) health = Math.max(0, health - Math.max(1, amount - defense())); }
     public void damageBase(float amount) { baseHealth = Math.max(0, baseHealth - Math.max(0, amount)*(1-.12f*expedition.rank(Expedition.Blessing.BULWARK))); }
-    public void heal(float dt) { health = Math.min(maxHealth(), health + Math.max(0, dt) * (3 + baseLevel)); }
+    public boolean repairBase() {
+        int cost=30,amount=100;
+        if(defeated() || baseHealth>=maxBaseHealth() || crystals<cost)return false;
+        crystals-=cost;baseHealth=Math.min(maxBaseHealth(),baseHealth+amount);return true;
+    }
+    public float healRate() { return 10 + baseLevel * 2; }
+    public void heal(float dt) { health = Math.min(maxHealth(), health + Math.max(0, dt) * healRate()); }
+    public void chapterRespite() { if(!defeated())baseHealth=Math.min(maxBaseHealth(),baseHealth+Math.max(100,maxBaseHealth()*.25f)); }
+    public boolean restoreBase(float amount) {
+        if(defeated() || !Float.isFinite(amount) || amount<=0 || baseHealth>=maxBaseHealth())return false;
+        baseHealth=Math.min(maxBaseHealth(),baseHealth+amount);return true;
+    }
 }

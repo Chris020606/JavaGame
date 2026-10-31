@@ -10,7 +10,7 @@ The valley's fires have gone cold. One ember still burns beneath a forgotten san
 
 - **Warrior:** get close, chain sword swings, parry a strike, and answer with a powerful counterattack.
 - **Archer:** keep your distance, pick your openings, and trade your bow for a crossbow as your equipment improves.
-- **Mage:** send piercing spells through enemies and unleash a charged surge when the crowd closes in.
+- **Mage:** send piercing spells through enemies. The crafted Dawnweaver staff turns a perfect charged shot into a healing ward for the survivor or sanctuary.
 
 Name your warden, choose **Easy, Normal, Hard, or Extreme**, and light the beacon. The difficulty stays with your adventure.
 
@@ -20,7 +20,7 @@ Name your warden, choose **Easy, Normal, Hard, or Extreme**, and light the beaco
 
 New to the valley? Your first adventure opens a safe, hands-on tutorial. Practice movement, aiming, attacks, dodging, charging, parrying, equipment, and sanctuary healing. Lessons advance when you perform the action. Replay **Tutorial / Safe Practice** from the main menu or pause menu, or skip whenever you are ready. Your campaign stays separate.
 
-Your action belt puts strike, charge, parry, lunge, healing, and equipment together at the bottom of the screen. Click an action or use its shown key; hold the charge slot and release when the meter turns gold. Ember markers show health, jade segments show stamina, and hovering a slot explains what it does. The framed backpack shows your character, armor slots, item rarity, and equipment comparisons.
+Your action belt puts strike, charge, parry, lunge, healing, and equipment together at the bottom of the screen. Click an action or use its shown key; hold the charge slot and release when the meter turns gold. Slim labeled bars show health and stamina, and hovering a slot explains what it does. The framed backpack shows your character, armor slots, item rarity, and equipment comparisons.
 
 ![The Warden's Pack with a character preview, fitted armor slots, item grid and equipment comparisons](docs/images/player-inventory.png)
 
@@ -68,7 +68,9 @@ Open your inventory for a rotatable, zoomable character preview and real equipme
 
 ![The Mage wearing fitted armor and an armored wizard hat](docs/images/player-mage.png)
 
-Need to recover? Step inside the sanctuary's glowing healing ring. Keep potions handy for fights farther from home; you can carry five and restock at the workshop.
+Need to recover? Follow the center marker into the sanctuary's clearly marked healing ring. It restores health faster while you stand inside. Press **G** there to spend 30 crystals and repair 100 sanctuary integrity. Chapter transitions also send supplies to restore part of its integrity. Keep potions handy for fights farther from home; you can carry five and restock at the workshop.
+
+The Mage's tier-three **Dawnweaver** is a support weapon as well as a damage weapon. A charged shot glows jade and heals an active survivor it crosses, or restores the sanctuary if the shot reaches the center. Ordinary staff attacks still damage enemies.
 
 ## More than holding the center
 
@@ -113,7 +115,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.6.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.7.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -124,7 +126,8 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
-- **2.6:** original iron-and-parchment interface, clickable six-slot action belt, ember health markers, segmented stamina, framed backpack/armor slots and matching workshop/menus.
+- **2.7:** clean health/stamina bars, clearer sanctuary healing and repair guidance, higher sanctuary integrity with chapter resupply, and the Dawnweaver charged support weapon.
+- **2.6:** original iron-and-parchment interface, clickable six-slot action belt, framed backpack/armor slots and matching workshop/menus.
 - **2.5:** short, soft trails follow the actual Warrior blade instead of a floating attack arc; pooled impact particles and cached hand attachments/text layout.
 - **2.4:** safe interactive tutorial, class mastery bonuses, charge/contact/recovery HUD cues, ground shading and chapter atmosphere, and rendering optimizations.
 - **2.3:** grounded corpses, extended wooded riverbanks, smooth class/weapon animation transitions, mouse aiming, better attack timing and clearer releases.
@@ -142,7 +145,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–2.6 are development updates rather than published releases.
+Versions 1.3–2.7 are development updates rather than published releases.
 
 </details>
 

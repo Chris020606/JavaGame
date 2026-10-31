@@ -9,19 +9,24 @@ public final class HudScreen {
     private static final Controls.Action[] ACTIONS={SLASH,HEAVY,PARRY,LUNGE,POTION,INVENTORY};
     public void draw(Progression p,Player player,Controls controls,CombatState state) {
         HudLayout layout=new HudLayout(GetScreenWidth(),GetScreenHeight());int x=layout.x(),y=layout.y(),span=layout.span();
-        int healthY=y-72;
-        Menu.center(state.mastery(),GetScreenWidth()/2,y-104,11,state.empowered()?Menu.GOLD:Menu.MUTED);
-        Menu.icon("heart",x,healthY+1,14,Menu.RED);
-        int pip=layout.cell()<56?14:17;
-        for(int i=0;i<12;i++)Menu.ember(x+22+i*(pip+2),healthY,pip,p.health()/p.maxHealth()*12-i,Menu.RED);
-        String hp=Math.round(p.health())+" / "+p.maxHealth();Menu.text(hp,x+span-Menu.measure(hp,12),healthY+2,12,Menu.TEXT);
-        int staminaY=y-43;
-        for(int i=0;i<10;i++) {
-            int width=(span-9*3)/10,left=x+i*(width+3);
-            DrawRectangle(left,staminaY,width,7,Menu.INK);
-            float fill=Math.max(0,Math.min(1,player.discipline().stamina()/p.maxStamina()*10-i));
-            DrawRectangle(left+1,staminaY+1,(int)((width-2)*fill),5,player.discipline().stamina()<24?Menu.RED:Menu.TEAL);
-        }
+        int healthY=y-104;
+        Menu.center(state.mastery(),GetScreenWidth()/2,y-132,11,state.empowered()?Menu.GOLD:Menu.MUTED);
+        int labelSize=layout.cell()<56?9:10;
+        Menu.text("HEALTH",x,healthY,labelSize,Menu.MUTED);
+        String hp=Math.round(p.health())+" / "+p.maxHealth();
+        Menu.text(hp,x+span-Menu.measure(hp,11),healthY,11,Menu.TEXT);
+        int barX=x,barY=healthY+15,barW=span,barH=9;
+        Menu.frame(barX,barY,barW,barH,Menu.INK,Menu.LINE);
+        int healthWidth=(int)((barW-4)*Math.max(0,Math.min(1,p.health()/p.maxHealth())));
+        if(healthWidth>0)DrawRectangle(barX+2,barY+2,healthWidth,barH-4,p.health()/p.maxHealth()<.25f?Menu.RED:Menu.color(202,111,91));
+        int staminaY=y-73;
+        Menu.text("STAMINA",x,staminaY,labelSize,Menu.MUTED);
+        String stamina=Math.round(player.discipline().stamina())+" / "+p.maxStamina();
+        Menu.text(stamina,x+span-Menu.measure(stamina,10),staminaY,10,Menu.TEXT);
+        int staminaBarY=staminaY+13;
+        Menu.frame(x,staminaBarY,span,8,Menu.INK,Menu.LINE);
+        int staminaWidth=(int)((span-4)*Math.max(0,Math.min(1,player.discipline().stamina()/p.maxStamina())));
+        if(staminaWidth>0)DrawRectangle(x+2,staminaBarY+2,staminaWidth,4,player.discipline().stamina()<24?Menu.GOLD:Menu.TEAL);
         Menu.frame(x-8,y-8,span+16,78,Menu.PANEL,Menu.LINE);
         Vector2 mouse=GetMousePosition();int hover=layout.hit(mouse.x(),mouse.y());
         String weapon=p.heroClass()==HeroClass.WARRIOR?"sword":p.heroClass()==HeroClass.ARCHER?"bow":"staff";
@@ -36,16 +41,19 @@ public final class HudScreen {
             if(i==4)Menu.text(""+p.potions(),sx+size-15,y+size-18,13,Menu.GOLD);
             Menu.center(labels[i],sx+size/2,y+size+3,9,Menu.MUTED);
         }
-        String timing=state.charge()>0?"RELEASE IN GOLD":player.discipline().riposteReady()?"RIPOSTE READY":state.combo()>0 && state.comboWindow()>0 && state.cooldown()<=.22f?"CHAIN NOW":player.isAttacking()?"RECOVER":"STAMINA "+Math.round(player.discipline().stamina())+" / "+p.maxStamina();
-        Menu.center(timing,GetScreenWidth()/2,y-29,10,Menu.GOLD);
-        float maximum=state.charge()>0?1.4f:state.duration();
-        Menu.bar(x,y-14,span,state.charge()>0?state.charge():maximum-state.cooldown(),maximum,state.charge()>0?Menu.GOLD:Menu.TEAL);
-        if(state.charge()>0)DrawRectangle(x+(int)(span*.75f/1.4f),y-15,(int)(span*.3f/1.4f),10,Fade(Menu.GOLD,.65f));
-        else if(player.isAttacking())DrawRectangle(x+(int)(span*state.impact()/maximum),y-17,2,14,Menu.TEXT);
+        String timing=state.charge()>0?"RELEASE IN GOLD":player.discipline().riposteReady()?"RIPOSTE READY":state.combo()>0 && state.comboWindow()>0 && state.cooldown()<=.22f?"CHAIN NOW":player.isAttacking()?"RECOVER":null;
+        boolean actionMeter=state.charge()>0 || player.isAttacking() || timing!=null && timing.equals("CHAIN NOW");
+        if(timing!=null)Menu.center(timing,GetScreenWidth()/2,y-39,10,Menu.GOLD);
+        if(actionMeter) {
+            float maximum=state.charge()>0?1.4f:state.duration();
+            Menu.bar(x,y-26,span,state.charge()>0?state.charge():maximum-state.cooldown(),maximum,state.charge()>0?Menu.GOLD:Menu.TEAL);
+            if(state.charge()>0)DrawRectangle(x+(int)(span*.75f/1.4f),y-27,(int)(span*.3f/1.4f),10,Fade(Menu.GOLD,.65f));
+            else if(player.isAttacking())DrawRectangle(x+(int)(span*state.impact()/maximum),y-29,2,14,Menu.TEXT);
+        }
         if(hover>=0) {
-            int tx=Math.max(8,Math.min(GetScreenWidth()-338,GetScreenWidth()/2-165)),ty=y-158;
+            int tx=Math.max(8,Math.min(GetScreenWidth()-338,GetScreenWidth()/2-165)),ty=y-174;
             Menu.panel(tx,ty,330,48);Menu.icon(icons[hover],tx+12,ty+12,22,Menu.GOLD);
-            String help=switch(hover) {case 0 -> "Strike toward your facing";case 1 -> "Hold to charge, release in gold";case 2 -> "Time your block before a gold hit";case 3 -> "Close the gap with a lunge";case 4 -> "Restore up to 60 health";default -> "Inspect and change equipment";};
+            String help=switch(hover) {case 0 -> "Strike toward your facing";case 1 -> p.heroClass()==HeroClass.MAGE && p.weaponTier()>=3?"Charged Dawnweaver shots mend allies":"Hold to charge, release in gold";case 2 -> "Time your block before a gold hit";case 3 -> "Close the gap with a lunge";case 4 -> "Restore up to 60 health";default -> "Inspect and change equipment";};
             Menu.text(labels[hover]+" / "+controls.label(ACTIONS[hover]),tx+44,ty+7,13,Menu.GOLD);
             Menu.text(help,tx+44,ty+27,11,Menu.TEXT);
         }

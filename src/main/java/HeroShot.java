@@ -7,7 +7,7 @@ public final class HeroShot {
     public float x,z,previousX,previousZ,remaining;
     public final float vx,vz,damage;
     public final boolean magic;
-    public boolean charged,heavy;
+    public boolean charged,heavy,restorative;
     private final Set<Enemy> struck=new HashSet<>();
     private float age;
     private float startHeight=1;
@@ -28,5 +28,10 @@ public final class HeroShot {
         float t=length==0?0:Math.max(0,Math.min(1,((enemy.x-previousX)*dx+(enemy.z-previousZ)*dz)/length));
         if (Math.hypot(previousX+dx*t-enemy.x,previousZ+dz*t-enemy.z)>.6f) return false;
         struck.add(enemy);return true;
+    }
+    public boolean intersects(float targetX,float targetZ,float radius) {
+        float dx=x-previousX,dz=z-previousZ,length=dx*dx+dz*dz;
+        float t=length==0?0:Math.max(0,Math.min(1,((targetX-previousX)*dx+(targetZ-previousZ)*dz)/length));
+        return Math.hypot(previousX+dx*t-targetX,previousZ+dz*t-targetZ)<=radius;
     }
 }

@@ -41,7 +41,7 @@ public final class WorkshopScreen {
         for(int i=0;i<Progression.TRAINING.length;i++) {
             var upgrade=Progression.TRAINING[i];int top=y+ROW_TOP+i*ROW_HEIGHT;
             Menu.frame(x+CONTENT,top,672,48,i%2==0?Menu.color(39,47,39):Menu.color(31,38,33),Menu.LINE);
-            String icon=switch(upgrade) {case VITALITY -> "heart";case POWER -> "sword";case ARMOR -> "shield";case BASE -> "crown";default -> "gear";};
+            String icon=switch(upgrade) {case VITALITY -> "potion";case POWER -> "sword";case ARMOR -> "shield";case BASE -> "crown";default -> "gear";};
             Menu.icon(icon,x+CONTENT+12,top+14,20,Menu.TEAL);
             Menu.text(p.upgradeLabel(upgrade),x+CONTENT+43,top+15,16,Menu.TEXT);
             boolean max=p.level(upgrade)>=p.maxLevel(upgrade);
@@ -60,7 +60,9 @@ public final class WorkshopScreen {
             Menu.icon(p.heroClass()==HeroClass.ARCHER?"bow":p.heroClass()==HeroClass.MAGE?"staff":"sword",left+16,y+184,32,color);
             Menu.wrapped(p.weaponName(tier),left+16,y+234,182,19,Menu.TEXT);
             Menu.text("+"+p.weaponBonus(tier)+" damage",left+16,y+284,15,Menu.MUTED);
-            if(Menu.button(tier<=p.weaponUnlocked()?"OWNED":"FORGE / "+p.weaponPrice(tier),left+12,y+313,190,tier>p.weaponUnlocked() && p.crystals()>=p.weaponPrice(tier)) && p.buyWeapon(tier))audio.play("upgrade");
+            boolean wardenStaff=p.heroClass()==HeroClass.MAGE && tier==3;
+            if(wardenStaff)Menu.text("CHARGED SHOT / HEAL ALLIES",left+16,y+307,11,Menu.TEAL);
+            if(Menu.button(tier<=p.weaponUnlocked()?"OWNED":"FORGE / "+p.weaponPrice(tier),left+12,y+(wardenStaff?327:313),190,tier>p.weaponUnlocked() && p.crystals()>=p.weaponPrice(tier)) && p.buyWeapon(tier))audio.play("upgrade");
             DrawLine(left+16,y+372,left+198,y+372,Menu.LINE);
             Menu.text(tier==1?"IRON ARMOR":tier==2?"RUNIC ARMOR":"DAWNSTEEL ARMOR",left+16,y+387,17,color);
             Menu.text("4 pieces / +"+(tier*7)+" defense",left+16,y+421,14,Menu.MUTED);
