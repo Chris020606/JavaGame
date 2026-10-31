@@ -80,6 +80,8 @@ public class Game {
     private float storyTime;
     private Difficulty selectedDifficulty=Difficulty.NORMAL;
     private float lastHeroX,lastHeroZ;
+    private final HudScreen hudScreen=new HudScreen();
+    private boolean hudCharging,uiMouseCaptured;
     private final WorkshopScreen workshopScreen=new WorkshopScreen();
     private final EquipmentScreen equipmentScreen=new EquipmentScreen();
     private final HeroPortrait heroPortrait=new HeroPortrait();
@@ -153,7 +155,7 @@ public class Game {
     Campaign.Chapter chapter() { return director.chapter(); }
     int chapterIndex() { return director.chapterIndex(); }
     private void start() {
-        applyHeroModel(); storyTime=12;mastery.reset();hitPause=hitMarker=0;
+        applyHeroModel(); storyTime=12;hudCharging=false;mastery.reset();hitPause=hitMarker=0;
         progress = playtest?Progression.playtest(selectedClass,selectedDifficulty,maxPlaytestTraining):new Progression(selectedClass,selectedDifficulty); player.setMovementSpeed(selectedClass.speed); inventory=false; fallen.clear();outcomeTime=0;heroShots.clear(); enemies.clear(); projectiles.clear(); wave = 0; nextWave = 5;
         attackCooldown = slashTime = noticeTime = heavyCharge = 0; bossHazards.clear(); workshop = false;
         player.getPosition().x(0).y(0).z(4);
@@ -179,6 +181,8 @@ public class Game {
 
     public void update(float dt) {
         dt = Math.max(0, Math.min(dt, .05f));applyProgression();
+        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))uiMouseCaptured=false;
+        else if(inventory || workshop || state!=GameState.PLAYING)uiMouseCaptured=true;
         hitMarker=Math.max(0,hitMarker-dt);
         if(state==GameState.PLAYING && !inventory && !workshop) {
             mastery.tick(dt);
@@ -254,9 +258,17 @@ public class Game {
             if (state == GameState.PAUSED) { state = GameState.PLAYING; return; }
         }
         if (state != GameState.PLAYING) return;
-        if (settings.controls.pressed(INVENTORY)) { inventory=!inventory; workshop=false;if(tutorial!=null && inventory)tutorial.inventory(); }
+        HudLayout belt=new HudLayout(GetScreenWidth(),GetScreenHeight());Vector2 pointer=GetMousePosition();
+        int hovered=pointerAim && !inventory && !workshop?belt.hit(pointer.x(),pointer.y()):-1;
+        int beltClick=hovered>=0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)?hovered:-1;
+        if(beltClick==1)hudCharging=true;
+        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))hudCharging=false;
+        boolean overBelt=pointerAim && !inventory && !workshop && belt.contains(pointer.x(),pointer.y()) || hudCharging || uiMouseCaptured;
+        boolean heavyDown=settings.controls.down(HEAVY) || hudCharging;
+        if(beltClick==2)player.requestParry();
+        if (settings.controls.pressed(INVENTORY) || beltClick==5) { inventory=!inventory; workshop=false;if(tutorial!=null && inventory)tutorial.inventory(); }
         if (inventory) { vfx.blade().clear();return; }
-        if (settings.controls.pressed(POTION)) {
+        if (settings.controls.pressed(POTION) || beltClick==4) {
             notifyPlayer(progress.usePotion()?"Potion used / +60 HP":"Need missing health and a potion.");
         }
         if (settings.controls.pressed(WORKSHOP)) {
@@ -272,7 +284,7 @@ public class Game {
         inputBuffer=Math.max(0,inputBuffer-dt);
         feedback.update(dt);vfx.update(dt);dayNight.update(dt);
         boolean wasDodging=player.isDodging();float beforeMoveX=player.getPosition().x(),beforeMoveZ=player.getPosition().z();
-        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) || settings.controls.down(HEAVY))aimCursor();
+        if(!overBelt && (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || heavyDown))aimCursor();
         sceneManager.getOpenScene().updatesEntities(dt);
         if(progress.heroClass()==HeroClass.WARRIOR && player.isAttacking() && dt>0) {
             float elapsed=activeAttack.duration()-player.attackRemaining();
@@ -298,22 +310,22 @@ public class Game {
         boolean finishingChapter=director.levelCleared(0) && enemies.stream().noneMatch(e->e.health>0);
         if(finishingChapter) { inputBuffer=0;heavyCharge=0;player.setCharging(false); }
         if(player.isDodging()) { inputBuffer=0;comboWindow=0;combo=0;heavyCharge=0;player.setCharging(false); }
-        if(!finishingChapter && settings.controls.down(HEAVY) && attackCooldown<=0 && !player.isDodging() && player.discipline().recovery()<=0) {
+        if(!finishingChapter && heavyDown && attackCooldown<=0 && !player.isDodging() && player.discipline().recovery()<=0) {
             heavyCharge=Math.min(1.4f,heavyCharge+dt);player.setCharging(true);
-        } else if(heavyCharge>0 && !settings.controls.down(HEAVY)) {
+        } else if(heavyCharge>0 && !heavyDown) {
             releasedCharge=heavyCharge;heavyCharge=0;player.setCharging(false);
             bufferedHeavy=true;bufferedLunge=false;inputBuffer=.22f;
         }
-        boolean mousePressed=mouseAttack.getAsBoolean();
-        boolean mouseHeld=pointerAim && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !IsMouseButtonDown(MOUSE_BUTTON_RIGHT) && attackCooldown<=0;
-        boolean lightInput=settings.controls.pressed(SLASH)||mousePressed||mouseHeld;
-        if(mousePressed || mouseHeld || heavyCharge>0)aimCursor();
+        boolean mousePressed=mouseAttack.getAsBoolean() && !overBelt;
+        boolean mouseHeld=pointerAim && !overBelt && IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !IsMouseButtonDown(MOUSE_BUTTON_RIGHT) && attackCooldown<=0;
+        boolean lightInput=settings.controls.pressed(SLASH)||mousePressed||mouseHeld||beltClick==0;
+        if(!overBelt && (mousePressed || mouseHeld || heavyCharge>0))aimCursor();
         if(lightInput && !finishingChapter && heavyCharge<=0) {
             bufferedHeavy=bufferedLunge=false;
             bufferedTimed=(!mouseHeld || mousePressed) && combo>0 && comboWindow>0 && attackCooldown<=.22f;
             inputBuffer=.22f;
         }
-        if(!finishingChapter && settings.controls.pressed(LUNGE) && heavyCharge<=0) {
+        if(!finishingChapter && (settings.controls.pressed(LUNGE) || beltClick==3) && heavyCharge<=0) {
             bufferedLunge=true;bufferedHeavy=false;inputBuffer=.22f;
         }
         if(inputBuffer>0 && attackCooldown<=0 && !player.isDodging() && heavyCharge<=0 && player.discipline().recovery()<=0) {
@@ -606,55 +618,39 @@ public class Game {
     }
     private void drawHud() {
         int w=GetScreenWidth(),h=GetScreenHeight();
-        // A quiet header leaves the centre of the world unobstructed.
-        Menu.panel(24,20,264,134);
-        Menu.text(progress.heroClass().label.toUpperCase()+"  /  "+player.getName(),40,29,20,Menu.TEXT);
-        Menu.text((playtest?"PLAYTEST":"LEVEL "+progress.characterLevel())+" / "+progress.difficulty().label.toUpperCase()+" / DEF "+progress.defense(),40,55,13,Menu.MUTED);
-        Menu.bar(40,80,232,progress.health(),progress.maxHealth(),Menu.TEAL);
-        Menu.text((int)progress.health()+" / "+progress.maxHealth()+" HP",40,94,15,Menu.TEXT);
-        Menu.text("STAMINA "+Math.round(player.discipline().stamina())+" / "+progress.maxStamina(),40,120,12,Menu.GOLD);
-        Menu.bar(158,124,114,player.discipline().stamina(),progress.maxStamina(),player.discipline().stamina()<24?Menu.RED:Menu.GOLD);
-        int top=w/2-145;
-        Menu.panel(top,20,290,82);
-        Menu.center(tutorial!=null?"TUTORIAL / SAFE PRACTICE":"LEVEL "+(chapterIndex()+1)+" / "+chapter().title(),w/2,29,17,Menu.GOLD);
+        boolean compact=w<1000;int identity=compact?150:218;
+        Menu.panel(16,20,identity,70);
+        Menu.icon(progress.heroClass()==HeroClass.WARRIOR?"sword":progress.heroClass()==HeroClass.ARCHER?"bow":"staff",28,34,22,Menu.GOLD);
+        Menu.text(progress.heroClass().label.toUpperCase(),60,31,14,Menu.TEXT);Menu.text(player.getName(),60,49,11,Menu.MUTED);
+        Menu.text((compact?"":(playtest?"PLAYTEST":progress.difficulty().label.toUpperCase())+" / ")+"LV "+progress.characterLevel()+" / DEF "+progress.defense(),28,64,11,Menu.MUTED);
+        int top=w/2-130;
+        Menu.panel(top,20,260,82);
+        Menu.center(tutorial!=null?"TUTORIAL / SAFE PRACTICE":"LEVEL "+(chapterIndex()+1)+" / "+chapter().title(),w/2,29,14,Menu.GOLD);
         int left=chapter().waves()-chapter().cleared(wave,director.remaining(),enemies.size(),director.total());
-        Menu.center(tutorial!=null?"LESSON "+Math.min(8,tutorial.step().ordinal()+1)+" OF 8":chapter().bossOnly()?"BOSS ONLY  /  "+enemies.size()+" HOSTILES":"WAVE "+Math.max(0,wave-chapter().first()+1)+" / "+chapter().waves()+"   -   "+left+" LEFT",w/2,54,17,Menu.TEXT);
-        Menu.center(tutorial!=null?"No raids / Your campaign is safe":state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY?"THE SANCTUARY ENDURES":director.remaining()>0?director.remaining()+" reinforcements approaching":enemies.isEmpty()?"Next raid in "+(int)Math.ceil(nextWave)+"s":"Protect the sanctuary",w/2,77,13,Menu.MUTED);
-        Menu.panel(w-200,20,176,62);
-        Menu.text("CRYSTALS",w-182,27,12,Menu.MUTED);
-        Menu.text(String.valueOf(progress.crystals()),w-182,43,29,Menu.GOLD);
-        drawMinimap(w-184,102);
+        Menu.center(tutorial!=null?"LESSON "+Math.min(8,tutorial.step().ordinal()+1)+" OF 8":chapter().bossOnly()?"BOSS ONLY  /  "+enemies.size()+" HOSTILES":"WAVE "+Math.max(0,wave-chapter().first()+1)+" / "+chapter().waves()+"   -   "+left+" LEFT",w/2,54,14,Menu.TEXT);
+        Menu.center(tutorial!=null?"No raids / Your campaign is safe":state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY?"THE SANCTUARY ENDURES":director.remaining()>0?director.remaining()+" reinforcements approaching":enemies.isEmpty()?"Next raid in "+(int)Math.ceil(nextWave)+"s":"Protect the sanctuary",w/2,77,11,Menu.MUTED);
+        Menu.panel(w-156,20,140,62);Menu.icon("crystal",w-144,38,20,Menu.GOLD);
+        Menu.text("CRYSTALS",w-114,29,10,Menu.MUTED);Menu.text(String.valueOf(progress.crystals()),w-114,46,20,Menu.GOLD);
+        if(w>=1000)drawMinimap(w-184,102);
         if(state==GameState.PLAYING && !inventory && !workshop)drawCombatCues();
-        Menu.panel(24,h-106,242,82);
-        Menu.text("SANCTUARY",40,h-98,18,Menu.GOLD);
-        Menu.text((int)progress.baseHealth()+" / "+progress.maxBaseHealth()+" integrity",40,h-72,15,Menu.TEXT);
-        Menu.bar(40,h-43,210,progress.baseHealth(),progress.maxBaseHealth(),Menu.GOLD);
-        int bx=w/2-200;
-        Menu.panel(bx,h-116,400,92);
-        String timing=player.discipline().riposteReady()?"RIPOSTE READY / 1.75x":heavyCharge>0?"RELEASE "+settings.controls.label(HEAVY)+" IN GOLD / "+String.format("%.2fs",heavyCharge):combo>0 && comboWindow>0 && attackCooldown<=.22f?"CHAIN NOW":"TIME YOUR STRIKES";
-        Menu.text(timing,bx+16,h-108,12,Menu.GOLD);
-        String[] keys={settings.controls.label(SLASH),settings.controls.label(HEAVY),settings.controls.label(POTION),settings.controls.label(INVENTORY)};
-        String[] actions={progress.heroClass()==HeroClass.WARRIOR?"STRIKE":progress.heroClass()==HeroClass.ARCHER?"SHOOT":"CAST","CHARGE","HEAL "+progress.potions(),"GEAR"};
-        for(int i=0;i<4;i++) {
-            int x=bx+12+i*96;
-            DrawRectangleRounded(new Rectangle().x(x).y(h-86).width(88).height(48),.18f,6,Menu.color(43,58,64));
-            Menu.icon(i==0?(progress.heroClass()==HeroClass.WARRIOR?"sword":progress.heroClass()==HeroClass.ARCHER?"bow":"staff"):i==1?"crown":i==2?"heart":"bag",x+8,h-80,15,Menu.TEAL);
-            Menu.center(keys[i],x+52,h-83,16,Menu.TEXT);
-            Menu.center(actions[i],x+44,h-60,12,i==2?Menu.TEAL:Menu.MUTED);
+        int sy=compact?h-178:112,sw=compact?110:208;
+        Menu.panel(16,sy,sw,56);Menu.text("SANCTUARY",28,sy+8,compact?10:13,Menu.GOLD);
+        Menu.text((int)progress.baseHealth()+" / "+progress.maxBaseHealth(),28,sy+26,12,Menu.TEXT);
+        Menu.bar(28,sy+44,sw-24,progress.baseHealth(),progress.maxBaseHealth(),Menu.GOLD);
+        hudScreen.draw(progress,player,settings.controls,new HudScreen.CombatState(attackCooldown,activeAttack.duration(),activeAttack.impact(),heavyCharge,combo,comboWindow,mastery.label(progress.heroClass()),mastery.stacks()>0));
+        if(!compact) {
+            Menu.text(settings.controls.label(DODGE)+" DODGE / "+settings.controls.label(SPRINT)+" SPRINT",w-220,h-75,12,Menu.TEXT);
+            Menu.text(settings.controls.label(WORKSHOP)+" WORKSHOP / ESC PAUSE",w-220,h-49,11,Menu.MUTED);
+            Menu.text(settings.controls.label(SAVE)+" SAVE / "+settings.controls.label(INTERACT)+" INTERACT",w-220,h-27,10,Menu.MUTED);
         }
-        float timeline=heavyCharge>0?heavyCharge:activeAttack.duration()-attackCooldown;
-        float maximum=heavyCharge>0?1.4f:activeAttack.duration();
-        Menu.bar(bx+12,h-32,376,timeline,maximum,heavyCharge>0?Menu.GOLD:Menu.TEAL);
-        if(heavyCharge>0)DrawRectangle(bx+12+(int)(376*.75f/1.4f),h-33,(int)(376*.3f/1.4f),10,Fade(Menu.GOLD,.65f));
-        else if(player.isAttacking())DrawRectangle(bx+12+(int)(376*activeAttack.impact()/maximum),h-35,2,14,Menu.GOLD);
-        Menu.center(mastery.label(progress.heroClass()),w/2,h-142,12,mastery.stacks()>0?Menu.GOLD:Menu.TEAL);
-        Menu.text(settings.controls.label(PARRY)+" PARRY / "+settings.controls.label(LUNGE)+" LUNGE",w-265,h-80,14,Menu.GOLD);
-        Menu.text(settings.controls.label(WORKSHOP)+"  WORKSHOP    "+settings.controls.label(SAVE)+"  SAVE    ESC  PAUSE",w-265,h-57,13,Menu.TEXT);
-        Menu.text(settings.controls.label(SPRINT)+" SPRINT / "+settings.controls.label(DODGE)+" DODGE"+(player.discipline().stamina()<22?" TIRED":player.dodgeCooldown()>0?" "+String.format("%.1fs",player.dodgeCooldown()):" READY"),w-265,h-34,12,Menu.MUTED);
-        if(nearBase()) Menu.text("+ HEALING HAVEN / +"+(3+progress.baseLevel())+" HP/s",40,160,14,Menu.TEAL);
+        if(nearBase()) Menu.text("+ HEALING HAVEN / +"+(3+progress.baseLevel())+" HP/s",28,174,11,Menu.TEAL);
         if(progress.expedition().embers()>0) {
-            Menu.panel(24,h-180,242,62);Menu.text(progress.expedition().embers()+" EMBER BLESSING"+(progress.expedition().embers()>1?"S":""),40,h-170,17,Menu.GOLD);
-            Menu.text(settings.controls.label(INTERACT)+" AT SANCTUARY / FIELD MUST BE CLEAR",40,h-142,11,Menu.TEAL);
+            if(compact)Menu.text(progress.expedition().embers()+" EMBERS / "+settings.controls.label(INTERACT),28,110,11,Menu.GOLD);
+            else {
+                int by=h<740?h-202:h-250;
+                Menu.panel(16,by,218,54);Menu.text(progress.expedition().embers()+" EMBER BLESSING"+(progress.expedition().embers()>1?"S":""),28,by+9,14,Menu.GOLD);
+                Menu.text(settings.controls.label(INTERACT)+" AT SANCTUARY / CLEAR FIELD",28,by+32,10,Menu.TEAL);
+            }
         }
         FieldEvent event=progress.fieldEvent();
         if(event.visible() && state==GameState.PLAYING && !inventory && !workshop) {
@@ -671,9 +667,9 @@ public class Game {
             Menu.center((enemy.enraged()?"ENRAGED / ":"")+enemy.moveLabel()+(enemy.bossMove.parryable?" / PARRY OR EVADE":" / UNBLOCKABLE"),w/2,164,12,Menu.GOLD);
         }
         if(noticeTime>0 && state==GameState.PLAYING) {
-            int nw=Math.min(w-80,Menu.measure(notice,18)+40);
-            Menu.panel((w-nw)/2,184,nw,38);
-            Menu.center(notice,w/2,192,18,Menu.TEXT);
+            int nw=compact?250:280,ny=compact?h-270:198;
+            Menu.panel((w-nw)/2,ny,nw,74);
+            Menu.wrapped(notice,w/2-nw/2+12,ny+10,nw-24,12,Menu.TEXT);
         }
     }
     private void drawTutorial() {
@@ -695,7 +691,7 @@ public class Game {
         if(hitMarker>0)Menu.center("HIT",GetScreenWidth()/2,GetScreenHeight()/2+35,13,Menu.GOLD);
         if(player.isAttacking()) {
             String phase=attackElapsed<activeAttack.impact()?"WINDUP":player.attackRemaining()>=activeAttack.duration()*.48f?"CONTACT":player.attackRemaining()>.12f?"RECOVER / DODGE TO DISENGAGE":"CHAIN WINDOW";
-            Menu.center(phase,GetScreenWidth()/2,GetScreenHeight()-164,11,Menu.MUTED);
+            Menu.center(phase,GetScreenWidth()/2,GetScreenHeight()-211,11,Menu.MUTED);
         }
     }
     private void drawMinimap(int x,int y) {
@@ -940,7 +936,7 @@ public class Game {
             state=director.levelCleared(enemies.size())?(wave>=10?GameState.VICTORY:GameState.LEVEL_COMPLETE):GameState.PAUSED;
             if(state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY)outcomeTime=3;
 
-        mastery.reset();hitPause=hitMarker=0;
+        hudCharging=false;mastery.reset();hitPause=hitMarker=0;
     }
     WeaponTrail weaponTrail() { return vfx.blade(); }
     Combat.Attack currentAttack() { return activeAttack; }

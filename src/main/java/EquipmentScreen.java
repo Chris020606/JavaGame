@@ -20,8 +20,8 @@ public final class EquipmentScreen implements AutoCloseable {
         if(owner!=progress) { owner=progress;selected=progress.weaponTier();dragged=lastClicked=-1;filter=0; }
         Vector3 position=player.getPosition();float facing=player.getRotation().y();
         player.setPosition(new Vector3());player.getRotation().y(yaw);player.poseForInventory();assets.previewPass(shader);
-        BeginTextureMode(preview);ClearBackground(Menu.color(20,30,39));BeginMode3D(camera);
-        DrawCylinder(new Vector3().y(-.03f),.95f,.95f,.06f,32,Menu.color(42,61,67));
+        BeginTextureMode(preview);ClearBackground(Menu.INK);DrawRectangleGradientV(0,0,640,800,Menu.color(61,69,57),Menu.color(24,32,31));BeginMode3D(camera);
+        DrawCylinder(new Vector3().y(-.03f),.95f,.95f,.06f,32,Menu.color(93,83,59));
         assets.preparePlayer(player);assets.drawPlayerBody(player,progress,WHITE);
         assets.drawPlayerWeapon(player,progress.heroClass().ordinal(),progress.weaponTier());assets.drawArmor(player,progress);
         EndMode3D();EndTextureMode();
@@ -47,7 +47,7 @@ public final class EquipmentScreen implements AutoCloseable {
     private static void equip(Progression p,int item) { if(item<4)p.equipWeapon(item);else if(item<16)p.equipArmor(slot(item),tier(item));else p.usePotion(); }
     private static void remove(Progression p,int item) { if(item<4)p.equipWeapon(0);else if(item<16)p.equipArmor(slot(item),0); }
     private void thumbnail(int item,int x,int y,int size,Color tint) {
-        if(item==16) { Menu.icon("heart",x+size/4,y+size/4,size/2,Menu.RED);return; }
+        if(item==16) { Menu.icon("potion",x+size/4,y+size/4,size/2,Menu.RED);return; }
         DrawTexturePro(thumbnails[item].texture(),new Rectangle().width(128).height(-128),new Rectangle().x(x).y(y).width(size).height(size),new Vector2(),0,tint);
     }
     private java.util.List<Integer> visible() {
@@ -55,28 +55,30 @@ public final class EquipmentScreen implements AutoCloseable {
     }
     public boolean draw(Progression p,String inventoryKey) {
         int x=(GetScreenWidth()-940)/2,y=(GetScreenHeight()-600)/2;Vector2 mouse=GetMousePosition();Menu.panel(x,y,940,600);
-        Menu.text("WARDEN / EQUIPMENT",x+24,y+16,29,Menu.TEXT);Menu.text(p.crystals()+" CRYSTALS",x+720,y+24,19,Menu.GOLD);
-        Menu.text(p.heroClass().label+" / "+p.difficulty().label,x+24,y+62,17,Menu.MUTED);
+        Menu.icon("bag",x+24,y+19,24,Menu.GOLD);Menu.text("THE WARDEN'S PACK",x+60,y+16,27,Menu.TEXT);Menu.text(p.crystals()+" CRYSTALS",x+720,y+24,19,Menu.GOLD);
+        Menu.text(p.heroClass().label+" / "+p.difficulty().label+" / EQUIPMENT",x+24,y+62,13,Menu.MUTED);
+        Menu.frame(x+20,y+86,258,338,Menu.INK,Menu.LINE);
         DrawTexturePro(preview.texture(),new Rectangle().width(640).height(-800),new Rectangle().x(x+24).y(y+90).width(250).height(330),new Vector2(),0,WHITE);
-        Menu.text("DRAG TO ROTATE / SCROLL TO ZOOM",x+36,y+432,12,Menu.MUTED);Menu.text(p.weaponName(p.weaponTier()),x+24,y+452,14,tierColor(p.weaponTier()));
+        Menu.text("DRAG TO TURN / SCROLL TO ZOOM",x+30,y+432,11,Menu.MUTED);Menu.text(p.weaponName(p.weaponTier()),x+24,y+452,14,tierColor(p.weaponTier()));
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && inside(mouse,x+24,y+90,250,330))orbit=true;
         if(orbit && IsMouseButtonDown(MOUSE_BUTTON_LEFT))yaw+=GetMouseDelta().x()*.8f;
         if(inside(mouse,x+24,y+90,250,330))camera.fovy(Math.max(28,Math.min(52,camera.fovy()-GetMouseWheelMove()*2)));
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))orbit=false;
-        String[] filters={"ALL ITEMS","WEAPONS","ARMOR"};
+        String[] filters={"BACKPACK","WEAPONS","ARMOR"};
         for(int i=0;i<3;i++) {
             int left=x+400+i*172;boolean hit=inside(mouse,left,y+56,166,25);
             if(hit && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { filter=i;selected=visible().get(0);dragged=lastClicked=-1; }
-            DrawRectangleRounded(new Rectangle().x(left).y(y+56).width(166).height(25),.2f,4,filter==i?Menu.TEAL:Menu.LINE);Menu.center(filters[i],left+83,y+62,12,filter==i?Menu.INK:Menu.TEXT);
+            Menu.frame(left,y+56,166,25,filter==i?Menu.color(70,75,55):Menu.PANEL,filter==i?Menu.GOLD:Menu.LINE);Menu.center(filters[i],left+83,y+62,12,filter==i?Menu.GOLD:Menu.TEXT);
         }
         var ids=visible();int pos=Math.max(0,ids.indexOf(selected)),move=IsKeyPressed(KEY_RIGHT)?1:IsKeyPressed(KEY_LEFT)?-1:IsKeyPressed(KEY_DOWN)?6:IsKeyPressed(KEY_UP)?-6:0;
         if(move!=0)selected=ids.get(Math.max(0,Math.min(ids.size()-1,pos+move)));
         if(IsKeyPressed(KEY_ENTER) && owned(p,selected))equip(p,selected);
         if(IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE))remove(p,selected);
         for(int s=0;s<5;s++) {
-            int sx=x+300,sy=y+90+s*70;Menu.panel(sx,sy,64,64);int level=s==4?p.weaponTier():p.armorTier(ArmorSlot.values()[s]);
+            int sx=x+300,sy=y+90+s*70;Menu.slot(sx,sy,64,false,true);int level=s==4?p.weaponTier():p.armorTier(ArmorSlot.values()[s]);
             Menu.center(s==4?"WEAPON":ArmorSlot.values()[s].name(),sx+32,sy+4,9,Menu.MUTED);
             if(level>0 || s==4)thumbnail(s==4?level:4+(level-1)*4+s,sx+10,sy+12,44,WHITE);
+            else Menu.icon(ArmorSlot.values()[s].icon(),sx+20,sy+22,24,Menu.LINE);
             Menu.text("T"+level,sx+4,sy+48,11,tierColor(level));
             if(IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) && inside(mouse,sx,sy,64,64)) { if(s==4)p.equipWeapon(0);else p.equipArmor(ArmorSlot.values()[s],0); }
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && dragged>=0 && inside(mouse,sx,sy,64,64) && (Math.abs(mouse.x()-dragX)+Math.abs(mouse.y()-dragY)>6))
@@ -84,11 +86,16 @@ public final class EquipmentScreen implements AutoCloseable {
         }
         int hover=-1;
         for(int cell=0;cell<18;cell++) {
-            int left=x+400+(cell%6)*75,top=y+90+(cell/6)*76;DrawRectangleRounded(new Rectangle().x(left).y(top).width(66).height(66),.13f,6,Menu.color(37,50,59));
+            int left=x+400+(cell%6)*75,top=y+90+(cell/6)*76;
+            int cellItem=cell<ids.size()?ids.get(cell):-1;Menu.slot(left,top,66,cellItem==selected,cellItem>=0 && equipped(p,cellItem));
             if(cell>=ids.size())continue;int item=ids.get(cell);boolean available=owned(p,item);
             thumbnail(item,left+4,top+1,58,available?WHITE:Menu.color(90,95,100));
-            Menu.text(item==16?"x"+p.potions():available?"T"+tier(item):"LOCK",left+5,top+49,11,available?tierColor(tier(item)):Menu.MUTED);
-            if(equipped(p,item)) { DrawRectangleLines(left+1,top+1,64,64,Menu.TEAL);Menu.text("E",left+52,top+3,11,Menu.TEAL); }
+            if(available) {
+                Menu.text(item==16?"x"+p.potions():"T"+tier(item),left+5,top+49,11,tierColor(tier(item)));
+                DrawRectangle(left+5,top+61,56,2,tierColor(tier(item)));
+            } else { Menu.icon("lock",left+47,top+45,13,Menu.MUTED); }
+
+            if(equipped(p,item)) { DrawRectangleLines(left+1,top+1,64,64,Menu.TEAL);DrawRectangle(left+49,top+3,14,3,Menu.TEAL); }
             if(selected==item)DrawRectangleLines(left,top,66,66,Menu.GOLD);
             if(inside(mouse,left,top,66,66)) {
                 hover=item;
@@ -100,7 +107,7 @@ public final class EquipmentScreen implements AutoCloseable {
             }
         }
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))dragged=-1;
-        Menu.panel(x+400,y+330,510,130);Menu.text(name(p,selected),x+416,y+340,23,tierColor(tier(selected)));
+        Menu.frame(x+400,y+330,510,130,Menu.color(39,46,37),Menu.LINE);Menu.text(name(p,selected),x+416,y+340,23,tierColor(tier(selected)));
         int delta=selected<4?p.weaponBonus(selected)-p.weaponBonus(p.weaponTier()):selected<16?p.armorBonus(slot(selected),tier(selected))-p.armorBonus(slot(selected),p.armorTier(slot(selected))):0;
         String compare=selected<4?"DAMAGE  "+p.damage()+"  >  "+(p.damage()+delta):selected<16?"DEFENSE  "+p.defense()+"  >  "+(p.defense()+delta):"Restores up to 60 HP / "+p.potions()+" stored";
         Menu.text(compare+(selected<16?String.format("  (%+d)",delta):""),x+416,y+377,17,delta<0?Menu.RED:delta>0?Menu.TEAL:Menu.TEXT);

@@ -1,9 +1,9 @@
 import static com.raylib.Raylib.*;
 
 public class Menu {
-    public static final Color INK = color(14, 22, 30), PANEL = color(24, 36, 46),
-        LINE = color(53, 73, 83), TEXT = color(235, 239, 229), MUTED = color(153, 174, 178),
-        GOLD = color(235, 190, 101), TEAL = color(86, 200, 174), RED = color(224, 105, 100);
+    public static final Color INK = color(17,23,24), PANEL = color(33,39,38),
+        LINE = color(86,91,78), TEXT = color(246,231,198), MUTED = color(174,178,155),
+        GOLD = color(224,177,87), TEAL = color(99,188,156), RED = color(213,102,84);
     public static Color color(int r, int g, int b) {
         return new Color().r((byte)r).g((byte)g).b((byte)b).a((byte)255);
     }
@@ -16,9 +16,26 @@ public class Menu {
     public static void center(String text,int x,int y,int size,Color color) { text(text,x-measure(text,size)/2,y,size,color); }
     public static void close() { if(font!=null) { UnloadFont(font);font=null; } }
     public static void panel(int x, int y, int w, int h) {
-        DrawRectangleRounded(new Rectangle().x(x+2).y(y+4).width(w).height(h),.16f,8,Fade(INK,.3f));
-        DrawRectangleRounded(new Rectangle().x(x).y(y).width(w).height(h),.16f,8,Fade(PANEL,.92f));
-        DrawLine(x+16,y+h-1,x+w-16,y+h-1,Fade(GOLD,.3f));
+        frame(x,y,w,h,Fade(PANEL,.97f),LINE);
+        Color rivet=Fade(GOLD,.65f);
+        DrawRectangle(x+7,y+7,2,2,rivet);DrawRectangle(x+w-9,y+7,2,2,rivet);
+        DrawRectangle(x+7,y+h-9,2,2,rivet);DrawRectangle(x+w-9,y+h-9,2,2,rivet);
+    }
+    public static void frame(int x,int y,int w,int h,Color fill,Color edge) {
+        DrawRectangle(x+3,y+4,w,h,Fade(INK,.65f));DrawRectangle(x,y,w,h,INK);
+        DrawRectangle(x+2,y+2,w-4,h-4,fill);DrawRectangleLines(x,y,w,h,edge);
+        DrawLine(x+2,y+2,x+w-3,y+2,Fade(TEXT,.16f));DrawLine(x+2,y+2,x+2,y+h-3,Fade(TEXT,.13f));
+        DrawLine(x+3,y+h-3,x+w-3,y+h-3,Fade(INK,.7f));
+    }
+    public static void slot(int x,int y,int size,boolean selected,boolean equipped) {
+        frame(x,y,size,size,color(23,30,29),selected?GOLD:equipped?TEAL:LINE);
+        DrawLine(x+3,y+3,x+size-4,y+3,INK);DrawLine(x+3,y+3,x+3,y+size-4,INK);
+        if(selected)DrawRectangleLines(x-2,y-2,size+4,size+4,Fade(GOLD,.65f));
+    }
+    public static void ember(int x,int y,int size,float amount,Color color) {
+        DrawPoly(new Vector2().x(x+size*.5f).y(y+size*.5f),4,size*.52f,0,LINE);
+        if(amount>0)DrawPoly(new Vector2().x(x+size*.5f).y(y+size*.5f),4,size*.37f*(float)Math.sqrt(Math.min(1,amount)),0,color);
+        DrawRectangle(x+size/2-1,y+size/4,2,2,Fade(TEXT,Math.min(1,amount)*.65f));
     }
     public static void text(String text, int x, int y, int size, Color color) {
         DrawTextEx(font(),text,new Vector2().x(x).y(y),size*1.15f,.5f,color);
@@ -36,6 +53,10 @@ public class Menu {
     public static void icon(String kind,int x,int y,int size,Color color) {
         int u=Math.max(1,size/8),cx=x+size/2,cy=y+size/2;
         switch(kind) {
+            case "crystal" -> { DrawLine(cx,y,x+size,cy,color);DrawLine(x+size,cy,cx,y+size,color);DrawLine(cx,y+size,x,cy,color);DrawLine(x,cy,cx,y,color);DrawLine(cx,y,cx,y+size,color); }
+            case "potion" -> { DrawRectangleLines(cx-u,y,2*u,2*u,color);DrawRectangleLines(x+u,y+2*u,size-2*u,size-2*u,color);DrawRectangle(x+2*u,cy,size-4*u,size/2-u,color); }
+            case "dodge" -> { DrawLine(x,cy,cx,y,color);DrawLine(cx,y,x+size,cy,color);DrawLine(x+size,cy,cx,y+size,color);DrawLine(cx,y+size,x,cy,color);DrawLine(x+2*u,cy,x+size-2*u,cy,color); }
+            case "lock" -> { DrawRectangleLines(x+u,cy,size-2*u,size/2,color);DrawRectangleLines(x+2*u,y,size-4*u,size/2,color); }
             case "head" -> { DrawRectangleLines(x,y+u,size,size-2*u,color);DrawLine(x,cy,x+size,cy,color);DrawLine(cx,cy,cx,y+size,color); }
             case "chest" -> { DrawRectangleLines(x+u,y+u,size-2*u,size-u,color);DrawLine(x,cy,x+u,y+u,color);DrawLine(x+size,cy,x+size-u,y+u,color); }
             case "legs" -> { DrawRectangleLines(x+u,y,size-2*u,size,color);DrawLine(cx,cy,cx,y+size,color); }
@@ -82,7 +103,7 @@ public class Menu {
         }
     }
     private static String buttonIcon(String label) {
-        if(label.contains("POTION")||label.contains("Heal")) return "heart";
+        if(label.contains("POTION")||label.contains("Heal")) return "potion";
         if(label.contains("SAVE")) return "save";
         if(label.contains("INVENTORY")||label.contains("GEAR")) return "bag";
         if(label.contains("SETTINGS")) return "gear";
@@ -93,15 +114,16 @@ public class Menu {
         return null;
     }
     public static void bar(int x, int y, int w, float value, float max, Color color) {
-        DrawRectangle(x, y, w, 8, LINE);
-        DrawRectangle(x, y, (int)(w * Math.max(0, Math.min(1, value / max))), 8, color);
+        DrawRectangle(x-1,y-1,w+2,10,INK);DrawRectangle(x,y,w,8,LINE);
+        int fill=(int)(w*Math.max(0,Math.min(1,value/Math.max(1,max))));DrawRectangle(x,y,fill,8,color);
+        DrawLine(x,y,x+fill,y,Fade(TEXT,.3f));
     }
     public static boolean button(String label, int x, int y, int w, boolean enabled) {
         Vector2 mouse = GetMousePosition();
         boolean hover = mouse.x() >= x && mouse.x() <= x+w && mouse.y() >= y && mouse.y() <= y+44;
-        DrawRectangleRounded(new Rectangle().x(x).y(y).width(w).height(44),.2f,8,enabled?(hover?TEAL:color(57,75,80)):LINE);
-        DrawLine(x+12,y+43,x+w-12,y+43,enabled?GOLD:LINE);
-        Color foreground=enabled?(hover?INK:TEXT):MUTED;
+        frame(x,y,w,44,enabled?(hover?color(70,83,69):color(47,56,49)):color(30,35,32),enabled?(hover?GOLD:LINE):LINE);
+        DrawLine(x+4,y+40,x+w-5,y+40,enabled?Fade(GOLD,.45f):INK);
+        Color foreground=enabled?TEXT:MUTED;
         String kind=w>=140?buttonIcon(label):null;
         if(kind!=null) icon(kind,x+12,y+14,16,foreground);
         int inset=kind==null?0:24;

@@ -32,6 +32,9 @@ public class Player extends Entity {
             getRotation().y((float)Math.toDegrees(Math.atan2(x-getPosition().x(),z-getPosition().z())));aimLock=.2f;
         }
     }
+    private boolean requestedParry;
+    public void requestParry() { requestedParry=true; }
+    public void parry() { if(!isAttacking() && !isDodging() && !charging)discipline.beginParry(); }
     public boolean invulnerable() { return dodgeTime>.10f && dodgeTime<.31f; }
     public void lunge(float duration) { lunge(duration,.25f); }
     public void lunge(float duration,float impact) {
@@ -157,7 +160,8 @@ public class Player extends Entity {
 
         discipline.tick(dt,sprinting);
         dodgeCooldown=Math.max(0,dodgeCooldown-dt);
-        if(controls.pressed(PARRY) && !isAttacking() && !isDodging() && !charging) discipline.beginParry();
+        if(controls.pressed(PARRY) || requestedParry)parry();
+        requestedParry=false;
         if(moveLength>0) { moveX/=moveLength;moveZ/=moveLength; }
         if(controls.pressed(DODGE) && dodgeCooldown<=0 && (!isAttacking() || attackTime<attackDuration*.48f) && discipline.recovery()<=0 && discipline.spend(CombatDiscipline.DODGE)) {
             attackTime=0;charging=false;
@@ -296,7 +300,7 @@ public class Player extends Entity {
     }
     public void resetCombat() {
         attackTime = dodgeTime = dodgeCooldown = velocityX = velocityZ = aimLock = chargePoseTime = lastOutcomeTime = 0; sprinting=charging=lungeAttack=false;discipline.reset();
-        visualLift=0;fallenPose=false;
+        visualLift=0;fallenPose=false;requestedParry=false;
         setAnimation(weaponStyle==1?rangedIdle():PlayerAnimation.MELEE_IDLE);
         restartAnimation();
         updateAnimation(0);

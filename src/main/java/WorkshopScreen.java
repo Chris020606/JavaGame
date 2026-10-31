@@ -7,8 +7,8 @@ public final class WorkshopScreen {
     private static final String[] TABS={"TRAINING","EQUIPMENT FORGE","SUPPLIES"};
     public boolean draw(Progression p,String closeKey,GameAudio audio) {
         int x=(GetScreenWidth()-WIDTH)/2,y=(GetScreenHeight()-HEIGHT)/2;
-        DrawRectangleRounded(new Rectangle().x(x).y(y).width(WIDTH).height(HEIGHT),.035f,8,Menu.color(18,29,38));
-        DrawRectangleRounded(new Rectangle().x(x+8).y(y+8).width(212).height(HEIGHT-16),.05f,8,Menu.color(24,39,47));
+        Menu.panel(x,y,WIDTH,HEIGHT);
+        Menu.frame(x+8,y+8,212,HEIGHT-16,Menu.color(27,34,30),Menu.LINE);
         Menu.text("THE WORKSHOP",x+28,y+28,28,Menu.TEXT);
         Menu.text("REST. REFINE. RETURN.",x+28,y+72,12,Menu.MUTED);
         // Resolve navigation before drawing so highlight and content agree on the click frame.
@@ -18,7 +18,7 @@ public final class WorkshopScreen {
         }
         for(int i=0;i<TABS.length;i++) {
             int top=y+122+i*60;
-            if(tab==i) { DrawRectangle(x+8,top-4,3,52,Menu.TEAL);DrawRectangle(x+18,top-4,192,52,Menu.color(36,59,65)); }
+            if(tab==i) { DrawRectangle(x+8,top-4,3,52,Menu.TEAL);DrawRectangle(x+18,top-4,192,52,Menu.color(64,67,47)); }
             Menu.button(TABS[i],x+24,top,184,true);
         }
         Menu.text("YOUR WARDEN",x+28,y+340,13,Menu.GOLD);
@@ -40,7 +40,7 @@ public final class WorkshopScreen {
         Menu.text("LEVEL",x+430,y+121,11,Menu.MUTED);Menu.text("NEXT UPGRADE",x+515,y+121,11,Menu.MUTED);
         for(int i=0;i<Progression.TRAINING.length;i++) {
             var upgrade=Progression.TRAINING[i];int top=y+ROW_TOP+i*ROW_HEIGHT;
-            DrawRectangleRounded(new Rectangle().x(x+CONTENT).y(top).width(672).height(48),.10f,4,i%2==0?Menu.color(28,43,52):Menu.color(23,36,45));
+            Menu.frame(x+CONTENT,top,672,48,i%2==0?Menu.color(39,47,39):Menu.color(31,38,33),Menu.LINE);
             String icon=switch(upgrade) {case VITALITY -> "heart";case POWER -> "sword";case ARMOR -> "shield";case BASE -> "crown";default -> "gear";};
             Menu.icon(icon,x+CONTENT+12,top+14,20,Menu.TEAL);
             Menu.text(p.upgradeLabel(upgrade),x+CONTENT+43,top+15,16,Menu.TEXT);
@@ -54,7 +54,7 @@ public final class WorkshopScreen {
     private void drawForge(Progression p,GameAudio audio,int x,int y) {
         for(int tier=1;tier<=3;tier++) {
             int left=x+CONTENT+(tier-1)*226;
-            DrawRectangleRounded(new Rectangle().x(left).y(y+136).width(214).height(374),.035f,6,Menu.color(29,44,53));
+            Menu.frame(left,y+136,214,374,Menu.color(39,47,39),Menu.LINE);
             var color=tier==3?Menu.GOLD:tier==2?Menu.TEAL:Menu.TEXT;
             Menu.text("TIER 0"+tier,left+16,y+151,15,color);
             Menu.icon(p.heroClass()==HeroClass.ARCHER?"bow":p.heroClass()==HeroClass.MAGE?"staff":"sword",left+16,y+184,32,color);
@@ -68,12 +68,12 @@ public final class WorkshopScreen {
         }
     }
     private void drawSupplies(Progression p,GameAudio audio,int x,int y) {
-        Menu.icon("heart",x+CONTENT+36,y+164,54,Menu.RED);
+        Menu.icon("potion",x+CONTENT+36,y+164,54,Menu.RED);
         Menu.text("HEALING POTIONS",x+CONTENT+120,y+164,26,Menu.TEXT);
         Menu.text("Restore up to 60 HP. Carry up to five.",x+CONTENT+120,y+211,18,Menu.MUTED);
         for(int i=0;i<5;i++) {
-            DrawRectangleRounded(new Rectangle().x(x+CONTENT+120+i*70).y(y+266).width(54).height(62),.15f,6,Menu.color(35,51,60));
-            Menu.icon("heart",x+CONTENT+137+i*70,y+286,20,i<p.potions()?Menu.RED:Menu.LINE);
+            Menu.slot(x+CONTENT+120+i*70,y+266,54,false,i<p.potions());
+            Menu.icon("potion",x+CONTENT+137+i*70,y+286,20,i<p.potions()?Menu.RED:Menu.LINE);
         }
         if(Menu.button("RESTOCK / 30 CRYSTALS",x+CONTENT+120,y+368,340,p.crystals()>=30 && p.potions()<5) && p.buyPotion())audio.play("upgrade");
     }

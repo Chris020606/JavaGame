@@ -275,6 +275,40 @@ public class InputSmokeTest {
         game.photoMode(false);
         System.out.println(corpseOnly?"PASS: actual collapsed mesh bounds, floor support and river-bank views":"PASS: fractional crossfades, all class/weapon motion, mouse aim while moving, matched armor, class charge poses and extended river banks");
     }
+    private static void hudRegression(Game game,java.nio.file.Path profile) throws Exception {
+        Progression kit=Progression.playtest(HeroClass.WARRIOR,Entities.Difficulty.NORMAL,false);kit.damagePlayer(40);
+        SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Ember",0,8,180,kit,new WaveDirector.State(1,0,1,8,0,21,0),java.util.List.of(new Entities.Enemy(-18,-18,1,0,.5f)),Arena.HIGHLANDS));
+        check(game.loadCurrent(),"Belt setup did not load");key(game,KEY_ENTER);game.getEnemies().getFirst().stun=game.getEnemies().getFirst().cooldown=100;
+        for(int i=0;i<25;i++)frame(game);game.pointerAim(true);
+        HudLayout belt=new HudLayout(GetScreenWidth(),GetScreenHeight());int row=belt.y()+25;
+        click(game,belt.slotX(5)+20,row);check(game.isInventoryOpen() && !game.getPlayer().isAttacking(),"Pack click leaked into a world attack");capture("ironwood-inventory");
+        int packX=(GetScreenWidth()-940)/2,packY=(GetScreenHeight()-600)/2;
+        event(MOUSE_POSITION,packX+845,packY+507);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);for(int i=0;i<4;i++)frame(game);
+        check(!game.isInventoryOpen() && !game.getPlayer().isAttacking(),"Holding the inventory Return button leaked into combat");
+        event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);
+        int potions=game.getProgression().potions();float health=game.getProgression().health();
+        click(game,belt.slotX(4)+20,row);check(game.getProgression().potions()==potions-1 && game.getProgression().health()>health && !game.getPlayer().isAttacking(),"Potion belt action failed");
+        click(game,belt.slotX(0)+belt.cell()+2,row);check(!game.getPlayer().isAttacking(),"Belt gap leaked into world combat");
+        click(game,belt.slotX(0)+20,row);check(game.getPlayer().isAttacking(),"Strike belt action failed");
+        for(int i=0;i<60;i++)frame(game);
+        key(game,KEY_F);float keyboardRecovery=game.getPlayer().discipline().recovery();for(int i=0;i<50;i++)frame(game);
+        click(game,belt.slotX(2)+20,row);check(game.getPlayer().discipline().parrying(),"Parry belt action failed");
+        check(Math.abs(game.getPlayer().discipline().recovery()-keyboardRecovery)<.001f,"Mouse and keyboard parry timing differ");
+        for(int i=0;i<50;i++)frame(game);
+        event(MOUSE_POSITION,belt.slotX(1)+20,row);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);for(int i=0;i<50;i++)frame(game);capture("ironwood-charge");
+        event(MOUSE_POSITION,50,50);for(int i=0;i<4;i++)frame(game);
+        check(!game.getPlayer().isAttacking(),"Dragging outside a held charge fired a world attack");
+        event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);check(game.getPlayer().isAttacking() && game.currentAttack().label().contains("PERFECT"),"Captured charge did not release correctly");
+        for(int i=0;i<85;i++)frame(game);
+        click(game,belt.slotX(3)+20,row);check(game.currentAttack().label().contains("LUNGE"),"Lunge belt action failed");
+        for(int i=0;i<70;i++)frame(game);
+        for(int[] size:new int[][]{{1000,680},{1280,800},{640,480}}) {
+            SetWindowSize(size[0],size[1]);for(int i=0;i<3;i++)frame(game);capture("ironwood-hud-"+size[0]);
+            if(size[0]>=1000) { key(game,KEY_TAB);capture("ironwood-pack-"+size[0]);key(game,KEY_TAB); }
+        }
+        SetWindowSize(1280,800);for(int i=0;i<4;i++)frame(game);game.pointerAim(false);game.getPlayer().getPosition().x(0).z(4);key(game,KEY_E);for(int i=0;i<3;i++)frame(game);capture("ironwood-workshop");key(game,KEY_ESCAPE);
+        System.out.println("PASS: six clickable belt actions, held charge capture, gap/input isolation, inventory and responsive HUD layouts");
+    }
     private static void bladeRegression(Game game,java.nio.file.Path profile) throws Exception {
         try(CombatVfx burst=new CombatVfx()) {
             for(int i=0;i<2000;i++) { burst.impact(0,0,Menu.GOLD,true);if(i%5==0)burst.update(.016f); }
@@ -377,6 +411,7 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--hud-review")) { hudRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--blade-review")) { bladeRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--tutorial-review")) { tutorialRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--corpse-review")) {
@@ -928,6 +963,7 @@ public class InputSmokeTest {
             combatMotionRegression(game,profile,combatClick);
             tutorialRegression(game,profile);
             bladeRegression(game,profile);
+            hudRegression(game,profile);
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

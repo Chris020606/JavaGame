@@ -20,6 +20,10 @@ Name your warden, choose **Easy, Normal, Hard, or Extreme**, and light the beaco
 
 New to the valley? Your first adventure opens a safe, hands-on tutorial. Practice movement, aiming, attacks, dodging, charging, parrying, equipment, and sanctuary healing. Lessons advance when you perform the action. Replay **Tutorial / Safe Practice** from the main menu or pause menu, or skip whenever you are ready. Your campaign stays separate.
 
+Your action belt puts strike, charge, parry, lunge, healing, and equipment together at the bottom of the screen. Click an action or use its shown key; hold the charge slot and release when the meter turns gold. Ember markers show health, jade segments show stamina, and hovering a slot explains what it does. The framed backpack shows your character, armor slots, item rarity, and equipment comparisons.
+
+![The Warden's Pack with a character preview, fitted armor slots, item grid and equipment comparisons](docs/images/player-inventory.png)
+
 Watch your stamina. Sprint to reach a threatened gate, dodge through danger, or save enough strength for a heavy attack. Time your next light strike to continue a combo. A well-timed parry opens the way for a stronger riposte.
 
 Point at a target and click to aim and strike; hold the mouse button to repeat basic attacks. Tap near the end of a swing to chain the next strike. Space attacks toward your facing. Bows visibly draw and release, crossbows have a full reload, and Mages raise and fire their staff. Two-handed Warrior weapons use their own swings. Movement settles during the strike and returns through recovery.
@@ -109,7 +113,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.5.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.6.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -120,6 +124,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **2.6:** original iron-and-parchment interface, clickable six-slot action belt, ember health markers, segmented stamina, framed backpack/armor slots and matching workshop/menus.
 - **2.5:** short, soft trails follow the actual Warrior blade instead of a floating attack arc; pooled impact particles and cached hand attachments/text layout.
 - **2.4:** safe interactive tutorial, class mastery bonuses, charge/contact/recovery HUD cues, ground shading and chapter atmosphere, and rendering optimizations.
 - **2.3:** grounded corpses, extended wooded riverbanks, smooth class/weapon animation transitions, mouse aiming, better attack timing and clearer releases.
@@ -137,7 +142,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–2.5 are development updates rather than published releases.
+Versions 1.3–2.6 are development updates rather than published releases.
 
 </details>
 
