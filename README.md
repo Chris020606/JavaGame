@@ -24,6 +24,8 @@ Watch your stamina. Sprint to reach a threatened gate, dodge through danger, or 
 
 Point at a target and click to aim and strike; hold the mouse button to repeat basic attacks. Tap near the end of a swing to chain the next strike. Space attacks toward your facing. Bows visibly draw and release, crossbows have a full reload, and Mages raise and fire their staff. Two-handed Warrior weapons use their own swings. Movement settles during the strike and returns through recovery.
 
+Warrior swings leave a brief, soft trail along the moving blade. The trail follows the weapon's size and direction, with a warmer accent on heavy attacks, then fades before recovery finishes.
+
 Each class has a combat reward. **Warrior:** parry to empower your next strike by 20%. **Archer:** dodge through an incoming hit to empower your next shot by 30%. **Mage:** light hits build up to three resonance stacks, each adding 20% to your next heavy cast. Bonuses expire, so watch the mastery cue above the action bar. The charge bar highlights the perfect release window; a contact marker and brief melee impact pause make hits easier to read.
 
 Enemies have plans of their own: scouts flank, brutes push forward, archers retreat and reposition, and spellcasters can heal wounded allies. Read their attack warnings and interrupt them before they finish.
@@ -107,7 +109,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.4.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.5.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -118,6 +120,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **2.5:** short, soft trails follow the actual Warrior blade instead of a floating attack arc; pooled impact particles and cached hand attachments/text layout.
 - **2.4:** safe interactive tutorial, class mastery bonuses, charge/contact/recovery HUD cues, ground shading and chapter atmosphere, and rendering optimizations.
 - **2.3:** grounded corpses, extended wooded riverbanks, smooth class/weapon animation transitions, mouse aiming, better attack timing and clearer releases.
 - **2.2:** optional supplies, survivor escorts and waystone defenses, persistent ember blessing builds, distinct siege formations, and a reproducible extended gameplay trailer.
@@ -134,7 +137,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–2.4 are development updates rather than published releases.
+Versions 1.3–2.5 are development updates rather than published releases.
 
 </details>
 

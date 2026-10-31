@@ -63,6 +63,7 @@ public final class WorldAssets implements AutoCloseable {
     private final int surfaceLoc=uniform("material");
     private int run, chop;
     private final java.util.Set<Model> verifiedArmor=new java.util.HashSet<>();
+    private final float[] bladeLengths=new float[4];
     public WorldAssets() {
         if(!IsShaderValid(daylight)) throw new IllegalStateException("Surface shader did not compile");
         daylight.locs().put(SHADER_LOC_MAP_BRDF,uniform("shadowMap"));
@@ -113,6 +114,10 @@ public final class WorldAssets implements AutoCloseable {
             if(armor.meshCount()==0)throw new IllegalStateException("Missing fitted armor: "+name);equipment.put(name,armor);
         }
         loadEquipment("dawnblade");loadEquipment("dawnstaff");
+        for(int tier=0;tier<bladeLengths.length;tier++) {
+            Model weapon=weaponModel(0,tier);
+            for(int mesh=0;mesh<weapon.meshCount();mesh++)bladeLengths[tier]=Math.max(bladeLengths[tier],GetMeshBoundingBox(new Mesh(weapon.meshes()).position(mesh)).max().y());
+        }
 
     }
     private void loadEquipment(String name) {
@@ -477,6 +482,18 @@ public final class WorldAssets implements AutoCloseable {
             DrawCylinderEx(from,tip,.012f,.010f,5,Menu.color(181,141,90));
             DrawCylinderEx(tip,v(tip.x()+(float)Math.sin(a)*.12f,tip.y(),tip.z()+(float)Math.cos(a)*.12f),.045f,0,4,WHITE);
         }
+    }
+    public void sampleBlade(Player player,int tier,WeaponTrail trail) {
+        int bone=player.boneIndex("handslot.r");if(bone<0)return;
+        Transform hand=new Transform(player.getModel().currentPose()).position(bone);
+        Vector4 q=hand.rotation();Vector3 p=hand.translation(),origin=player.getPosition();
+        // The same slot-space Y axis used by drawAttached: local blade length -> world.
+        float dx=2*q.x()*q.y()-2*q.w()*q.z(),dy=1-2*q.x()*q.x()-2*q.z()*q.z(),dz=2*q.y()*q.z()+2*q.w()*q.x();
+        double angle=Math.toRadians(player.getRotation().y());float c=(float)Math.cos(angle),s=(float)Math.sin(angle);
+        float x=origin.x()+p.x()*c+p.z()*s,y=origin.y()+p.y(),z=origin.z()+p.z()*c-p.x()*s;
+        float axisX=dx*c+dz*s,axisZ=dz*c-dx*s,length=bladeLengths[Math.max(0,Math.min(3,tier))];
+        float root=length*.42f,tip=length*.98f;
+        trail.sample(x+axisX*root,y+dy*root,z+axisZ*root,x+axisX*tip,y+dy*tip,z+axisZ*tip);
     }
     private void drawWeapon(Model character,Vector3 position,float facing,Model weapon) {
         drawWeapon(character,position,facing,weapon,WHITE);

@@ -255,7 +255,7 @@ public class Game {
         }
         if (state != GameState.PLAYING) return;
         if (settings.controls.pressed(INVENTORY)) { inventory=!inventory; workshop=false;if(tutorial!=null && inventory)tutorial.inventory(); }
-        if (inventory) return;
+        if (inventory) { vfx.blade().clear();return; }
         if (settings.controls.pressed(POTION)) {
             notifyPlayer(progress.usePotion()?"Potion used / +60 HP":"Need missing health and a potion.");
         }
@@ -263,7 +263,7 @@ public class Game {
             if (nearBase()) workshop = !workshop;
             else notifyPlayer("Return to the outpost to upgrade.");
         }
-        if (workshop) return;
+        if (workshop) { vfx.blade().clear();return; }
         noticeTime = Math.max(0, noticeTime - dt); storyTime=Math.max(0,storyTime-dt);
         attackCooldown = Math.max(0, attackCooldown - dt);
         slashTime = Math.max(0, slashTime - dt);
@@ -274,6 +274,11 @@ public class Game {
         boolean wasDodging=player.isDodging();float beforeMoveX=player.getPosition().x(),beforeMoveZ=player.getPosition().z();
         if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) || settings.controls.down(HEAVY))aimCursor();
         sceneManager.getOpenScene().updatesEntities(dt);
+        if(progress.heroClass()==HeroClass.WARRIOR && player.isAttacking() && dt>0) {
+            float elapsed=activeAttack.duration()-player.attackRemaining();
+            if(elapsed>=activeAttack.impact()-.07f && elapsed<=activeAttack.impact()+(activeHeavy?.20f:.14f))
+                assets.sampleBlade(player,progress.weaponTier(),vfx.blade());
+        }
         if(!wasDodging && player.isDodging()) { audio.play("dash");if(tutorial!=null)tutorial.dodge(); }
         if(tutorial!=null) {
             tutorial.movement((float)Math.hypot(player.getPosition().x()-beforeMoveX,player.getPosition().z()-beforeMoveZ));
@@ -334,6 +339,7 @@ public class Game {
                 if(classBonus>1)activeAttack=Combat.scale(activeAttack,classBonus,"EMPOWERED "+activeAttack.label());
                 attackCooldown=activeAttack.duration();comboWindow=attackCooldown+.23f;
                 attackElapsed=0;impactPending=true;activeHeavy=bufferedHeavy;activeCharged=bufferedHeavy && releasedCharge>=.75f;
+                vfx.beginMelee(activeHeavy);
                 if(bufferedLunge) { player.lunge(activeAttack.duration(),activeAttack.impact());audio.play("dash"); }
                 else player.attack(combo,bufferedHeavy,activeAttack.duration(),activeAttack.impact(),bufferedHeavy?releasedCharge:0);
             }
@@ -573,10 +579,7 @@ public class Game {
         }
         vfx.begin();
         for(HeroShot shot:heroShots)vfx.projectile(camera,shot.x,shot.z,shot.vx,shot.vz,shot.magic,shot.magic?Menu.TEAL:Menu.GOLD,time,shot.height());
-        if(player.isAttacking() && progress.heroClass()==HeroClass.WARRIOR) {
-            float swing=(activeAttack.duration()-player.attackRemaining()-activeAttack.impact()+.08f)/.20f;
-            vfx.slash(player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),activeAttack.range(),activeAttack.halfAngle(),combo==2?1-swing:swing,Menu.GOLD);
-        }
+        if(progress.heroClass()==HeroClass.WARRIOR)vfx.drawBlade();
         if(player.discipline().parrying())vfx.shield(camera,player.getPosition().x(),player.getPosition().z(),time,Menu.TEAL);
         if(heavyCharge>0)vfx.charge(player.getPosition().x(),player.getPosition().z(),heavyCharge,heavyCharge>=.75f && heavyCharge<=1.05f?Menu.GOLD:Menu.TEAL);
         for(Enemy enemy:enemies)vfx.enemy(camera,enemy,time);
@@ -939,6 +942,7 @@ public class Game {
 
         mastery.reset();hitPause=hitMarker=0;
     }
+    WeaponTrail weaponTrail() { return vfx.blade(); }
     Combat.Attack currentAttack() { return activeAttack; }
     java.util.List<BossHazard> getBossHazards() { return java.util.Collections.unmodifiableList(bossHazards); }
     boolean weaponMaterialsValid() { return assets.weaponMaterialsValid(); }

@@ -67,6 +67,8 @@ public abstract class Entity {
     }
 
     private final HashMap<String, Integer> animationIndices = new HashMap<>();
+    private final HashMap<String,Integer> boneIndices=new HashMap<>();
+    public int boneIndex(String name) { return boneIndices.getOrDefault(name,-1); }
 
     protected Integer getAnimationIndex(String name) {
         // raylib stores ModelAnimation.name in 32 bytes including its terminator.
@@ -142,6 +144,8 @@ public abstract class Entity {
 
         animationIndices.clear(); hasAnimation=false;displayedPose=false;transitionTime=0;posedBlend=1;animationIndex=0; restartAnimation();
         animations = LoadModelAnimations(path, animationCount);
+        boneIndices.clear();
+        for(int i=0;i<model.skeleton().boneCount();i++)boneIndices.put(new BoneInfo(model.skeleton().bones()).position(i).name().getString(),i);
 
         for (int i = 0; i < animationCount[0]; i++) {
             hasAnimation = true;
@@ -191,6 +195,7 @@ public abstract class Entity {
     }
 
     public void dispose() {
+        boneIndices.clear();
         if (animations != null) { UnloadModelAnimations(animations, animationCount[0]); animations = null; }
         if (model != null) { UnloadModel(model); model = null; }
     }

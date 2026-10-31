@@ -275,6 +275,45 @@ public class InputSmokeTest {
         game.photoMode(false);
         System.out.println(corpseOnly?"PASS: actual collapsed mesh bounds, floor support and river-bank views":"PASS: fractional crossfades, all class/weapon motion, mouse aim while moving, matched armor, class charge poses and extended river banks");
     }
+    private static void bladeRegression(Game game,java.nio.file.Path profile) throws Exception {
+        try(CombatVfx burst=new CombatVfx()) {
+            for(int i=0;i<2000;i++) { burst.impact(0,0,Menu.GOLD,true);if(i%5==0)burst.update(.016f); }
+            check(burst.particleCount()<=240,"Repeated impacts exceeded the particle budget");
+            burst.update(1);check(burst.particleCount()==0,"Pooled impact particles did not expire");
+            burst.impact(0,0,Menu.GOLD,false);burst.clear();check(burst.particleCount()==0,"Pooled impact clear failed");
+        }
+        for(int tier=0;tier<4;tier++) {
+            Progression p=Progression.playtest(HeroClass.WARRIOR,Entities.Difficulty.NORMAL,false);p.equipWeapon(tier);
+            SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Blade",0,8,0,p,new WaveDirector.State(1,0,1,8,0,21,0),java.util.List.of(new Entities.Enemy(-18,-18,1,0,.5f)),Arena.HIGHLANDS));
+            check(game.loadCurrent(),"Blade fixture did not load");key(game,KEY_ENTER);game.getEnemies().getFirst().stun=game.getEnemies().getFirst().cooldown=100;
+            game.photoMode(true);for(int i=0;i<22;i++)frame(game);
+            for(int attack=0;attack<3;attack++) {
+                game.getPlayer().discipline().reset();
+                if(attack==1) { event(KEY_DOWN,KEY_Q,0);for(int i=0;i<50;i++)frame(game);event(KEY_UP,KEY_Q,0);frame(game); }
+                else key(game,attack==2?KEY_R:KEY_SPACE);
+                boolean visible=false;int captures=0;
+                for(int i=0;i<85;i++) {
+                    frame(game);WeaponTrail trail=game.weaponTrail();
+                    if(trail.size()>1) {
+                        visible=true;int last=trail.size()-1;
+                        float dx=trail.coordinate(last,3)-trail.coordinate(last,0),dy=trail.coordinate(last,4)-trail.coordinate(last,1),dz=trail.coordinate(last,5)-trail.coordinate(last,2);
+                        float span=(float)Math.sqrt(dx*dx+dy*dy+dz*dz);check(span>.4f && span<1.3f,"Blade trail grew beyond the weapon");
+                        int size=trail.size();
+                        Camera3D view=game.getSceneManager().getOpenScene().getCameraController().getCamera();
+                        view._position().x(game.getPlayer().getPosition().x()+4).y(3.7f).z(game.getPlayer().getPosition().z()+5);
+                        view.target().x(game.getPlayer().getPosition().x()).y(1).z(game.getPlayer().getPosition().z());
+                        BeginDrawing();ClearBackground(Menu.INK);game.render();EndDrawing();
+                        check(trail.size()==size,"Rendering inserted blade history");
+                        if(captures<3 && i%2==0) { capture("blade-"+tier+"-"+attack+"-"+captures);captures++; }
+                    }
+                }
+                check(visible,"No weapon-following trail for tier "+tier+" / attack "+attack);
+                check(game.weaponTrail().size()==0,"Blade effect persisted through idle recovery");
+            }
+        }
+        game.photoMode(false);
+        System.out.println("PASS: four Warrior weapons, light/heavy/lunge blade trails, physical scale, render independence and idle expiry");
+    }
     private static void tutorialRegression(Game game,java.nio.file.Path profile) throws Exception {
         game.setState(GameState.MAIN_MENU);game.pointerAim(true);
         key(game,KEY_ENTER);key(game,KEY_ENTER);
@@ -338,6 +377,7 @@ public class InputSmokeTest {
             java.util.concurrent.atomic.AtomicBoolean combatClick=new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(()->combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if(java.util.Arrays.asList(args).contains("--blade-review")) { bladeRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--tutorial-review")) { tutorialRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--corpse-review")) {
                 corpseOnly=true;combatMotionRegression(game,profile,combatClick);return;
@@ -887,6 +927,7 @@ public class InputSmokeTest {
             livingExpeditionRegression(game,profile);
             combatMotionRegression(game,profile,combatClick);
             tutorialRegression(game,profile);
+            bladeRegression(game,profile);
         } finally {
             if (game != null) game.dispose();
             CloseWindow();

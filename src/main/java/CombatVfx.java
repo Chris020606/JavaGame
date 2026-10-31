@@ -1,14 +1,25 @@
 import Entities.Enemy;
 import Entities.BossMove;
 import assets.AssetPaths;
-import java.util.ArrayList;
 import static com.raylib.Raylib.*;
 
 /** Soft textured particles, weapon ribbons and authored spell decals. No collision rules live here. */
 public final class CombatVfx implements AutoCloseable {
     private final Texture soft=texture("soft"),spark=texture("spark"),rune=texture("rune"),ring=texture("ring");
     private final Model ground=LoadModelFromMesh(GenMeshPlane(2,2,1,1));
-    private final ArrayList<Particle> particles=new ArrayList<>();
+    private static final int MAX_PARTICLES=240;
+    private final Particle[] particles=particlePool();
+    private int particleCount,replacement;
+    int particleCount() { return particleCount; }
+    private static Particle[] particlePool() {
+        Particle[] pool=new Particle[MAX_PARTICLES];
+        for(int i=0;i<pool.length;i++)pool[i]=new Particle();
+        return pool;
+    }
+    private final WeaponTrail blade=new WeaponTrail();
+    private boolean heavyBlade;
+    public WeaponTrail blade() { return blade; }
+    public void beginMelee(boolean heavy) { heavyBlade=heavy;blade.begin(heavy); }
     private int serial;
     private static final class Particle {
         float x,y,z,vx,vy,vz,life,total,size;Color color;
@@ -19,16 +30,23 @@ public final class CombatVfx implements AutoCloseable {
         SetTextureFilter(t,TEXTURE_FILTER_BILINEAR);return t;
     }
     private static Vector3 v(float x,float y,float z) { return new Vector3().x(x).y(y).z(z); }
-    public void clear() { particles.clear(); }
+    public void clear() { particleCount=replacement=0;blade.clear(); }
     public void update(float dt) {
-        particles.removeIf(p->{p.life-=dt;if(p.life<=0)return true;p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;p.vy-=5*dt;return false;});
+        blade.update(dt);
+        for(int i=0;i<particleCount;) {
+            Particle p=particles[i];p.life-=dt;
+            if(p.life<=0) { particles[i]=particles[--particleCount];particles[particleCount]=p; }
+            else { p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;p.vy-=5*dt;i++; }
+        }
     }
     public void impact(float x,float z,Color color,boolean heavy) {
         for(int i=0;i<(heavy?24:12);i++) {
-            if(particles.size()>=240)particles.remove(0);
+            Particle p;
+            if(particleCount<MAX_PARTICLES)p=particles[particleCount++];
+            else { p=particles[replacement];replacement=(replacement+1)%MAX_PARTICLES; }
             double a=(serial++*2.399963);float force=1.4f+(i%5)*.45f;
-            Particle p=new Particle();p.x=x;p.y=.8f;p.z=z;p.vx=(float)Math.cos(a)*force;p.vz=(float)Math.sin(a)*force;p.vy=.8f+(i%4)*.65f;
-            p.total=p.life=.24f+(i%5)*.08f;p.size=heavy?.14f:.10f;p.color=color;particles.add(p);
+            p.x=x;p.y=.8f;p.z=z;p.vx=(float)Math.cos(a)*force;p.vz=(float)Math.sin(a)*force;p.vy=.8f+(i%4)*.65f;
+            p.total=p.life=.24f+(i%5)*.08f;p.size=heavy?.14f:.10f;p.color=color;
         }
     }
     public void begin() { BeginBlendMode(BLEND_ADDITIVE);rlDisableDepthMask(); }
@@ -53,9 +71,22 @@ public final class CombatVfx implements AutoCloseable {
             DrawTriangle3D(p,q,r,c);DrawTriangle3D(p,r,s,c);DrawTriangle3D(r,q,p,c);DrawTriangle3D(s,r,p,c);
         }
     }
-    public void slash(float x,float z,float facing,float radius,float halfAngle,float phase,Color color) {
-        if(phase<0 || phase>1)return;
-        ribbon(x,z,facing-halfAngle+phase*halfAngle*2,radius*.82f,halfAngle*.50f,1.0f,color,.85f*(float)Math.sin(phase*Math.PI));
+    public void drawBlade() {
+        if(blade.size()<2)return;
+        rlSetTexture(soft.id());rlBegin(RL_QUADS);
+        for(int i=1;i<blade.size();i++) {
+            float u0=(i-1f)/(blade.size()-1),u1=i/(float)(blade.size()-1);
+            // Vertex alpha and the soft texture feather both the hilt edge and the tail.
+            bladeVertex(i-1,false,u0);bladeVertex(i-1,true,u0);bladeVertex(i,true,u1);bladeVertex(i,false,u1);
+            bladeVertex(i,false,u1);bladeVertex(i,true,u1);bladeVertex(i-1,true,u0);bladeVertex(i-1,false,u0);
+        }
+        rlEnd();rlSetTexture(0);
+    }
+    private void bladeVertex(int sample,boolean tip,float u) {
+        float fade=blade.opacity(sample);int alpha=Math.round(255*fade*fade*(tip?.52f:.02f));
+        rlColor4ub((byte)(heavyBlade?250:192),(byte)(heavyBlade?218:218),(byte)(heavyBlade?170:235),(byte)alpha);
+        rlTexCoord2f(u,tip?.82f:.12f);int offset=tip?3:0;
+        rlVertex3f(blade.coordinate(sample,offset),blade.coordinate(sample,offset+1),blade.coordinate(sample,offset+2));
     }
     public void shield(Camera3D camera,float x,float z,float time,Color color) {
         DrawBillboard(camera,rune,v(x,1.1f,z),2.2f,Fade(color,.6f));glow(camera,x,1.1f,z,2.7f,color,.12f);
@@ -119,7 +150,8 @@ public final class CombatVfx implements AutoCloseable {
         }
     }
     public void particles(Camera3D camera) {
-        for(Particle p:particles) {
+        for(int i=0;i<particleCount;i++) {
+            Particle p=particles[i];
             float fade=p.life/p.total;DrawBillboard(camera,spark,v(p.x,Math.max(.08f,p.y),p.z),p.size*(.6f+fade),Fade(p.color,fade));
         }
     }

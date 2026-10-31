@@ -268,7 +268,7 @@ public class Player extends Entity {
     public boolean isDrawingBow() { return weaponStyle==1 && !crossbow && (charging || isAttacking() && attackDuration-attackTime<attackImpact); }
     public Vector3 handPosition(String name) {
         Model model=getModel();
-        for(int i=0;i<model.skeleton().boneCount();i++)if(new BoneInfo(model.skeleton().bones()).position(i).name().getString().equals(name)) {
+        int i=boneIndex(name);if(i>=0) {
             Vector3 p=new Transform(model.currentPose()).position(i).translation();double a=Math.toRadians(getRotation().y());
             return new Vector3().x(getPosition().x()+(float)(p.x()*Math.cos(a)+p.z()*Math.sin(a))).y(getPosition().y()+p.y()).z(getPosition().z()+(float)(p.z()*Math.cos(a)-p.x()*Math.sin(a)));
         }

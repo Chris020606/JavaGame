@@ -5,8 +5,9 @@ import static com.raylib.Raylib.*;
 public final class CombatFeedback {
     private static final class Popup {
         final float x,z; final String text; final Color color; final float lane;
+        final int largeWidth,smallWidth;
         float time=1.05f;
-        Popup(float x,float z,String text,Color color,float lane) { this.x=x;this.z=z;this.text=text;this.color=color;this.lane=lane; }
+        Popup(float x,float z,String text,Color color,float lane) { this.x=x;this.z=z;this.text=text;this.color=color;this.lane=lane;largeWidth=Menu.measure(text,26);smallWidth=Menu.measure(text,21); }
     }
     private final ArrayList<Popup> labels=new ArrayList<>();
     private int serial;
@@ -29,7 +30,7 @@ public final class CombatFeedback {
             Vector3 world=new Vector3().x(p.x+p.lane).y(2.4f+age*1.3f).z(p.z);
             Vector2 point=GetWorldToScreen(world,camera);
             int size=age<.12f?26:21;
-            int x=(int)point.x()-MeasureText(p.text,size)/2,y=(int)point.y();
+            int x=(int)point.x()-(age<.12f?p.largeWidth:p.smallWidth)/2,y=(int)point.y();
             Menu.text(p.text,x+2,y+2,size,Fade(Menu.INK,Math.min(1,p.time*3)));
             Menu.text(p.text,x,y,size,Fade(p.color,Math.min(1,p.time*3)));
         }
