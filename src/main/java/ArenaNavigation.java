@@ -30,6 +30,18 @@ public final class ArenaNavigation {
         }
         return new Position(Math.max(-22,Math.min(22,x)),Math.max(-22,Math.min(22,z)));
     }
+    /** First swept contact fraction, shared by player shots, enemy shots and ranged sight checks. */
+    public static float projectileFraction(int chapter,float x,float z,float endX,float endZ) {
+        float dx=endX-x,dz=endZ-z,a=dx*dx+dz*dz,best=1;
+        for(Obstacle o:obstacles(chapter)) {
+            float ox=x-o.x,oz=z-o.z,r=o.radius+.08f,c=ox*ox+oz*oz-r*r;
+            if(c<=0)return 0;
+            if(a<.000001f)continue;
+            float b=2*(ox*dx+oz*dz),disc=b*b-4*a*c;
+            if(disc>=0) { float t=(-b-(float)Math.sqrt(disc))/(2*a);if(t>=0 && t<best)best=t; }
+        }
+        return best;
+    }
     public static Position steering(int chapter,float x,float z,float tx,float tz) {
         float sx=0,sz=0,dx=tx-x,dz=tz-z,d=(float)Math.hypot(dx,dz);if(d<.01f)return new Position(0,0);
         dx/=d;dz/=d;

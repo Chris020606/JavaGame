@@ -374,8 +374,8 @@ public class InputSmokeTest {
         check(game.tutorial()!=null,"Second new player incorrectly skipped tutorial after prior completion");game.finishTutorial();
         check(new PlayerSaves(profile).entries().size()>=2,"New player erased the previous campaign");
         game.setState(GameState.MAIN_MENU);int mx=(GetScreenWidth()-640)/2,my=(GetScreenHeight()-420)/2;
-        click(game,mx+140,my+424);check(game.getState()==GameState.PLAYER_HISTORY,"Player history menu did not open");for(int f=0;f<3;f++)frame(game);capture("player-history");
-        click(game,(GetScreenWidth()-760)/2+660,55+85+40);check(game.getState()==GameState.PAUSED,"History continue did not restore selected save");
+        click(game,mx+140,my+366);check(game.getState()==GameState.PLAYER_HISTORY,"Player history menu did not open");for(int f=0;f<3;f++)frame(game);capture("player-history");
+        click(game,(GetScreenWidth()-760)/2+590,55+85+40);check(game.getState()==GameState.PAUSED,"History continue did not restore selected save");
         game.pointerAim(false);
         Settings bindings=new Settings();bindings.load(profile.resolve("settings.properties"));
         int forward=bindings.controls.key(Config.Controls.Action.FORWARD),strike=bindings.controls.key(Config.Controls.Action.SLASH),dodge=bindings.controls.key(Config.Controls.Action.DODGE),charge=bindings.controls.key(Config.Controls.Action.HEAVY),parry=bindings.controls.key(Config.Controls.Action.PARRY),gear=bindings.controls.key(Config.Controls.Action.INVENTORY);
@@ -464,12 +464,44 @@ public class InputSmokeTest {
                     check(game.loadCurrent(),"Art scene failed to load");game.photoMode(true);
                     Camera3D camera=game.getSceneManager().getOpenScene().getCameraController().getCamera();camera._position().x(24).y(22).z(30);camera.target().x(0).y(0).z(0);
                     for(int f=0;f<4;f++)frame(game);capture("art-chapter-"+chapter);
+                    if(chapter==0) { float phase=game.dayPhase();game.dayPhase(.75f);for(int f=0;f<4;f++)frame(game);capture("art-meadow-night");game.dayPhase(phase); }
                 }
                 game.photoMode(false);game.setState(GameState.MAIN_MENU);for(int f=0;f<3;f++)frame(game);capture("art-main");
                 int x=(GetScreenWidth()-640)/2,y=(GetScreenHeight()-420)/2;
-                click(game,x+90,y+366);for(int f=0;f<3;f++)frame(game);capture("art-settings");
-                key(game,KEY_ESCAPE);click(game,x+100,y+424);for(int f=0;f<3;f++)frame(game);capture("art-history");
+                click(game,x+460,y+366);for(int f=0;f<3;f++)frame(game);capture("art-settings");
+                key(game,KEY_ESCAPE);click(game,x+100,y+366);for(int f=0;f<3;f++)frame(game);capture("art-history");
                 System.out.println("PASS: four chapter road/ambient renders and main/settings/history visual capture");return;
+            }
+            if(java.util.Arrays.asList(args).contains("--profile-review")) {
+                for(int n=0;n<3;n++) { game.setState(GameState.MAIN_MENU);key(game,KEY_ENTER);key(game,KEY_ENTER); }
+                game.setState(GameState.MAIN_MENU);int mx=(GetScreenWidth()-640)/2,my=(GetScreenHeight()-420)/2;
+                click(game,mx+140,my+366);for(int f=0;f<3;f++)frame(game);capture("profiles-footer");
+                int sx=(GetScreenWidth()-760)/2;click(game,sx+710,55+85+40);for(int f=0;f<3;f++)frame(game);capture("profiles-delete-confirm");
+                int dx=(GetScreenWidth()-540)/2,dy=(GetScreenHeight()-230)/2;
+                click(game,dx+130,dy+185);check(new PlayerSaves(profile).entries().size()==3,"Cancel deleted a player");
+                click(game,sx+710,55+85+40);click(game,dx+390,dy+185);
+                check(new PlayerSaves(profile).entries().size()==2,"Delete did not remove exactly one player");
+                check(!java.nio.file.Files.exists(profile.resolve("save.properties")),"Active deleted save remained loadable");
+                click(game,sx+590,55+85+40);check(game.getState()==GameState.PAUSED,"Remaining player failed to load");
+                System.out.println("PASS: player delete confirmation/cancel, active save removal and remaining player load");return;
+            }
+            if(java.util.Arrays.asList(args).contains("--cover-review")) {
+                var obstacle=ArenaNavigation.obstacles(0).stream().filter(p->p.x()<-18 && p.z()>0).findFirst().orElseThrow();
+                var target=new Entities.Enemy(obstacle.x()+3,obstacle.z(),1);
+                SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Cover",obstacle.x()-3,obstacle.z(),90,new Progression(HeroClass.ARCHER),new WaveDirector.State(1,0,1,8,0,21,0),java.util.List.of(target),Arena.HIGHLANDS));
+                check(game.loadCurrent(),"Cover fixture failed");key(game,KEY_ENTER);target=game.getEnemies().getFirst();target.stun=target.cooldown=100;
+                for(int f=0;f<25;f++)frame(game);key(game,KEY_SPACE);for(int f=0;f<60;f++)frame(game);
+                check(target.health==target.maxHealth && game.getHeroShots().isEmpty(),"Player arrow passed through a tree");capture("cover-blocked");
+                game.getPlayer().getPosition().z(obstacle.z()-3);target.z=obstacle.z()-3;game.getPlayer().getRotation().y(90);
+                key(game,KEY_SPACE);for(int f=0;f<60;f++)frame(game);check(target.health<target.maxHealth,"Open arrow path failed after taking cover");
+                var shooter=new Entities.Enemy(obstacle.x()+3,obstacle.z(),1,3,.5f);
+                SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Cover",obstacle.x()-3,obstacle.z(),90,new Progression(),new WaveDirector.State(1,0,1,8,0,21,0),java.util.List.of(shooter),Arena.HIGHLANDS));
+                check(game.loadCurrent(),"Enemy cover fixture failed");key(game,KEY_ENTER);
+                for(int f=0;f<60;f++)frame(game);
+                check(game.getEnemies().getFirst().attackTime==0 && game.getProgression().health()==game.getProgression().maxHealth(),"Enemy fired through covered sight line");
+                for(int f=0;f<400;f++)frame(game);
+                check(game.getProgression().health()<game.getProgression().maxHealth(),"Ranged enemy never found a clear shot around cover");
+                System.out.println("PASS: player arrows stop at scenery; open shots hit; ranged enemy repositions for a clear attack");return;
             }
             if(java.util.Arrays.asList(args).contains("--hud-review")) { hudRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--support-review")) { restorativeWeaponRegression(game,profile);return; }
@@ -865,7 +897,7 @@ public class InputSmokeTest {
             for(int i=0;i<3;i++)frame(game);capture("ui-campaign-victory");
             key(game,KEY_ENTER);check(game.getState()==GameState.MAIN_MENU,"Victory did not return to menu");
             int mx=(GetScreenWidth()-640)/2,my=(GetScreenHeight()-420)/2;
-            event(MOUSE_POSITION,mx+420,my+366);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
+            event(MOUSE_POSITION,mx+140,my+424);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
             event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);frame(game);
             check(game.getState()==GameState.JOURNAL,"Chronicle button failed");
             for(int i=0;i<3;i++)frame(game);capture("ui-chronicle");

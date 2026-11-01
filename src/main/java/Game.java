@@ -25,6 +25,8 @@ public class Game {
     private final PlayerSaves playerSaves=new PlayerSaves(AppData.directory());
     private java.util.List<PlayerSaves.Entry> playerHistory=java.util.List.of();
     private int historyPage;
+    private PlayerSaves.Entry pendingDelete;
+    private String historyMessage="";
     private Tutorial tutorial;
     private SaveGame.Snapshot practiceReturn;
     private GameState practiceReturnState;
@@ -226,7 +228,7 @@ public class Game {
         if((state==GameState.PLAYING || state==GameState.LEVEL_COMPLETE) && settings.controls.pressed(INTERACT) && nearBase() && enemies.isEmpty() && director.remaining()==0 && progress.expedition().embers()>0 && !progress.expedition().offers().isEmpty()) {
             blessingReturn=state;state=GameState.RELIC_CHOICE;return;
         }
-        if(state==GameState.PLAYER_HISTORY) { if(IsKeyPressed(KEY_ESCAPE))state=GameState.MAIN_MENU;return; }
+        if(state==GameState.PLAYER_HISTORY) { if(IsKeyPressed(KEY_ESCAPE)) { if(pendingDelete!=null)pendingDelete=null;else state=GameState.MAIN_MENU; }return; }
         if(state==GameState.PLAYTEST_SETUP) {
             if(IsKeyPressed(KEY_ESCAPE))state=playtestReturn;
             else if(IsKeyPressed(KEY_ENTER))startPlaytest();
@@ -452,7 +454,7 @@ public class Game {
             }
             if (enemy.stun<=0 && enemy.attackTime<=0 && enemy.cooldown<=0 && enemy.distance(tx,tz)<enemy.attackRange() && enemy.facingTarget(tx,tz) && (!huntsPlayer || SquadTactics.canJoinAssault(enemy,enemies)))
             {
-                if(enemy.ranged() && !SquadTactics.clearShot(enemy,tx,tz,enemies)) { enemy.sideStepTime=.65f;continue; }
+                if(enemy.ranged() && (!SquadTactics.clearShot(enemy,tx,tz,enemies) || ArenaNavigation.projectileFraction(chapterIndex(),enemy.x,enemy.z,tx,tz)<1)) { enemy.sideStepTime=.65f;continue; }
                 float lead=enemy.ranged() && huntsPlayer?Math.min(.6f,enemy.distance(px,pz)/10)*(.45f+(1-enemy.difficulty.cadence)) : 0;
                 enemy.beginAttack(Math.max(-22,Math.min(22,tx+heroVx*lead)),Math.max(-22,Math.min(22,tz+heroVz*lead)),huntsPlayer);
                 enemy.targetsTraveler=huntsTraveler;
@@ -469,6 +471,8 @@ public class Game {
         }
         for (Iterator<HeroShot> shots=heroShots.iterator();shots.hasNext();) {
             HeroShot shot=shots.next(); shot.update(dt);
+            float obstruction=ArenaNavigation.projectileFraction(chapterIndex(),shot.previousX,shot.previousZ,shot.x,shot.z);
+            if(obstruction<1) { shot.x=shot.previousX+(shot.x-shot.previousX)*obstruction;shot.z=shot.previousZ+(shot.z-shot.previousZ)*obstruction;vfx.impact(shot.x,shot.z,Menu.MUTED,false); }
             boolean stopped=false;
             if(shot.restorative) {
                 FieldEvent ally=progress.fieldEvent();
@@ -487,11 +491,13 @@ public class Game {
                 feedback.add(enemy.x,enemy.z,"-"+Math.round(damage),Menu.GOLD); audio.play("hit");connected(enemy,shot.heavy,shot.charged);
                 if (!shot.magic) { stopped=true;break; }
             }
-            if (stopped || shot.remaining<=0) shots.remove();
+            if (stopped || obstruction<1 || shot.remaining<=0) shots.remove();
         }
         separateEnemies(dt);
         for (Iterator<Projectile> shots=projectiles.iterator();shots.hasNext();) {
             Projectile shot=shots.next(); shot.update(dt);
+            float obstruction=ArenaNavigation.projectileFraction(chapterIndex(),shot.previousX,shot.previousZ,shot.x,shot.z);
+            if(obstruction<1) { shot.x=shot.previousX+(shot.x-shot.previousX)*obstruction;shot.z=shot.previousZ+(shot.z-shot.previousZ)*obstruction;vfx.impact(shot.x,shot.z,Menu.MUTED,false); }
             boolean hit=shot.travelerTarget?event.vulnerable() && shot.hits(event.x(),event.z(),.8f):shot.playerTarget?shot.hits(px,pz,.65f):shot.hits(0,0,1.8f);
             if (hit) {
                 if(shot.travelerTarget) { event.damage(shot.damage);vfx.impact(event.x(),event.z(),Menu.RED,false);audio.play("hurt"); }
@@ -501,7 +507,7 @@ public class Game {
                     feedback.add(0,0,"OUTPOST -"+Math.round(before-progress.baseHealth()),Menu.RED);audio.play("hurt");
                 }
             }
-            if (hit || shot.life<=0) shots.remove();
+            if (hit || obstruction<1 || shot.life<=0) shots.remove();
         }
         for(Iterator<BossHazard> hazards=bossHazards.iterator();hazards.hasNext();) {
             BossHazard hazard=hazards.next();hazard.update(dt);
@@ -603,9 +609,9 @@ public class Game {
             drawHud();
             if(tutorial!=null && !inventory && !workshop)drawTutorial();
             if(tutorial==null && storyTime>0 && state==GameState.PLAYING && !inventory && !workshop) {
-                Menu.panel(24,190,270,132);
-                Menu.text("CHAPTER "+(chapterIndex()+1)+" / "+chapter().title(),38,200,14,Menu.GOLD);
-                Menu.wrapped(chapter().story(),38,228,240,16,Menu.TEXT);
+                Menu.panel(GetScreenWidth()-294,254,270,132);
+                Menu.text("CHAPTER "+(chapterIndex()+1)+" / "+chapter().title(),GetScreenWidth()-280,264,14,Menu.GOLD);
+                Menu.wrapped(chapter().story(),GetScreenWidth()-280,292,240,16,Menu.TEXT);
             }
             if((state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY) && !inventory) drawChapterEnd();
             if(state==GameState.JOURNAL) drawJournal();
@@ -686,31 +692,29 @@ public class Game {
     }
     private void drawHud() {
         int w=GetScreenWidth(),h=GetScreenHeight();
-        boolean compact=w<1000;int identity=compact?150:218;
-        Menu.panel(16,20,identity,70);
-        Menu.icon(progress.heroClass()==HeroClass.WARRIOR?"sword":progress.heroClass()==HeroClass.ARCHER?"bow":"staff",28,34,22,Menu.GOLD);
-        Menu.text(progress.heroClass().label.toUpperCase(),60,31,14,Menu.TEXT);Menu.text(player.getName(),60,49,11,Menu.MUTED);
-        Menu.text((compact?"":(playtest?"PLAYTEST":progress.difficulty().label.toUpperCase())+" / ")+"LV "+progress.characterLevel()+" / DEF "+progress.defense(),28,64,11,Menu.MUTED);
-        int top=w/2-130;
-        Menu.panel(top,20,260,82);
-        Menu.center(tutorial!=null?"TUTORIAL / SAFE PRACTICE":"LEVEL "+(chapterIndex()+1)+" / "+chapter().title(),w/2,29,14,Menu.GOLD);
+        boolean compact=w<1000;
+        int chapterCenter=compact?(w+216-140)/2:w/2;
+        int top=chapterCenter-(compact?116:130);
+        Menu.panel(top,20,compact?232:260,82);
+        Menu.center(tutorial!=null?"TUTORIAL / SAFE PRACTICE":"LEVEL "+(chapterIndex()+1)+" / "+chapter().title(),chapterCenter,29,compact?11:14,Menu.GOLD);
         int left=chapter().waves()-chapter().cleared(wave,director.remaining(),enemies.size(),director.total());
-        Menu.center(tutorial!=null?"LESSON "+Math.min(8,tutorial.step().ordinal()+1)+" OF 8":chapter().bossOnly()?"BOSS ONLY  /  "+enemies.size()+" HOSTILES":"WAVE "+Math.max(0,wave-chapter().first()+1)+" / "+chapter().waves()+"   -   "+left+" LEFT",w/2,54,14,Menu.TEXT);
-        Menu.center(tutorial!=null?"No raids / Your campaign is safe":state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY?"THE SANCTUARY ENDURES":director.remaining()>0?director.remaining()+" reinforcements approaching":enemies.isEmpty()?WaveFormation.label(wave+1)+" / "+(int)Math.ceil(nextWave)+"s":"Protect the sanctuary",w/2,77,11,Menu.MUTED);
-        Menu.panel(w-156,20,140,62);Menu.icon("crystal",w-144,38,20,Menu.GOLD);
-        Menu.text("CRYSTALS",w-114,29,10,Menu.MUTED);Menu.text(String.valueOf(progress.crystals()),w-114,46,20,Menu.GOLD);
-        if(w>=1000)drawMinimap(w-184,102);
+        Menu.center(tutorial!=null?"LESSON "+Math.min(8,tutorial.step().ordinal()+1)+" OF 8":chapter().bossOnly()?"BOSS ONLY  /  "+enemies.size()+" HOSTILES":"WAVE "+Math.max(0,wave-chapter().first()+1)+" / "+chapter().waves()+"   -   "+left+" LEFT",chapterCenter,54,compact?12:14,Menu.TEXT);
+        Menu.center(tutorial!=null?"No raids / Your campaign is safe":state==GameState.LEVEL_COMPLETE || state==GameState.VICTORY?"THE SANCTUARY ENDURES":director.remaining()>0?director.remaining()+" reinforcements approaching":enemies.isEmpty()?WaveFormation.label(wave+1)+" / "+(int)Math.ceil(nextWave)+"s":"Protect the sanctuary",chapterCenter,77,compact?9:11,Menu.MUTED);
+        int currencyY=20;
+        Menu.panel(w-156,currencyY,140,48);Menu.icon("crystal",w-144,currencyY+14,20,Menu.GOLD);
+        Menu.text("CRYSTALS",w-114,currencyY+6,10,Menu.MUTED);Menu.text(String.valueOf(progress.crystals()),w-114,currencyY+22,17,Menu.GOLD);
+        if(w>=1000)drawMinimap(w-184,82);
         if(state==GameState.PLAYING && !inventory && !workshop)drawCombatCues();
-        int sy=compact?h-178:112,sw=compact?130:208;
-        Menu.panel(16,sy,sw,72);Menu.text("SANCTUARY HEALTH",28,sy+8,compact?10:13,Menu.GOLD);
+        int sy=180,sw=compact?130:208;
+        Menu.panel(16,sy,sw,80);Menu.text("SANCTUARY HEALTH",28,sy+8,compact?10:13,Menu.GOLD);
         Menu.text((int)progress.baseHealth()+" / "+progress.maxBaseHealth(),28,sy+26,18,Menu.TEXT);
-        Menu.bar(28,sy+44,sw-24,progress.baseHealth(),progress.maxBaseHealth(),Menu.GOLD);
+        Menu.bar(28,sy+48,sw-24,progress.baseHealth(),progress.maxBaseHealth(),Menu.GOLD);
         String sanctuaryCue=nearBase()?(compact?"+"+Math.round(progress.healRate())+" HP/s  "+settings.controls.label(INTERACT)+" +100/30CR":"+"+Math.round(progress.healRate())+" HP/s / "+settings.controls.label(INTERACT)+" +100 / 30 CR"):"CENTER "+String.format("%.0f",sanctuaryDistance())+"m / RADAR";
-        Menu.text(sanctuaryCue,28,sy+58,compact?8:9,nearBase()?Menu.TEAL:Menu.MUTED);
+        Menu.text(sanctuaryCue,28,sy+62,compact?8:9,nearBase()?Menu.TEAL:Menu.MUTED);
         if(progress.baseLevel()>=2 && !compact && storyTime<=0) {
-            Menu.panel(16,sy+78,208,43);
-            Menu.text(guardianCooldown>0?"WARD RECHARGING":"WARD READY / 9m RANGE",28,sy+85,10,Menu.TEAL);
-            Menu.bar(28,sy+106,184,SanctuaryWard.INTERVAL-guardianCooldown,SanctuaryWard.INTERVAL,Menu.TEAL);
+            Menu.panel(16,sy+86,208,43);
+            Menu.text(guardianCooldown>0?"WARD RECHARGING":"WARD READY / 9m RANGE",28,sy+93,10,Menu.TEAL);
+            Menu.bar(28,sy+114,184,SanctuaryWard.INTERVAL-guardianCooldown,SanctuaryWard.INTERVAL,Menu.TEAL);
         }
         hudScreen.draw(progress,player,settings.controls,new HudScreen.CombatState(attackCooldown,activeAttack.duration(),activeAttack.impact(),heavyCharge,combo,comboWindow,mastery.label(progress.heroClass()),mastery.stacks()>0));
         if(!compact) {
@@ -720,7 +724,7 @@ public class Game {
             Menu.text(settings.controls.label(SAVE)+" SAVE / "+settings.controls.label(INTERACT)+" INTERACT",w-220,h-27,10,Menu.MUTED);
         }
         if(progress.expedition().embers()>0) {
-            if(compact)Menu.text(progress.expedition().embers()+" EMBERS / "+settings.controls.label(INTERACT),28,110,11,Menu.GOLD);
+            if(compact)Menu.text(progress.expedition().embers()+" EMBERS / "+settings.controls.label(INTERACT),28,270,11,Menu.GOLD);
             else {
                 int by=h<740?h-202:h-250;
                 Menu.panel(16,by,218,54);Menu.text(progress.expedition().embers()+" EMBER BLESSING"+(progress.expedition().embers()>1?"S":""),28,by+9,14,Menu.GOLD);
@@ -774,17 +778,34 @@ public class Game {
         if(playerHistory.isEmpty())Menu.text("Create your first warden with New Game.",x,y+110,22,Menu.GOLD);
         for(int row=0;row<5;row++) {
             int index=historyPage*5+row;if(index>=playerHistory.size())break;
-            var entry=playerHistory.get(index);var saved=entry.snapshot();int top=y+85+row*96;
+            var entry=playerHistory.get(index);var saved=entry.snapshot();int top=y+85+row*90;
             Menu.panel(x,top,760,86);Menu.text(saved.name()+" / "+saved.progression().heroClass().label,x+16,top+12,21,Menu.TEXT);
             Menu.text("Chapter "+(Campaign.index(saved.wave().total()==0?saved.wave().wave()+1:saved.wave().wave())+1)+" / "+saved.progression().difficulty().label+" / "+saved.progression().kills()+" defeats",x+16,top+43,15,Menu.MUTED);
             Menu.text("Saved "+java.time.Instant.ofEpochMilli(entry.updated()).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime().format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy  HH:mm")),x+16,top+65,11,Menu.MUTED);
-            if(Menu.button("CONTINUE",x+590,top+19,150,true)) {
+            if(Menu.button("CONTINUE",x+530,top+19,124,pendingDelete==null)) {
                 try { playerSaves.activate(entry,savePath,checkpointPath);loadCurrent(); }catch(IOException e) { menuMessage="Could not load this player."; }return;
             }
+            if(Menu.button("DELETE",x+672,top+19,74,pendingDelete==null))pendingDelete=entry;
         }
-        if(Menu.button("PREVIOUS",x,y+580,180,historyPage>0))historyPage--;
-        if(Menu.button("NEXT",x+200,y+580,180,(historyPage+1)*5<playerHistory.size()))historyPage++;
-        if(Menu.button("BACK",x+560,y+580,200,true))state=GameState.MAIN_MENU;
+        DrawLine(x,y+550,x+760,y+550,Menu.LINE);
+        if(Menu.button("BACK",x,y+565,180,pendingDelete==null))state=GameState.MAIN_MENU;
+        Menu.text(playerHistory.size()+" WARDENS",x+230,y+580,14,Menu.MUTED);
+        if(Menu.button("<",x+548,y+565,48,pendingDelete==null && historyPage>0))historyPage--;
+        Menu.center((historyPage+1)+" / "+Math.max(1,(playerHistory.size()+4)/5),x+654,y+579,16,Menu.TEXT);
+        if(Menu.button(">",x+712,y+565,48,pendingDelete==null && (historyPage+1)*5<playerHistory.size()))historyPage++;
+        if(!historyMessage.isEmpty())Menu.text(historyMessage,x,y+62,14,Menu.RED);
+        if(pendingDelete!=null) {
+            dim();int dx=(GetScreenWidth()-540)/2,dy=(GetScreenHeight()-230)/2;
+            Menu.panel(dx,dy,540,230);Menu.text("DELETE THIS WARDEN?",dx+24,dy+22,26,Menu.GOLD);
+            Menu.text(pendingDelete.snapshot().name()+" / "+pendingDelete.snapshot().progression().heroClass().label,dx+24,dy+68,20,Menu.TEXT);
+            Menu.wrapped("Their adventure and chapter checkpoint will be removed. This cannot be undone.",dx+24,dy+105,490,16,Menu.MUTED);
+            if(Menu.button("CANCEL",dx+24,dy+164,230,true))pendingDelete=null;
+            if(Menu.button("DELETE WARDEN",dx+278,dy+164,238,true)) {
+                try { playerSaves.delete(pendingDelete,savePath,checkpointPath);if(!Files.exists(savePath)) { settings.playerName="Warden";persistSettings(); }playerHistory=playerSaves.entries();historyPage=Math.min(historyPage,Math.max(0,(playerHistory.size()-1)/5)); }
+                catch(IOException e) { historyMessage="Could not delete this save. Please try again."; }
+                pendingDelete=null;
+            }
+        }
     }
     private void drawCombatCues() {
         if(pointerAim && !IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
@@ -820,15 +841,15 @@ public class Game {
         Menu.text("Guard the light. Bring back the dawn.", x, y+132, 24, Menu.GOLD);
         Menu.text("A WARDEN'S CHRONICLE / FOUR CHAPTERS", x, y+193, 15, Menu.MUTED);
         Menu.text("Welcome, "+settings.playerName+". Your next defense awaits.", x, y+224, 18, Menu.TEXT);
-        if (Menu.button("NEW GAME [ENTER]", x, y+285, 280, true)) requestNewGame();
-        if (Menu.button("LOAD GAME",x+300,y+285,160,Files.exists(savePath))) loadCurrent();
-        if (Menu.button("QUIT", x+480, y+285, 140, true)) quitRequested = true;
-        if (Menu.button("SETTINGS",x,y+344,200,true)) openSettings();
-        if(Menu.button("CHRONICLE / THE LAST EMBER",x+220,y+344,400,true)) { journalReturn=state;state=GameState.JOURNAL; }
-        if(Menu.button("PLAYERS & SAVES",x,y+402,280,true)) {
+        if (Menu.primaryButton("NEW GAME", x, y+285, 300)) requestNewGame();
+        if (Menu.button("LOAD GAME",x+320,y+285,300,Files.exists(savePath))) loadCurrent();
+        if (Menu.button("QUIT", x+320, y+402, 300, true)) quitRequested = true;
+        if (Menu.button("SETTINGS",x+320,y+344,300,true)) openSettings();
+        if(Menu.button("CHRONICLE",x,y+402,300,true)) { journalReturn=state;state=GameState.JOURNAL; }
+        if(Menu.button("PLAYERS & SAVES",x,y+344,300,true)) {
             try {
                 if(Files.exists(savePath))try { playerSaves.save(SaveGame.read(savePath),checkpointPath); }catch(IOException damaged) { menuMessage="Current save could not be imported."; }
-                playerHistory=playerSaves.entries();historyPage=0;state=GameState.PLAYER_HISTORY;
+                playerHistory=playerSaves.entries();historyPage=0;pendingDelete=null;historyMessage="";state=GameState.PLAYER_HISTORY;
             }
             catch(IOException e) { menuMessage="Could not open player saves."; }
         }

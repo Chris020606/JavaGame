@@ -41,6 +41,14 @@ public final class PlayerSaves {
         }
         result.sort(Comparator.comparingLong(Entry::updated).reversed());return List.copyOf(result);
     }
+    public void delete(Entry entry,Path current,Path checkpoint) throws IOException {
+        if(!entry.id().matches("[a-zA-Z0-9-]+"))throw new IOException("Invalid player identifier");
+        if(entry.id().equals(active())) {
+            for(Path path:List.of(current,checkpoint,current.resolveSibling(current.getFileName()+".bak"),checkpoint.resolveSibling(checkpoint.getFileName()+".bak"),root.resolve("active.properties"),root.resolve("active.properties.bak")))Files.deleteIfExists(path);
+            active=null;
+        }
+        for(String suffix:List.of(".properties",".properties.bak",".checkpoint"))Files.deleteIfExists(root.resolve(entry.id()+suffix));
+    }
     public void activate(Entry entry,Path current,Path checkpoint) throws IOException {
         SaveGame.Snapshot snapshot=SaveGame.read(root.resolve(entry.id+".properties"));
         SaveGame.write(current,snapshot);Path source=root.resolve(entry.id+".checkpoint");

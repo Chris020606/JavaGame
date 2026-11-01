@@ -130,6 +130,12 @@ public class Menu {
         int fill=(int)(w*Math.max(0,Math.min(1,value/Math.max(1,max))));DrawRectangle(x,y,fill,8,color);
         DrawLine(x,y,x+fill,y,Fade(TEXT,.3f));
     }
+    public static boolean primaryButton(String label,int x,int y,int width) {
+        Vector2 mouse=GetMousePosition();boolean hover=mouse.x()>=x && mouse.x()<=x+width && mouse.y()>=y && mouse.y()<=y+44;
+        frame(x,y,width,44,hover?color(239,198,113):color(195,151,72),GOLD);
+        icon("sword",x+16,y+12,20,INK);center(label,x+width/2+8,y+12,19,INK);
+        return hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    }
     public static boolean button(String label, int x, int y, int w, boolean enabled) {
         Vector2 mouse = GetMousePosition();
         boolean hover = mouse.x() >= x && mouse.x() <= x+w && mouse.y() >= y && mouse.y() <= y+44;

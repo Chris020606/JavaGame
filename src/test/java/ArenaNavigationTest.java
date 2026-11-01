@@ -22,6 +22,13 @@ class ArenaNavigationTest {
         }
         assertTrue(enemy.distance(tx,tz)<2,"Enemy became stuck behind scenery");
     }
+    @Test void projectileSweepFindsCoverBeforeTargetsAndLeavesClearShotsAlone() {
+        var o=ArenaNavigation.obstacles(0).stream().filter(p->p.x()<-18 && p.z()>0).findFirst().orElseThrow();
+        float fraction=ArenaNavigation.projectileFraction(0,o.x()-3,o.z(),o.x()+3,o.z());
+        assertTrue(fraction>0 && fraction<.5f);
+        assertEquals(0,ArenaNavigation.projectileFraction(0,o.x(),o.z(),o.x()+3,o.z()));
+        assertEquals(1,ArenaNavigation.projectileFraction(0,-3,0,3,0));
+    }
     @Test void overlapRecoveryAndSteeringStayFinite() {
         for(int c=0;c<4;c++)for(var o:ArenaNavigation.obstacles(c)) {
             var p=ArenaNavigation.move(c,o.x(),o.z(),o.x(),o.z(),.4f);

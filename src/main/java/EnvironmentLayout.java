@@ -70,6 +70,10 @@ public final class EnvironmentLayout {
             cemeteryWall(p);g(p,"iron-fence-border-gate",0,-24,0,5);
             g(p,"fire-basket",-4,-17,0,2.7f);g(p,"fire-basket",5,-18,0,2.4f);
         }
+        // Warm wayfinding lamps sit outside the road and sanctuary, rather than in combat lanes.
+        for(int waypoint:new int[]{2,4}) {
+            Point point=PATHS.get(chapter).get(waypoint);g(p,"lightpost-single",point.x()+3.5f,point.z()+2,0,2.8f);
+        }
         // Mixed-scale groves form an irregular horizon beyond the playable boundary.
         float[][] groves={{-35,-27},{-41,4},{-28,35},{5,42},{34,29},{43,-4},{29,-34},{-4,-44}};
         for(float[] grove:groves) for(int i=0;i<9;i++) {

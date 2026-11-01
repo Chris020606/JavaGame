@@ -10,16 +10,17 @@ public final class HudScreen {
     public void draw(Progression p,Player player,Controls controls,CombatState state) {
         HudLayout layout=new HudLayout(GetScreenWidth(),GetScreenHeight());int x=layout.x(),y=layout.y(),span=layout.span();
         boolean compact=GetScreenWidth()<1000;
-        Menu.frame(x-(compact?8:76),y-120,span+(compact?16:84),93,Menu.PANEL,Menu.GOLD);
-        if(!compact) {
-        DrawCircle(x-38,y-76,32,Menu.GOLD);DrawCircle(x-38,y-76,29,Menu.INK);
-        DrawCircle(x-38,y-76,26,Menu.color(36,53,72));
+        int frameWidth=compact?216:320,fx=16,fy=20;
+        Menu.panel(fx,fy,frameWidth,138);
+        DrawRectangle(fx+1,fy+10,3,118,Menu.GOLD);
         String crest=p.heroClass()==HeroClass.WARRIOR?"sword":p.heroClass()==HeroClass.ARCHER?"bow":"staff";
-        Menu.icon(crest,x-53,y-94,30,Menu.GOLD);
-        Menu.center("LV "+p.characterLevel(),x-38,y-60,10,Menu.TEXT);
-        }
-        Menu.resourceBar(x,y-111,span,32,p.health(),p.maxHealth(),p.health()<p.maxHealth()*.25f?Menu.RED:Menu.color(49,153,94),"HEALTH");
-        Menu.resourceBar(x,y-73,span,25,player.discipline().stamina(),p.maxStamina(),Menu.color(190,147,48),"STAMINA");
+        Menu.icon(crest,fx+14,fy+12,18,Menu.GOLD);
+        String identity=player.getName()+" / LV "+p.characterLevel();int identitySize=14;
+        while(identitySize>9 && Menu.measure(identity,identitySize)>frameWidth-56)identitySize--;
+        Menu.text(identity,fx+42,fy+13,identitySize,Menu.TEXT);
+        Menu.text(p.heroClass().label+" / "+p.difficulty().label+" / DEF "+p.defense(),fx+14,fy+38,compact?9:11,Menu.MUTED);
+        Menu.resourceBar(fx+14,fy+60,frameWidth-28,30,p.health(),p.maxHealth(),p.health()<p.maxHealth()*.25f?Menu.RED:Menu.color(49,153,94),"HEALTH");
+        Menu.resourceBar(fx+14,fy+100,frameWidth-28,24,player.discipline().stamina(),p.maxStamina(),Menu.color(190,147,48),"STAMINA");
         DrawRectangle(x-8,y-144,span+16,22,Fade(Menu.INK,.9f));
         Menu.center(state.mastery(),GetScreenWidth()/2,y-139,11,state.empowered()?Menu.GOLD:Menu.TEXT);
         Menu.frame(x-8,y-8,span+16,78,Menu.PANEL,Menu.LINE);

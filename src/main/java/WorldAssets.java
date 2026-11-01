@@ -304,6 +304,10 @@ public final class WorldAssets implements AutoCloseable {
         for(var prop:EnvironmentLayout.props(chapter)) {
             if(prop.graveyard())graveAt(prop.model(),prop.x(),prop.y(),prop.z(),prop.yaw(),prop.scale());
             else sceneryAt(prop.model(),prop.x(),prop.y(),prop.z(),prop.yaw(),prop.scale());
+            if(!shadowPass && prop.model().equals("lightpost-single") && currentDay<.7f) {
+                float flicker=.35f+.035f*(float)Math.sin(time*6+prop.x());
+                DrawBillboard(viewCamera,skyGlow,v(prop.x(),prop.y()+prop.scale()*1.12f,prop.z()),.75f,Fade(Menu.GOLD,(1-currentDay)*flicker));
+            }
         }
         if(shadowPass)return;
         if(chapter==0 || chapter==2) {

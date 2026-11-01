@@ -20,7 +20,7 @@ Name your warden, choose **Easy, Normal, Hard, or Extreme**, and light the beaco
 
 New to the valley? Every newly created warden opens a safe, hands-on tutorial. Practice movement, aiming, attacks, dodging, charging, parrying, equipment, and sanctuary healing. Lessons advance when you perform the action. Lessons appear in a central panel with one action to follow. Skip training from that panel when you are ready. Your campaign stays separate.
 
-Your action belt puts strike, charge, parry, lunge, healing, and equipment together at the bottom of the screen. Click an action or use its shown key; hold the charge slot and release when the meter turns gold. A gold-trimmed class frame holds a large green health bar and a gold stamina bar, with numbers inside each meter. Hover an action slot to see what it does. The framed backpack shows your character, armor slots, item rarity, and equipment comparisons.
+Your action belt puts strike, charge, parry, lunge, healing, and equipment together at the bottom of the screen. Click an action or use its shown key; hold the charge slot and release when the meter turns gold. One top-left frame combines your name, class, difficulty, level and defense with a large green health bar and a gold stamina bar, with numbers inside each meter. Hover an action slot to see what it does. The framed backpack shows your character, armor slots, item rarity, and equipment comparisons.
 
 ![Green health and gold stamina in the new fantasy interface](docs/images/player-interface.png)
 
@@ -90,7 +90,7 @@ Hold **G** beside a supply cache to recover it; interact with a survivor or ways
 
 ## Your wardens and saves
 
-Choose **Players & Saves** on the title screen to see your created wardens, classes, chapters, difficulty, and defeat counts. Continue any of their adventures. Creating another warden preserves previous saves and chapter checkpoints. Existing saves are added to the history automatically when you open it or create a new character.
+Choose **Players & Saves** on the title screen to see your created wardens, classes, chapters, difficulty, and defeat counts. Continue any of their adventures, or choose **Delete** to remove a warden and their checkpoint after confirmation. Creating another warden preserves previous saves and chapter checkpoints. Existing saves are added to the history automatically when you open it or create a new character.
 
 Defeated? **Retry Chapter** restores the current warden's equipment and upgrades from chapter entry.
 
@@ -118,7 +118,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v3.0.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v3.1.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -127,6 +127,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **3.1:** unified top-left player frame, balanced title menu with a gold New Game button, cleaner save-library navigation and confirmed deletion, roadside lanterns, and scenery cover that blocks projectiles and makes ranged enemies reposition.
 - **3.0:** fantasy unit-frame health/stamina display, coordinated navy-and-gold menus, continuous lit curved roads and camp paths, flying birds and drifting meadow seeds.
 - **2.9:** tutorial for every new warden, central lessons, larger labeled vitals, independent player/save history, and simplified menus.
 - **2.8.1:** physical tree, stone and column footprints; collision-safe dashes; enemies steer around scenery.
@@ -150,7 +151,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–3.0 are development updates rather than published releases.
+Versions 1.3–3.1 are development updates rather than published releases.
 
 </details>
 
