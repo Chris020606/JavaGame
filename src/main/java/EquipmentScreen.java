@@ -20,7 +20,7 @@ public final class EquipmentScreen implements AutoCloseable {
         if(owner!=progress) { owner=progress;selected=progress.weaponTier();dragged=lastClicked=-1;filter=0; }
         Vector3 position=player.getPosition();float facing=player.getRotation().y();
         player.setPosition(new Vector3());player.getRotation().y(yaw);player.poseForInventory();assets.previewPass(shader);
-        BeginTextureMode(preview);ClearBackground(Menu.INK);DrawRectangleGradientV(0,0,640,800,Menu.color(61,69,57),Menu.color(24,32,31));BeginMode3D(camera);
+        BeginTextureMode(preview);ClearBackground(Menu.INK);DrawRectangleGradientV(0,0,640,800,Menu.color(48,65,91),Menu.color(18,25,40));BeginMode3D(camera);
         DrawCylinder(new Vector3().y(-.03f),.95f,.95f,.06f,32,Menu.color(93,83,59));
         assets.preparePlayer(player);assets.drawPlayerBody(player,progress,WHITE);
         assets.drawPlayerWeapon(player,progress.heroClass().ordinal(),progress.weaponTier());assets.drawArmor(player,progress);
@@ -68,7 +68,7 @@ public final class EquipmentScreen implements AutoCloseable {
         for(int i=0;i<3;i++) {
             int left=x+400+i*172;boolean hit=inside(mouse,left,y+56,166,25);
             if(hit && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { filter=i;selected=visible().get(0);dragged=lastClicked=-1; }
-            Menu.frame(left,y+56,166,25,filter==i?Menu.color(70,75,55):Menu.PANEL,filter==i?Menu.GOLD:Menu.LINE);Menu.center(filters[i],left+83,y+62,12,filter==i?Menu.GOLD:Menu.TEXT);
+            Menu.frame(left,y+56,166,25,filter==i?Menu.color(55,71,95):Menu.PANEL,filter==i?Menu.GOLD:Menu.LINE);Menu.center(filters[i],left+83,y+62,12,filter==i?Menu.GOLD:Menu.TEXT);
         }
         var ids=visible();int pos=Math.max(0,ids.indexOf(selected)),move=IsKeyPressed(KEY_RIGHT)?1:IsKeyPressed(KEY_LEFT)?-1:IsKeyPressed(KEY_DOWN)?6:IsKeyPressed(KEY_UP)?-6:0;
         if(move!=0)selected=ids.get(Math.max(0,Math.min(ids.size()-1,pos+move)));
@@ -107,7 +107,7 @@ public final class EquipmentScreen implements AutoCloseable {
             }
         }
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))dragged=-1;
-        Menu.frame(x+400,y+330,510,130,Menu.color(39,46,37),Menu.LINE);Menu.text(name(p,selected),x+416,y+340,23,tierColor(tier(selected)));
+        Menu.frame(x+400,y+330,510,130,Menu.color(28,39,58),Menu.LINE);Menu.text(name(p,selected),x+416,y+340,23,tierColor(tier(selected)));
         int delta=selected<4?p.weaponBonus(selected)-p.weaponBonus(p.weaponTier()):selected<16?p.armorBonus(slot(selected),tier(selected))-p.armorBonus(slot(selected),p.armorTier(slot(selected))):0;
         String compare=selected<4?"DAMAGE  "+p.damage()+"  >  "+(p.damage()+delta):selected<16?"DEFENSE  "+p.defense()+"  >  "+(p.defense()+delta):"Restores up to 60 HP / "+p.potions()+" stored";
         Menu.text(compare+(selected<16?String.format("  (%+d)",delta):""),x+416,y+377,17,delta<0?Menu.RED:delta>0?Menu.TEAL:Menu.TEXT);

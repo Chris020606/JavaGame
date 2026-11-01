@@ -1,8 +1,8 @@
 import static com.raylib.Raylib.*;
 
 public class Menu {
-    public static final Color INK = color(17,23,24), PANEL = color(33,39,38),
-        LINE = color(86,91,78), TEXT = color(246,231,198), MUTED = color(174,178,155),
+    public static final Color INK = color(12,17,28), PANEL = color(25,34,50),
+        LINE = color(116,103,76), TEXT = color(246,231,198), MUTED = color(174,178,155),
         GOLD = color(224,177,87), TEAL = color(99,188,156), RED = color(213,102,84);
     public static Color color(int r, int g, int b) {
         return new Color().r((byte)r).g((byte)g).b((byte)b).a((byte)255);
@@ -23,7 +23,8 @@ public class Menu {
     }
     public static void frame(int x,int y,int w,int h,Color fill,Color edge) {
         DrawRectangle(x+3,y+4,w,h,Fade(INK,.65f));DrawRectangle(x,y,w,h,INK);
-        DrawRectangle(x+2,y+2,w-4,h-4,fill);DrawRectangleLines(x,y,w,h,edge);
+        DrawRectangleGradientV(x+2,y+2,w-4,h-4,fill,Fade(fill,.78f));DrawRectangleLines(x,y,w,h,edge);
+        DrawRectangleLines(x+3,y+3,w-6,h-6,Fade(edge,.22f));
         DrawLine(x+2,y+2,x+w-3,y+2,Fade(TEXT,.16f));DrawLine(x+2,y+2,x+2,y+h-3,Fade(TEXT,.13f));
         DrawLine(x+3,y+h-3,x+w-3,y+h-3,Fade(INK,.7f));
     }
@@ -36,6 +37,17 @@ public class Menu {
         DrawPoly(new Vector2().x(x+size*.5f).y(y+size*.5f),4,size*.52f,0,LINE);
         if(amount>0)DrawPoly(new Vector2().x(x+size*.5f).y(y+size*.5f),4,size*.37f*(float)Math.sqrt(Math.min(1,amount)),0,color);
         DrawRectangle(x+size/2-1,y+size/4,2,2,Fade(TEXT,Math.min(1,amount)*.65f));
+    }
+    public static void resourceBar(int x,int y,int width,int height,float current,float maximum,Color fill,String label) {
+        frame(x,y,width,height,INK,GOLD);
+        int amount=Math.round((width-6)*Math.max(0,Math.min(1,current/Math.max(1,maximum))));
+        if(amount>0) {
+            DrawRectangleGradientV(x+3,y+3,amount,height-6,fill,Fade(fill,.66f));
+            DrawLine(x+4,y+4,x+Math.max(4,amount),y+4,Fade(TEXT,.35f));
+        }
+        text(label,x+10,y+(height-16)/2,13,TEXT);
+        String value=Math.round(current)+" / "+Math.round(maximum);
+        text(value,x+width-measure(value,14)-10,y+(height-17)/2,14,TEXT);
     }
     public static void text(String text, int x, int y, int size, Color color) {
         DrawTextEx(font(),text,new Vector2().x(x).y(y),size*1.15f,.5f,color);
@@ -121,7 +133,7 @@ public class Menu {
     public static boolean button(String label, int x, int y, int w, boolean enabled) {
         Vector2 mouse = GetMousePosition();
         boolean hover = mouse.x() >= x && mouse.x() <= x+w && mouse.y() >= y && mouse.y() <= y+44;
-        frame(x,y,w,44,enabled?(hover?color(70,83,69):color(47,56,49)):color(30,35,32),enabled?(hover?GOLD:LINE):LINE);
+        frame(x,y,w,44,enabled?(hover?color(56,73,99):color(33,46,68)):color(24,29,39),enabled?(hover?GOLD:LINE):LINE);
         DrawLine(x+4,y+40,x+w-5,y+40,enabled?Fade(GOLD,.45f):INK);
         Color foreground=enabled?TEXT:MUTED;
         String kind=w>=140?buttonIcon(label):null;

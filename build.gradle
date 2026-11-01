@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'outpost'
-version = '2.9.0'
+version = '3.0.0'
 repositories { mavenCentral() }
 
 dependencies {
@@ -35,7 +35,7 @@ def runtimeAssets = copySpec {
 }
 def guideImages = copySpec {
     from('docs/images') {
-        include 'player-meadow.png', 'player-welcome.png', 'player-warrior.png', 'player-mage.png', 'player-moonlight.png', 'player-victory.png', 'player-inventory.png'
+        include 'player-meadow.png', 'player-welcome.png', 'player-warrior.png', 'player-mage.png', 'player-moonlight.png', 'player-victory.png', 'player-inventory.png', 'player-interface.png'
     }
 }
 distributions {

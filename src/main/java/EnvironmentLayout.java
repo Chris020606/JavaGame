@@ -7,9 +7,9 @@ public final class EnvironmentLayout {
     private static final List<List<Prop>> CHAPTERS=new ArrayList<>();
     private static final List<List<Point>> PATHS=List.of(
         List.of(new Point(-5,-32),new Point(-4,-23),new Point(-2,-13),new Point(0,0),new Point(2,10),new Point(7,20),new Point(10,32)),
-        List.of(new Point(2,-30),new Point(2,-21),new Point(0,-10),new Point(0,0),new Point(3,12),new Point(2,23),new Point(2,31)),
+        List.of(new Point(2,-30),new Point(2,-21),new Point(0,-10),new Point(0,0),new Point(3,12),new Point(4,23),new Point(4,31)),
         List.of(new Point(-5,-32),new Point(-3,-22),new Point(0,-12),new Point(0,0),new Point(3,12),new Point(5,23),new Point(6,32)),
-        List.of(new Point(0,-32),new Point(0,-23),new Point(-2,-12),new Point(0,0),new Point(4,13),new Point(3,24),new Point(3,32)));
+        List.of(new Point(0,-32),new Point(0,-23),new Point(-2,-12),new Point(0,0),new Point(4,13),new Point(4,24),new Point(4,32)));
     static { for(int chapter=0;chapter<4;chapter++) CHAPTERS.add(build(chapter)); }
     private static void n(List<Prop> p,String name,float x,float z,float yaw,float scale) { p.add(new Prop(false,name,x,0,z,yaw,scale)); }
     private static void g(List<Prop> p,String name,float x,float z,float yaw,float scale) { p.add(new Prop(true,name,x,0,z,yaw,scale)); }

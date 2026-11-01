@@ -20,7 +20,9 @@ Name your warden, choose **Easy, Normal, Hard, or Extreme**, and light the beaco
 
 New to the valley? Every newly created warden opens a safe, hands-on tutorial. Practice movement, aiming, attacks, dodging, charging, parrying, equipment, and sanctuary healing. Lessons advance when you perform the action. Lessons appear in a central panel with one action to follow. Skip training from that panel when you are ready. Your campaign stays separate.
 
-Your action belt puts strike, charge, parry, lunge, healing, and equipment together at the bottom of the screen. Click an action or use its shown key; hold the charge slot and release when the meter turns gold. Slim labeled bars show health and stamina, and hovering a slot explains what it does. The framed backpack shows your character, armor slots, item rarity, and equipment comparisons.
+Your action belt puts strike, charge, parry, lunge, healing, and equipment together at the bottom of the screen. Click an action or use its shown key; hold the charge slot and release when the meter turns gold. A gold-trimmed class frame holds a large green health bar and a gold stamina bar, with numbers inside each meter. Hover an action slot to see what it does. The framed backpack shows your character, armor slots, item rarity, and equipment comparisons.
+
+![Green health and gold stamina in the new fantasy interface](docs/images/player-interface.png)
 
 ![The Warden's Pack with a character preview, fitted armor slots, item grid and equipment comparisons](docs/images/player-inventory.png)
 
@@ -53,6 +55,8 @@ Boss duels have a driving battle score that intensifies when the boss becomes en
 Fallen enemies remain on the ground, then fade where they fell. The meadow river continues into wooded banks beyond the clearing.
 
 Trees, large stones, and standing columns now have physical footprints. Dashes stop at them, and enemies steer around them. Foliage and open tents remain traversable.
+
+Curved dirt and stone roads follow each chapter through the sanctuary, with smaller paths into the camps. Their surfaces receive shadows and follow the day/night lighting. Birds cross the skyline while wind carries seeds through the meadow.
 
 Mountains rise beyond the clearing. Over an eight-minute cycle, the sun crosses the sky, daylight warms into sunset, and the moon and stars take over. Light and shadows change with them. The clock beside the radar shows the time, and your save remembers it.
 
@@ -114,7 +118,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v2.9.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v3.0.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -123,6 +127,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **3.0:** fantasy unit-frame health/stamina display, coordinated navy-and-gold menus, continuous lit curved roads and camp paths, flying birds and drifting meadow seeds.
 - **2.9:** tutorial for every new warden, central lessons, larger labeled vitals, independent player/save history, and simplified menus.
 - **2.8.1:** physical tree, stone and column footprints; collision-safe dashes; enemies steer around scenery.
 - **2.8:** chapter-entry checkpoints and retry, gold-marked elites with bonus crystals, and readable HUD backing on bright terrain.
@@ -145,7 +150,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–2.9 are development updates rather than published releases.
+Versions 1.3–3.0 are development updates rather than published releases.
 
 </details>
 

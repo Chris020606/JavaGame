@@ -304,6 +304,7 @@ public class InputSmokeTest {
         for(int i=0;i<85;i++)frame(game);
         click(game,belt.slotX(3)+20,row);check(game.currentAttack().label().contains("LUNGE"),"Lunge belt action failed");
         for(int i=0;i<70;i++)frame(game);
+        event(MOUSE_POSITION,50,50);
         for(int[] size:new int[][]{{1000,680},{1280,800},{640,480}}) {
             SetWindowSize(size[0],size[1]);for(int i=0;i<3;i++)frame(game);capture("ironwood-hud-"+size[0]);
             if(size[0]>=1000) { key(game,KEY_TAB);capture("ironwood-pack-"+size[0]);key(game,KEY_TAB); }
@@ -448,12 +449,27 @@ public class InputSmokeTest {
                 System.out.println("PASS: separate chapter checkpoint, retry restores entry kit, elite save/load and presentation");return;
             }
             if(java.util.Arrays.asList(args).contains("--onboarding-preview")) {
+                SetWindowSize(1000,680);for(int f=0;f<3;f++)frame(game);
                 reviewingTutorial=true;key(game,KEY_ENTER);key(game,KEY_ENTER);
                 check(game.tutorial()!=null,"New player tutorial missing");for(int f=0;f<3;f++)frame(game);capture("onboarding-center");
                 game.tutorial().movement(4);game.tutorial().hit(false);game.tutorial().hit(false);game.tutorial().dodge();
                 for(int f=0;f<3;f++)frame(game);capture("onboarding-charge");
                 game.tutorial().hit(true);for(int f=0;f<3;f++)frame(game);capture("onboarding-parry");
                 System.out.println("PASS: central onboarding panel and contextual charge/parry cues render");return;
+            }
+            if(java.util.Arrays.asList(args).contains("--art-review")) {
+                int[] waves={0,4,5,9};
+                for(int chapter=0;chapter<4;chapter++) {
+                    SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",0,8,0,new Progression(),new WaveDirector.State(waves[chapter],0,0,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
+                    check(game.loadCurrent(),"Art scene failed to load");game.photoMode(true);
+                    Camera3D camera=game.getSceneManager().getOpenScene().getCameraController().getCamera();camera._position().x(24).y(22).z(30);camera.target().x(0).y(0).z(0);
+                    for(int f=0;f<4;f++)frame(game);capture("art-chapter-"+chapter);
+                }
+                game.photoMode(false);game.setState(GameState.MAIN_MENU);for(int f=0;f<3;f++)frame(game);capture("art-main");
+                int x=(GetScreenWidth()-640)/2,y=(GetScreenHeight()-420)/2;
+                click(game,x+90,y+366);for(int f=0;f<3;f++)frame(game);capture("art-settings");
+                key(game,KEY_ESCAPE);click(game,x+100,y+424);for(int f=0;f<3;f++)frame(game);capture("art-history");
+                System.out.println("PASS: four chapter road/ambient renders and main/settings/history visual capture");return;
             }
             if(java.util.Arrays.asList(args).contains("--hud-review")) { hudRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--support-review")) { restorativeWeaponRegression(game,profile);return; }

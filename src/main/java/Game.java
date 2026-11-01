@@ -748,13 +748,13 @@ public class Game {
         }
     }
     private void drawTutorial() {
-        int width=Math.min(620,GetScreenWidth()-40),x=(GetScreenWidth()-width)/2,y=112;
+        int width=Math.max(300,Math.min(560,GetScreenWidth()-480)),x=(GetScreenWidth()-width)/2,y=112;
         Menu.panel(x,y,width,188);
         Menu.text("YOUR FIRST WATCH / LESSON "+Math.min(8,tutorial.step().ordinal()+1)+" OF 8",x+20,y+12,16,Menu.TEAL);
         Menu.text(tutorial.title(),x+20,y+39,24,Menu.GOLD);
         Menu.wrapped(tutorial.instruction(settings.controls,progress.heroClass()),x+20,y+77,width-40,18,Menu.TEXT);
         String hint=switch(tutorial.step()) {
-            case MOVE -> "RED: your health / GREEN: stamina / GOLD: sanctuary";
+            case MOVE -> "Green health / Gold stamina / Sanctuary health: upper left";
             case STRIKE -> "Hit the marked partner twice";
             case DODGE -> "Move + "+settings.controls.label(DODGE);
             case CHARGE -> heavyCharge>=.75f && heavyCharge<=1.05f?"RELEASE NOW":heavyCharge>1.05f?"Release, then try a shorter charge":"Hold "+settings.controls.label(HEAVY)+" - wait for gold";
@@ -763,11 +763,12 @@ public class Game {
             case HAVEN -> nearBase()?"Inside the healing ring - stay here":"Walk into the teal circle around the sanctuary";
             case COMPLETE -> "Your adventure is ready";
         };
-        Menu.text(hint,x+20,y+155,16,Menu.TEAL);
+        Menu.wrapped(hint,x+20,y+150,width-40,14,Menu.TEAL);
         if(Menu.button(tutorial.complete()?"BEGIN YOUR ADVENTURE":"SKIP TRAINING",x+20,y+196,tutorial.complete()?width-40:180,true))finishTutorial();
     }
     private void drawPlayerHistory() {
         dim();int x=(GetScreenWidth()-760)/2,y=55;
+        Menu.panel(x-20,30,800,650);
         Menu.text("PLAYERS & SAVES",x,y,32,Menu.TEXT);
         Menu.text("Each warden keeps their own adventure and chapter checkpoint.",x,y+43,16,Menu.MUTED);
         if(playerHistory.isEmpty())Menu.text("Create your first warden with New Game.",x,y+110,22,Menu.GOLD);
@@ -793,10 +794,7 @@ public class Game {
             DrawLine(x,y-r-4,x,y-r,color);DrawLine(x,y+r,x,y+r+4,color);
         }
         if(hitMarker>0)Menu.center("HIT",GetScreenWidth()/2,GetScreenHeight()/2+35,13,Menu.GOLD);
-        if(player.isAttacking()) {
-            String phase=attackElapsed<activeAttack.impact()?"WINDUP":player.attackRemaining()>=activeAttack.duration()*.48f?"CONTACT":player.attackRemaining()>.12f?"RECOVER / DODGE TO DISENGAGE":"CHAIN WINDOW";
-            Menu.center(phase,GetScreenWidth()/2,GetScreenHeight()-211,11,Menu.MUTED);
-        }
+
     }
     private void drawMinimap(int x,int y) {
         Menu.panel(x,y,160,160);
@@ -815,11 +813,13 @@ public class Game {
     private void dim() { DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(Menu.INK, .92f)); }
     private void drawMainMenu() {
         dim(); int x = (GetScreenWidth()-640)/2, y = (GetScreenHeight()-420)/2;
+        Menu.panel(x-30,y-22,700,530);
+        DrawLine(x,y+268,x+620,y+268,Menu.GOLD);
         Menu.text("THE LAST EMBER", x, y, 18, Menu.TEAL);
         Menu.text("OUTPOST", x, y+42, 72, Menu.TEXT);
-        Menu.text("Guard the light. Bring back the dawn.", x, y+132, 28, Menu.GOLD);
-        Menu.text("Four chapters. Two sieges. Two final duels.", x, y+193, 20, Menu.MUTED);
-        Menu.text("Welcome, "+settings.playerName+". Your next defense awaits.", x, y+224, 20, Menu.MUTED);
+        Menu.text("Guard the light. Bring back the dawn.", x, y+132, 24, Menu.GOLD);
+        Menu.text("A WARDEN'S CHRONICLE / FOUR CHAPTERS", x, y+193, 15, Menu.MUTED);
+        Menu.text("Welcome, "+settings.playerName+". Your next defense awaits.", x, y+224, 18, Menu.TEXT);
         if (Menu.button("NEW GAME [ENTER]", x, y+285, 280, true)) requestNewGame();
         if (Menu.button("LOAD GAME",x+300,y+285,160,Files.exists(savePath))) loadCurrent();
         if (Menu.button("QUIT", x+480, y+285, 140, true)) quitRequested = true;
@@ -867,6 +867,7 @@ public class Game {
             Menu.center("The ember waits for your return.",center,238,16,Menu.TEXT);return;
         }
         dim(); int x=(GetScreenWidth()-440)/2,y=(GetScreenHeight()-440)/2;
+        Menu.panel(x-24,y-20,488,440);
         boolean lost=state==GameState.GAME_OVER;
         Menu.text(lost?(progress.health()<=0?"WARDEN FALLEN":"OUTPOST FALLEN"):"DEFENSE PAUSED",x,y,36,Menu.TEXT);
         Menu.text(lost?"Wave "+wave+" / "+progress.kills()+" defeated":player.getName()+" / Wave "+wave,x,y+54,20,Menu.MUTED);
@@ -915,6 +916,7 @@ public class Game {
     }
     private void drawJournal() {
         dim();int x=(GetScreenWidth()-760)/2,y=(GetScreenHeight()-610)/2;
+        Menu.panel(x-20,y-16,800,642);
         Menu.icon("book",x,y,30,Menu.GOLD);Menu.text("CHRONICLE / THE LAST EMBER",x+46,y,30,Menu.TEXT);
         for(int i=0;i<Campaign.CHAPTERS.length;i++) {
             Campaign.Chapter c=Campaign.CHAPTERS[i];int top=y+66+i*112;
@@ -996,6 +998,7 @@ public class Game {
     }
     private void drawSettings() {
         dim(); int x=(GetScreenWidth()-820)/2,y=(GetScreenHeight()-650)/2;
+        Menu.panel(x-20,y-12,860,674);
         Menu.text("SETTINGS",x,y,34,Menu.TEXT);
         Menu.text("Master audio "+Math.round(settings.volume*100)+"%",x,y+68,20,Menu.TEXT);
         if (Menu.button("-",x+240,y+54,50,true)) { settings.volume=Math.max(0,settings.volume-.1f); applySettings(); }

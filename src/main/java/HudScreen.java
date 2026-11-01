@@ -9,26 +9,19 @@ public final class HudScreen {
     private static final Controls.Action[] ACTIONS={SLASH,HEAVY,PARRY,LUNGE,POTION,INVENTORY};
     public void draw(Progression p,Player player,Controls controls,CombatState state) {
         HudLayout layout=new HudLayout(GetScreenWidth(),GetScreenHeight());int x=layout.x(),y=layout.y(),span=layout.span();
-        Menu.frame(x-8,y-114,span+16,76,Menu.color(24,31,30),Menu.LINE);
-        int healthY=y-104;
-        DrawRectangle(x-8,y-140,span+16,23,Fade(Menu.INK,.85f));
-        Menu.center(state.mastery(),GetScreenWidth()/2,y-132,11,state.empowered()?Menu.GOLD:Menu.MUTED);
-        int labelSize=layout.cell()<56?12:14;
-        Menu.text("HEALTH",x,healthY,labelSize,Menu.MUTED);
-        String hp=Math.round(p.health())+" / "+p.maxHealth();
-        Menu.text(hp,x+span-Menu.measure(hp,14),healthY,14,Menu.TEXT);
-        int barX=x,barY=healthY+15,barW=span,barH=14;
-        Menu.frame(barX,barY,barW,barH,Menu.INK,Menu.LINE);
-        int healthWidth=(int)((barW-4)*Math.max(0,Math.min(1,p.health()/p.maxHealth())));
-        if(healthWidth>0)DrawRectangle(barX+2,barY+2,healthWidth,barH-4,p.health()/p.maxHealth()<.25f?Menu.RED:Menu.color(202,111,91));
-        int staminaY=y-69;
-        Menu.text("STAMINA",x,staminaY,labelSize,Menu.MUTED);
-        String stamina=Math.round(player.discipline().stamina())+" / "+p.maxStamina();
-        Menu.text(stamina,x+span-Menu.measure(stamina,14),staminaY,14,Menu.TEXT);
-        int staminaBarY=staminaY+17;
-        Menu.frame(x,staminaBarY,span,12,Menu.INK,Menu.LINE);
-        int staminaWidth=(int)((span-4)*Math.max(0,Math.min(1,player.discipline().stamina()/p.maxStamina())));
-        if(staminaWidth>0)DrawRectangle(x+2,staminaBarY+2,staminaWidth,8,player.discipline().stamina()<24?Menu.GOLD:Menu.TEAL);
+        boolean compact=GetScreenWidth()<1000;
+        Menu.frame(x-(compact?8:76),y-120,span+(compact?16:84),93,Menu.PANEL,Menu.GOLD);
+        if(!compact) {
+        DrawCircle(x-38,y-76,32,Menu.GOLD);DrawCircle(x-38,y-76,29,Menu.INK);
+        DrawCircle(x-38,y-76,26,Menu.color(36,53,72));
+        String crest=p.heroClass()==HeroClass.WARRIOR?"sword":p.heroClass()==HeroClass.ARCHER?"bow":"staff";
+        Menu.icon(crest,x-53,y-94,30,Menu.GOLD);
+        Menu.center("LV "+p.characterLevel(),x-38,y-60,10,Menu.TEXT);
+        }
+        Menu.resourceBar(x,y-111,span,32,p.health(),p.maxHealth(),p.health()<p.maxHealth()*.25f?Menu.RED:Menu.color(49,153,94),"HEALTH");
+        Menu.resourceBar(x,y-73,span,25,player.discipline().stamina(),p.maxStamina(),Menu.color(190,147,48),"STAMINA");
+        DrawRectangle(x-8,y-144,span+16,22,Fade(Menu.INK,.9f));
+        Menu.center(state.mastery(),GetScreenWidth()/2,y-139,11,state.empowered()?Menu.GOLD:Menu.TEXT);
         Menu.frame(x-8,y-8,span+16,78,Menu.PANEL,Menu.LINE);
         Vector2 mouse=GetMousePosition();int hover=layout.hit(mouse.x(),mouse.y());
         String weapon=p.heroClass()==HeroClass.WARRIOR?"sword":p.heroClass()==HeroClass.ARCHER?"bow":"staff";
@@ -43,7 +36,7 @@ public final class HudScreen {
             if(i==4)Menu.text(""+p.potions(),sx+size-15,y+size-18,13,Menu.GOLD);
             Menu.center(labels[i],sx+size/2,y+size+3,9,Menu.MUTED);
         }
-        String timing=state.charge()>0?"HEAVY CHARGE / RELEASE IN GOLD":player.discipline().riposteReady()?"RIPOSTE READY":state.combo()>0 && state.comboWindow()>0 && state.cooldown()<=.22f?"CHAIN NOW":player.isAttacking()?"ATTACK RECOVERY":null;
+        String timing=state.charge()>0?"HEAVY CHARGE / RELEASE IN GOLD":player.discipline().riposteReady()?"RIPOSTE READY":state.combo()>0 && state.comboWindow()>0 && state.cooldown()<=.22f?"CHAIN NOW":player.isAttacking()?"ATTACK / RECOVERING":null;
         boolean actionMeter=state.charge()>0;
         if(timing!=null)Menu.center(timing,GetScreenWidth()/2,y-39,10,Menu.GOLD);
         if(actionMeter) {

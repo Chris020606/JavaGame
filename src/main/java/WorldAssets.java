@@ -19,6 +19,8 @@ public final class WorldAssets implements AutoCloseable {
     private final java.util.Map<String,Model> graveyard=new java.util.LinkedHashMap<>(),equipment=new java.util.LinkedHashMap<>();
     private final java.util.Map<String,int[][]> baseNatureColors=new java.util.HashMap<>();
     private final java.util.Map<Model,java.util.Map<String,Integer>> humanClips=new java.util.IdentityHashMap<>();
+    private record RoadPart(Model model,boolean shoulder) {}
+    private final java.util.Map<Integer,java.util.List<RoadPart>> roadModels=new java.util.HashMap<>();
     private int lookIndex=-1;
     private final Texture whiteAlbedo=whiteAlbedo();
     private static Texture whiteAlbedo() { Image pixels=GenImageColor(2,2,WHITE);try { return LoadTextureFromImage(pixels); }finally { UnloadImage(pixels); } }
@@ -238,6 +240,47 @@ public final class WorldAssets implements AutoCloseable {
             DrawLine3D(v(x,y,z),v(x+.7f,y+wing,z),Menu.INK);
         }
     }
+    private Model roadMesh(java.util.List<RoadLayout.Sample> points,float extra,float height) {
+        Mesh mesh=GenMeshPlane(1,1,1,points.size()-1);
+        if(mesh.vertexCount()!=points.size()*2)throw new IllegalStateException("Unexpected road grid geometry");
+        for(int row=0;row<points.size();row++)for(int side=0;side<2;side++) {
+            var p=points.get(row);float sign=side==0?1:-1;int offset=(row*2+side)*3;
+            mesh.vertices().put(offset,p.x()+p.nx()*(p.width()+extra)*sign).put(offset+1,height).put(offset+2,p.z()+p.nz()*(p.width()+extra)*sign);
+        }
+        UpdateMeshBuffer(mesh,0,mesh.vertices(),mesh.vertexCount()*3*4,0);
+        Model model=LoadModelFromMesh(mesh);lightModel(model);return model;
+    }
+    private void addRoadParts(java.util.List<RoadPart> parts,java.util.List<RoadLayout.Sample> points) {
+        if(points.size()<2)return;
+        parts.add(new RoadPart(roadMesh(points,.25f,.025f),true));parts.add(new RoadPart(roadMesh(points,0,.034f),false));
+    }
+    private java.util.List<RoadPart> buildRoads(int chapter) {
+        java.util.List<RoadPart> parts=new java.util.ArrayList<>();java.util.List<RoadLayout.Sample> run=new java.util.ArrayList<>();
+        for(var point:RoadLayout.road(chapter)) {
+            boolean water=chapter==0 && EnvironmentLayout.riverTile(Math.round(point.x()/4),Math.round(point.z()/4))!=null;
+            if(water) { addRoadParts(parts,run);run.clear(); }else run.add(point);
+        }
+        addRoadParts(parts,run);
+        if(chapter==0 || chapter==2) {
+            var branch=RoadLayout.sample(java.util.List.of(new EnvironmentLayout.Point(0,0),new EnvironmentLayout.Point(-5,chapter==0?-4:2),new EnvironmentLayout.Point(-10,chapter==0?-9:6)));
+            addRoadParts(parts,branch.stream().map(p->new RoadLayout.Sample(p.x(),p.z(),p.nx(),p.nz(),.65f)).toList());
+        }
+        return java.util.List.copyOf(parts);
+    }
+    private void drawRoad(int chapter) {
+        var parts=roadModels.computeIfAbsent(chapter,this::buildRoads);
+        Color core=chapter==2?Menu.color(118,135,145):chapter==0?Menu.color(122,99,68):chapter==1?Menu.color(96,92,82):Menu.color(83,87,104);
+        Color edge=chapter==2?Menu.color(164,180,189):chapter==0?Menu.color(104,109,69):Menu.color(77,80,72);
+        surface(.95f,0);
+        for(var part:parts) { lightModel(part.model());DrawModel(part.model(),v(0,0,0),1,part.shoulder()?edge:core); }
+        var road=RoadLayout.road(chapter);
+        for(int i=0;i<road.size();i+=11) {
+            var a=road.get(i);if(chapter==0 && EnvironmentLayout.riverTile(Math.round(a.x()/4),Math.round(a.z()/4))!=null)continue;
+            float distance=a.width()+.38f+.12f*(float)Math.sin(i*2.3f);
+            DrawCube(v(a.x()+a.nx()*distance,.055f,a.z()+a.nz()*distance),.12f,.045f,.19f,Fade(edge,.8f));
+        }
+        surface(.82f,.02f);
+    }
     private void drawHighlands(int chapter,float time) { drawAuthoredLayout(0,time); }
     private void drawCemetery(boolean necropolis,float time) { drawAuthoredLayout(necropolis?3:1,time); }
     private void drawFrozen(float time) { drawAuthoredLayout(2,time); }
@@ -254,17 +297,7 @@ public final class WorldAssets implements AutoCloseable {
             if(river!=null) { surface(.26f,.1f);scenery(river.model(),x*4,z*4,river.yaw(),4);surface(.82f,.02f); }
             else scenery("ground_grass",x*4,z*4,0,4);
         }
-        var path=EnvironmentLayout.path(chapter);
-        for(int i=1;i<path.size();i++) {
-            var from=path.get(i-1);var to=path.get(i);float dx=to.x()-from.x(),dz=to.z()-from.z();
-            int steps=Math.max(1,(int)Math.ceil(Math.hypot(dx,dz)/3.5));float angle=(float)Math.toDegrees(Math.atan2(dx,dz));
-            for(int j=0;j<steps;j++) {
-                float t=(j+.5f)/steps,x=from.x()+dx*t,z=from.z()+dz*t;
-                if(chapter==0 && EnvironmentLayout.riverTile(Math.round(x/4),Math.round(z/4))!=null)continue;
-                if(chapter==1 || chapter==3)graveAt("road",x,-.265f,z,angle,3.6f);
-                else sceneryAt("ground_pathStraight",x,.012f,z,angle,3.8f);
-            }
-        }
+        if(!shadowPass)drawRoad(chapter);
         if(chapter==0 || chapter==2)scenery("platform_stone",0,0,0,5.2f);
         else grave("altar-stone",0,0,0,4);
         scenery("statue_ring",0,0,0,4.5f);
@@ -279,6 +312,17 @@ public final class WorldAssets implements AutoCloseable {
                 float rise=(time*.8f+i*.17f)%1.7f;
                 DrawSphere(v(fx+(float)Math.sin(time*3+i)*.12f,.35f+rise,fz+(float)Math.cos(time*2+i)*.1f),.10f*(1-rise/2),Fade(Menu.GOLD,1-rise/1.7f));
             }
+        }
+        if(chapter==0)for(int seed=0;seed<18;seed++) {
+            float drift=(time*.35f+seed*.71f)%8;
+            float sx=(seed%2==0?11:-14)+drift,sz=(seed%2==0?-8:12)+(float)Math.sin(time*.2f+seed)*2;
+            DrawBillboard(viewCamera,skyGlow,v(sx,.6f+(seed%4)*.3f+(float)Math.sin(time+seed)*.15f,sz),.045f,Fade(Menu.TEXT,.3f));
+        }
+        for(int bird=0;bird<5;bird++) {
+            float bx=(float)Math.sin(time*.035f+bird*.07f)*36,bz=27+(float)Math.cos(time*.035f)*12+bird*.7f,by=13+bird*.22f;
+            float wing=.3f*(float)Math.sin(time*5+bird);
+            DrawLine3D(v(bx-.35f,by+wing,bz),v(bx,by,bz+.12f),Menu.color(54,65,72));
+            DrawLine3D(v(bx,by,bz+.12f),v(bx+.35f,by+wing,bz),Menu.color(54,65,72));
         }
         if(chapter==0)for(int i=0;i<9;i++) {
             float t=time*.6f+i*1.7f,bx=(i<5?13:-12)+(float)Math.sin(t)*2.6f,bz=(i<5?-7:15)+(float)Math.cos(t*.8f)*2,by=.9f+(float)Math.sin(t*2)*.3f;
@@ -531,6 +575,7 @@ public final class WorldAssets implements AutoCloseable {
         }
     }
     @Override public void close() {
+        for(var parts:roadModels.values())for(var part:parts)UnloadModel(part.model());roadModels.clear();
         for (Model model:nature.values()) UnloadModel(model);
         for(Model model:graveyard.values()) UnloadModel(model);
         for(Model model:equipment.values()) UnloadModel(model);
