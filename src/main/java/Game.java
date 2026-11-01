@@ -22,6 +22,9 @@ public class Game {
     private boolean pointerAim;
     void pointerAim(boolean enabled) { pointerAim=enabled; }
     private final Settings settings=new Settings();
+    private final PlayerSaves playerSaves=new PlayerSaves(AppData.directory());
+    private java.util.List<PlayerSaves.Entry> playerHistory=java.util.List.of();
+    private int historyPage;
     private Tutorial tutorial;
     private SaveGame.Snapshot practiceReturn;
     private GameState practiceReturnState;
@@ -204,7 +207,7 @@ public class Game {
                     }
                 }noticeTime=Math.max(0,noticeTime-dt);feedback.update(dt);vfx.update(dt);player.poseForOutcome(state!=GameState.GAME_OVER,outcomeTime); }
         }
-        boolean titleAudio=state==GameState.PLAYTEST_SETUP && playtestReturn==GameState.MAIN_MENU || state==GameState.MAIN_MENU || state==GameState.LOGIN || state==GameState.JOURNAL && journalReturn==GameState.MAIN_MENU || state==GameState.SETTING_MENU && settingsReturn==GameState.MAIN_MENU;
+        boolean titleAudio=state==GameState.PLAYTEST_SETUP && playtestReturn==GameState.MAIN_MENU || state==GameState.MAIN_MENU || state==GameState.LOGIN || state==GameState.PLAYER_HISTORY || state==GameState.JOURNAL && journalReturn==GameState.MAIN_MENU || state==GameState.SETTING_MENU && settingsReturn==GameState.MAIN_MENU;
         boolean battle=state==GameState.PLAYING && !inventory && !workshop && !enemies.isEmpty();
         Enemy musicBoss=enemies.stream().filter(e->e.boss() && e.health>0).findFirst().orElse(null);
         audio.update(dt,chapterIndex(),titleAudio,battle,battle && musicBoss!=null,battle && musicBoss!=null && musicBoss.enraged());
@@ -223,6 +226,7 @@ public class Game {
         if((state==GameState.PLAYING || state==GameState.LEVEL_COMPLETE) && settings.controls.pressed(INTERACT) && nearBase() && enemies.isEmpty() && director.remaining()==0 && progress.expedition().embers()>0 && !progress.expedition().offers().isEmpty()) {
             blessingReturn=state;state=GameState.RELIC_CHOICE;return;
         }
+        if(state==GameState.PLAYER_HISTORY) { if(IsKeyPressed(KEY_ESCAPE))state=GameState.MAIN_MENU;return; }
         if(state==GameState.PLAYTEST_SETUP) {
             if(IsKeyPressed(KEY_ESCAPE))state=playtestReturn;
             else if(IsKeyPressed(KEY_ENTER))startPlaytest();
@@ -586,6 +590,7 @@ public class Game {
             drawEnemyHealth();
             if (state == GameState.MAIN_MENU) { drawMainMenu(); return; }
             if (state == GameState.LOGIN) { drawNameEntry(); return; }
+            if(state==GameState.PLAYER_HISTORY) { drawPlayerHistory();return; }
             if(state==GameState.PLAYTEST_SETUP) { drawPlaytestSetup();return; }
             if (state == GameState.SETTING_MENU) { drawSettings(); return; }
             if(state==GameState.RELIC_CHOICE) { drawBlessings();return; }
@@ -697,8 +702,8 @@ public class Game {
         if(w>=1000)drawMinimap(w-184,102);
         if(state==GameState.PLAYING && !inventory && !workshop)drawCombatCues();
         int sy=compact?h-178:112,sw=compact?130:208;
-        Menu.panel(16,sy,sw,72);Menu.text(progress.baseLevel()>=2?"SANCTUARY / WARD":"SANCTUARY",28,sy+8,compact?10:13,Menu.GOLD);
-        Menu.text((int)progress.baseHealth()+" / "+progress.maxBaseHealth(),28,sy+26,12,Menu.TEXT);
+        Menu.panel(16,sy,sw,72);Menu.text("SANCTUARY HEALTH",28,sy+8,compact?10:13,Menu.GOLD);
+        Menu.text((int)progress.baseHealth()+" / "+progress.maxBaseHealth(),28,sy+26,18,Menu.TEXT);
         Menu.bar(28,sy+44,sw-24,progress.baseHealth(),progress.maxBaseHealth(),Menu.GOLD);
         String sanctuaryCue=nearBase()?(compact?"+"+Math.round(progress.healRate())+" HP/s  "+settings.controls.label(INTERACT)+" +100/30CR":"+"+Math.round(progress.healRate())+" HP/s / "+settings.controls.label(INTERACT)+" +100 / 30 CR"):"CENTER "+String.format("%.0f",sanctuaryDistance())+"m / RADAR";
         Menu.text(sanctuaryCue,28,sy+58,compact?8:9,nearBase()?Menu.TEAL:Menu.MUTED);
@@ -743,13 +748,42 @@ public class Game {
         }
     }
     private void drawTutorial() {
-        int x=24,y=190,width=Math.min(330,GetScreenWidth()/3);
-        Menu.panel(x,y,width,296);
-        Menu.text("TRAINING / "+Math.min(8,tutorial.step().ordinal()+1)+" OF 8",x+16,y+12,13,Menu.TEAL);
-        Menu.text(tutorial.title(),x+16,y+40,19,Menu.GOLD);
-        Menu.wrapped(tutorial.instruction(settings.controls,progress.heroClass()),x+16,y+78,width-32,16,Menu.TEXT);
-        Menu.bar(x+16,y+234,width-32,tutorial.step().ordinal(),7,Menu.TEAL);
-        if(Menu.button(tutorial.complete()?"FINISH PRACTICE":"SKIP / RETURN",x+16,y+246,width-32,true))finishTutorial();
+        int width=Math.min(620,GetScreenWidth()-40),x=(GetScreenWidth()-width)/2,y=112;
+        Menu.panel(x,y,width,188);
+        Menu.text("YOUR FIRST WATCH / LESSON "+Math.min(8,tutorial.step().ordinal()+1)+" OF 8",x+20,y+12,16,Menu.TEAL);
+        Menu.text(tutorial.title(),x+20,y+39,24,Menu.GOLD);
+        Menu.wrapped(tutorial.instruction(settings.controls,progress.heroClass()),x+20,y+77,width-40,18,Menu.TEXT);
+        String hint=switch(tutorial.step()) {
+            case MOVE -> "RED: your health / GREEN: stamina / GOLD: sanctuary";
+            case STRIKE -> "Hit the marked partner twice";
+            case DODGE -> "Move + "+settings.controls.label(DODGE);
+            case CHARGE -> heavyCharge>=.75f && heavyCharge<=1.05f?"RELEASE NOW":heavyCharge>1.05f?"Release, then try a shorter charge":"Hold "+settings.controls.label(HEAVY)+" - wait for gold";
+            case PARRY -> enemies.stream().anyMatch(e->e.attackTime>.25f && e.attackTime<.43f)?"PRESS "+settings.controls.label(PARRY)+" NOW":"Face the partner - wait for their strike";
+            case GEAR -> "Open and close your pack with "+settings.controls.label(INVENTORY);
+            case HAVEN -> nearBase()?"Inside the healing ring - stay here":"Walk into the teal circle around the sanctuary";
+            case COMPLETE -> "Your adventure is ready";
+        };
+        Menu.text(hint,x+20,y+155,16,Menu.TEAL);
+        if(Menu.button(tutorial.complete()?"BEGIN YOUR ADVENTURE":"SKIP TRAINING",x+20,y+196,tutorial.complete()?width-40:180,true))finishTutorial();
+    }
+    private void drawPlayerHistory() {
+        dim();int x=(GetScreenWidth()-760)/2,y=55;
+        Menu.text("PLAYERS & SAVES",x,y,32,Menu.TEXT);
+        Menu.text("Each warden keeps their own adventure and chapter checkpoint.",x,y+43,16,Menu.MUTED);
+        if(playerHistory.isEmpty())Menu.text("Create your first warden with New Game.",x,y+110,22,Menu.GOLD);
+        for(int row=0;row<5;row++) {
+            int index=historyPage*5+row;if(index>=playerHistory.size())break;
+            var entry=playerHistory.get(index);var saved=entry.snapshot();int top=y+85+row*96;
+            Menu.panel(x,top,760,86);Menu.text(saved.name()+" / "+saved.progression().heroClass().label,x+16,top+12,21,Menu.TEXT);
+            Menu.text("Chapter "+(Campaign.index(saved.wave().total()==0?saved.wave().wave()+1:saved.wave().wave())+1)+" / "+saved.progression().difficulty().label+" / "+saved.progression().kills()+" defeats",x+16,top+43,15,Menu.MUTED);
+            Menu.text("Saved "+java.time.Instant.ofEpochMilli(entry.updated()).atZone(java.time.ZoneId.systemDefault()).toLocalDateTime().format(java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy  HH:mm")),x+16,top+65,11,Menu.MUTED);
+            if(Menu.button("CONTINUE",x+590,top+19,150,true)) {
+                try { playerSaves.activate(entry,savePath,checkpointPath);loadCurrent(); }catch(IOException e) { menuMessage="Could not load this player."; }return;
+            }
+        }
+        if(Menu.button("PREVIOUS",x,y+580,180,historyPage>0))historyPage--;
+        if(Menu.button("NEXT",x+200,y+580,180,(historyPage+1)*5<playerHistory.size()))historyPage++;
+        if(Menu.button("BACK",x+560,y+580,200,true))state=GameState.MAIN_MENU;
     }
     private void drawCombatCues() {
         if(pointerAim && !IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
@@ -791,8 +825,13 @@ public class Game {
         if (Menu.button("QUIT", x+480, y+285, 140, true)) quitRequested = true;
         if (Menu.button("SETTINGS",x,y+344,200,true)) openSettings();
         if(Menu.button("CHRONICLE / THE LAST EMBER",x+220,y+344,400,true)) { journalReturn=state;state=GameState.JOURNAL; }
-        if(Menu.button("PLAYTEST / ALL GEAR",x,y+402,280,true))openPlaytestSetup();
-        if(Menu.button("TUTORIAL / SAFE PRACTICE",x+300,y+402,320,true))beginTutorial();
+        if(Menu.button("PLAYERS & SAVES",x,y+402,280,true)) {
+            try {
+                if(Files.exists(savePath))try { playerSaves.save(SaveGame.read(savePath),checkpointPath); }catch(IOException damaged) { menuMessage="Current save could not be imported."; }
+                playerHistory=playerSaves.entries();historyPage=0;state=GameState.PLAYER_HISTORY;
+            }
+            catch(IOException e) { menuMessage="Could not open player saves."; }
+        }
         Menu.text(menuMessage.isEmpty()?"Hold right mouse to orbit. ESC pauses.":menuMessage, x, y+462, 15, Menu.MUTED);
     }
     private void drawInventory() { dim();if(equipmentScreen.draw(progress,settings.controls.label(INVENTORY))) inventory=false; }
@@ -838,8 +877,7 @@ public class Game {
         if (Menu.button("CHRONICLE",x+228,y+208,212,true)) { journalReturn=state;state=GameState.JOURNAL; }
         if (Menu.button("SAVE & MAIN MENU",x,y+262,440,!lost)) { if (saveCurrent()) state=GameState.MAIN_MENU; }
         if (lost && Menu.button("MAIN MENU",x,y+262,440,true)) state=GameState.MAIN_MENU;
-        if(playtest) { if(Menu.button("PLAYTEST TOOLS / CLASS + CHAPTER",x,y+318,440,true))openPlaytestSetup(); }
-        else if(!lost && Menu.button(tutorial!=null?"LEAVE PRACTICE":"TUTORIAL / SAFE PRACTICE",x,y+318,440,true)) { if(tutorial!=null)finishTutorial();else beginTutorial(); }
+
         Menu.text(lost?"Retry restores your gear at the start of this chapter.":playtest?"Separate playtest save / Campaign save is preserved.":"Closing the game also saves an active defense.",x,y+380,15,Menu.MUTED);
     }
     private void drawChapterEnd() {
@@ -894,12 +932,14 @@ public class Game {
         while (GetCharPressed()!=0) { }
     }
     private void confirmName() {
-        settings.playerName=Settings.cleanName(nameDraft);settings.difficulty=selectedDifficulty; persistSettings(); start();
-        if(pointerAim && !settings.tutorialSeen)beginTutorial();
+        try { playerSaves.newPlayer(savePath,checkpointPath); }
+        catch(IOException e) { menuMessage="Could not preserve the previous player. Please try again.";return; }
+        settings.playerName=Settings.cleanName(nameDraft);settings.difficulty=selectedDifficulty; persistSettings(); start();saveCurrent();
+        beginTutorial();
     }
     void startPlaytest() { playtest=true;start(); }
     boolean isPlaytest() { return playtest; }
-    private void openPlaytestSetup() { playtestReturn=state;state=GameState.PLAYTEST_SETUP; }
+    void openPlaytestSetup() { playtestReturn=state;state=GameState.PLAYTEST_SETUP; }
     private void drawPlaytestSetup() {
         dim();int x=(GetScreenWidth()-800)/2,y=(GetScreenHeight()-600)/2;
         Menu.panel(x,y,800,600);Menu.text("PLAYTEST / EVERYTHING UNLOCKED",x+24,y+20,30,Menu.GOLD);
@@ -998,6 +1038,7 @@ public class Game {
         if (progress.defeated()) return false;
         try {
             SaveGame.write(playtest?playtestSavePath:savePath,new SaveGame.Snapshot(player.getName(),player.getPosition().x(),player.getPosition().z(),player.getRotation().y(),progress,director.snapshot(),enemies.stream().filter(e->e.health>0).toList(),Arena.HIGHLANDS,player.discipline().stamina(),dayNight.phase()));
+            if(!playtest)playerSaves.save(SaveGame.read(savePath),checkpointPath);
             menuMessage=playtest?"Playtest saved separately.":"Game saved."; notifyPlayer(menuMessage); return true;
         } catch (IOException e) { menuMessage="Save failed. Previous save was kept.";notifyPlayer(menuMessage);System.err.println(e.getMessage());return false; }
     }

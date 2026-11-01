@@ -1,5 +1,6 @@
 public enum GameState {
     LOGIN,
+    PLAYER_HISTORY,
     PLAYTEST_SETUP,
     RELIC_CHOICE,
     LEVEL_COMPLETE,

@@ -13,22 +13,22 @@ public final class HudScreen {
         int healthY=y-104;
         DrawRectangle(x-8,y-140,span+16,23,Fade(Menu.INK,.85f));
         Menu.center(state.mastery(),GetScreenWidth()/2,y-132,11,state.empowered()?Menu.GOLD:Menu.MUTED);
-        int labelSize=layout.cell()<56?9:10;
+        int labelSize=layout.cell()<56?12:14;
         Menu.text("HEALTH",x,healthY,labelSize,Menu.MUTED);
         String hp=Math.round(p.health())+" / "+p.maxHealth();
-        Menu.text(hp,x+span-Menu.measure(hp,11),healthY,11,Menu.TEXT);
-        int barX=x,barY=healthY+15,barW=span,barH=9;
+        Menu.text(hp,x+span-Menu.measure(hp,14),healthY,14,Menu.TEXT);
+        int barX=x,barY=healthY+15,barW=span,barH=14;
         Menu.frame(barX,barY,barW,barH,Menu.INK,Menu.LINE);
         int healthWidth=(int)((barW-4)*Math.max(0,Math.min(1,p.health()/p.maxHealth())));
         if(healthWidth>0)DrawRectangle(barX+2,barY+2,healthWidth,barH-4,p.health()/p.maxHealth()<.25f?Menu.RED:Menu.color(202,111,91));
-        int staminaY=y-73;
+        int staminaY=y-69;
         Menu.text("STAMINA",x,staminaY,labelSize,Menu.MUTED);
         String stamina=Math.round(player.discipline().stamina())+" / "+p.maxStamina();
-        Menu.text(stamina,x+span-Menu.measure(stamina,10),staminaY,10,Menu.TEXT);
-        int staminaBarY=staminaY+13;
-        Menu.frame(x,staminaBarY,span,8,Menu.INK,Menu.LINE);
+        Menu.text(stamina,x+span-Menu.measure(stamina,14),staminaY,14,Menu.TEXT);
+        int staminaBarY=staminaY+17;
+        Menu.frame(x,staminaBarY,span,12,Menu.INK,Menu.LINE);
         int staminaWidth=(int)((span-4)*Math.max(0,Math.min(1,player.discipline().stamina()/p.maxStamina())));
-        if(staminaWidth>0)DrawRectangle(x+2,staminaBarY+2,staminaWidth,4,player.discipline().stamina()<24?Menu.GOLD:Menu.TEAL);
+        if(staminaWidth>0)DrawRectangle(x+2,staminaBarY+2,staminaWidth,8,player.discipline().stamina()<24?Menu.GOLD:Menu.TEAL);
         Menu.frame(x-8,y-8,span+16,78,Menu.PANEL,Menu.LINE);
         Vector2 mouse=GetMousePosition();int hover=layout.hit(mouse.x(),mouse.y());
         String weapon=p.heroClass()==HeroClass.WARRIOR?"sword":p.heroClass()==HeroClass.ARCHER?"bow":"staff";
@@ -43,8 +43,8 @@ public final class HudScreen {
             if(i==4)Menu.text(""+p.potions(),sx+size-15,y+size-18,13,Menu.GOLD);
             Menu.center(labels[i],sx+size/2,y+size+3,9,Menu.MUTED);
         }
-        String timing=state.charge()>0?"RELEASE IN GOLD":player.discipline().riposteReady()?"RIPOSTE READY":state.combo()>0 && state.comboWindow()>0 && state.cooldown()<=.22f?"CHAIN NOW":player.isAttacking()?"RECOVER":null;
-        boolean actionMeter=state.charge()>0 || player.isAttacking() || timing!=null && timing.equals("CHAIN NOW");
+        String timing=state.charge()>0?"HEAVY CHARGE / RELEASE IN GOLD":player.discipline().riposteReady()?"RIPOSTE READY":state.combo()>0 && state.comboWindow()>0 && state.cooldown()<=.22f?"CHAIN NOW":player.isAttacking()?"ATTACK RECOVERY":null;
+        boolean actionMeter=state.charge()>0;
         if(timing!=null)Menu.center(timing,GetScreenWidth()/2,y-39,10,Menu.GOLD);
         if(actionMeter) {
             float maximum=state.charge()>0?1.4f:state.duration();

@@ -2,7 +2,7 @@ import static com.raylib.Raylib.*;
 
 /** Run with ./gradlew inputSmokeTest on a desktop; no OS input permissions needed. */
 public class InputSmokeTest {
-    private static boolean corpseOnly;
+    private static boolean corpseOnly,reviewingTutorial;
     // raylib AutomationEventType, from src/rcore.c:
     // https://github.com/raysan5/raylib/blob/master/src/rcore.c
     private static final int KEY_UP = 1, KEY_DOWN = 2, MOUSE_UP = 5, MOUSE_DOWN = 6, MOUSE_POSITION = 7;
@@ -34,8 +34,10 @@ public class InputSmokeTest {
         BeginDrawing(); ClearBackground(Menu.INK); game.render(); EndDrawing();
     }
     private static void key(Game game, int key) {
+        GameState before=game.getState();
         event(KEY_DOWN, key, 0); frame(game);
         event(KEY_UP, key, 0); frame(game);
+        if(before==GameState.LOGIN && game.tutorial()!=null && !reviewingTutorial)game.finishTutorial();
     }
     private static void click(Game game,int x,int y) {
         event(MOUSE_POSITION,x,y);event(MOUSE_DOWN,MOUSE_BUTTON_LEFT,0);frame(game);
@@ -362,17 +364,25 @@ public class InputSmokeTest {
         System.out.println("PASS: four Warrior weapons, light/heavy/lunge blade trails, physical scale, render independence and idle expiry");
     }
     private static void tutorialRegression(Game game,java.nio.file.Path profile) throws Exception {
+        reviewingTutorial=true;
         game.setState(GameState.MAIN_MENU);game.pointerAim(true);
         key(game,KEY_ENTER);key(game,KEY_ENTER);
         check(game.tutorial()!=null,"First adventure did not offer interactive practice");
-        game.finishTutorial();check(game.getState()==GameState.PLAYING,"First practice did not return to new adventure");game.pointerAim(false);
+        game.finishTutorial();check(game.getState()==GameState.PLAYING,"First practice did not return to new adventure");
+        game.setState(GameState.MAIN_MENU);key(game,KEY_ENTER);key(game,KEY_ENTER);
+        check(game.tutorial()!=null,"Second new player incorrectly skipped tutorial after prior completion");game.finishTutorial();
+        check(new PlayerSaves(profile).entries().size()>=2,"New player erased the previous campaign");
+        game.setState(GameState.MAIN_MENU);int mx=(GetScreenWidth()-640)/2,my=(GetScreenHeight()-420)/2;
+        click(game,mx+140,my+424);check(game.getState()==GameState.PLAYER_HISTORY,"Player history menu did not open");for(int f=0;f<3;f++)frame(game);capture("player-history");
+        click(game,(GetScreenWidth()-760)/2+660,55+85+40);check(game.getState()==GameState.PAUSED,"History continue did not restore selected save");
+        game.pointerAim(false);
         Settings bindings=new Settings();bindings.load(profile.resolve("settings.properties"));
         int forward=bindings.controls.key(Config.Controls.Action.FORWARD),strike=bindings.controls.key(Config.Controls.Action.SLASH),dodge=bindings.controls.key(Config.Controls.Action.DODGE),charge=bindings.controls.key(Config.Controls.Action.HEAVY),parry=bindings.controls.key(Config.Controls.Action.PARRY),gear=bindings.controls.key(Config.Controls.Action.INVENTORY);
         for(HeroClass hero:HeroClass.values()) {
             Progression campaign=new Progression(hero,Entities.Difficulty.NORMAL);
             SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Learner",0,4,0,campaign,new WaveDirector.State(0,0,0,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
             byte[] saved=java.nio.file.Files.readAllBytes(profile.resolve("save.properties"));
-            check(game.loadCurrent(),"Tutorial campaign did not load");game.beginTutorial();frame(game);
+            check(game.loadCurrent(),"Tutorial campaign did not load");game.beginTutorial();for(int f=0;f<3;f++)frame(game);
             check(!game.saveCurrent(),"Practice overwrote campaign");
             check(java.util.Arrays.equals(saved,java.nio.file.Files.readAllBytes(profile.resolve("save.properties"))),"Practice changed campaign bytes");
             capture("tutorial-"+hero.name().toLowerCase()+"-move");
@@ -405,8 +415,9 @@ public class InputSmokeTest {
             check(game.getProgression()==campaign || game.getProgression().heroClass()==hero,"Practice changed campaign class");
             check(game.getProgression().kills()==0 && game.getProgression().health()==campaign.health(),"Practice rewards/damage leaked");
             check(java.util.Arrays.equals(saved,java.nio.file.Files.readAllBytes(profile.resolve("save.properties"))),"Practice completion overwrote campaign");
-            game.beginTutorial();frame(game);game.finishTutorial();check(game.getState()==GameState.PAUSED,"Skipping practice failed");
+            game.beginTutorial();for(int f=0;f<3;f++)frame(game);game.finishTutorial();check(game.getState()==GameState.PAUSED,"Skipping practice failed");
         }
+        reviewingTutorial=false;
         System.out.println("PASS: every tutorial action in all three classes, safe misses, completion/skip, inventory and campaign preservation");
     }
     public static void main(String[] args) throws Exception {
@@ -435,6 +446,14 @@ public class InputSmokeTest {
                 check(game.loadCurrent() && game.getEnemies().getFirst().elite,"Elite identity lost on save/load");key(game,KEY_ENTER);
                 for(int f=0;f<20;f++)frame(game);capture("quality-elite");
                 System.out.println("PASS: separate chapter checkpoint, retry restores entry kit, elite save/load and presentation");return;
+            }
+            if(java.util.Arrays.asList(args).contains("--onboarding-preview")) {
+                reviewingTutorial=true;key(game,KEY_ENTER);key(game,KEY_ENTER);
+                check(game.tutorial()!=null,"New player tutorial missing");for(int f=0;f<3;f++)frame(game);capture("onboarding-center");
+                game.tutorial().movement(4);game.tutorial().hit(false);game.tutorial().hit(false);game.tutorial().dodge();
+                for(int f=0;f<3;f++)frame(game);capture("onboarding-charge");
+                game.tutorial().hit(true);for(int f=0;f<3;f++)frame(game);capture("onboarding-parry");
+                System.out.println("PASS: central onboarding panel and contextual charge/parry cues render");return;
             }
             if(java.util.Arrays.asList(args).contains("--hud-review")) { hudRegression(game,profile);return; }
             if(java.util.Arrays.asList(args).contains("--support-review")) { restorativeWeaponRegression(game,profile);return; }
@@ -962,7 +981,7 @@ public class InputSmokeTest {
             byte[] campaignBefore=java.nio.file.Files.readAllBytes(profile.resolve("save.properties"));
             game.setState(GameState.MAIN_MENU);
             int playMenuX=(GetScreenWidth()-640)/2,playMenuY=(GetScreenHeight()-420)/2;
-            click(game,playMenuX+140,playMenuY+424);check(game.getState()==GameState.PLAYTEST_SETUP,"Playtest entry did not open");
+            game.openPlaytestSetup();frame(game);check(game.getState()==GameState.PLAYTEST_SETUP,"Developer playtest setup did not open");
             int tx=(GetScreenWidth()-800)/2,ty=(GetScreenHeight()-600)/2;
             click(game,tx+400,ty+134);click(game,tx+580,ty+314);
             for(int t=0;t<3;t++)click(game,tx+580,ty+442);capture("playtest-setup");
@@ -976,7 +995,7 @@ public class InputSmokeTest {
             check(java.nio.file.Files.exists(profile.resolve("playtest-save.properties")),"Separate playtest save missing");
             key(game,KEY_ESCAPE);key(game,KEY_ESCAPE);
             int px=(GetScreenWidth()-440)/2,py=(GetScreenHeight()-440)/2;
-            click(game,px+220,py+340);check(game.getState()==GameState.PLAYTEST_SETUP,"Pause playtest tools failed");
+            game.openPlaytestSetup();frame(game);check(game.getState()==GameState.PLAYTEST_SETUP,"Developer playtest setup failed");
             click(game,tx+650,ty+512);check(game.isPlaytest() && game.getState()==GameState.PAUSED,"Separate playtest resume failed");
             check(game.getProgression().heroClass()==HeroClass.ARCHER && game.chapterIndex()==1,"Saved playtest kit/chapter lost");
             check(game.loadCurrent() && !game.isPlaytest(),"Returning to normal campaign failed");
