@@ -46,7 +46,6 @@ public final class EnvironmentLayout {
             g(p,"crypt",-28,-14,80,5);g(p,"crypt",24,-28,-23,5.8f);
             g(p,"pine-crooked",-21,-8,33,5);g(p,"pine-crooked",20,17,202,5.8f);
             cemeteryWall(p);g(p,"iron-fence-border-gate",2,-24,0,5);
-            g(p,"lightpost-single",-3,-19,20,3);g(p,"lightpost-single",7,-20,-15,3);
         } else if(chapter==2) {
             // Uneven outcrops suggest a winding cut through the mountain, not two tiled rails.
             for(int side:new int[]{-1,1}) for(int i=0;i<8;i++) {
@@ -70,9 +69,21 @@ public final class EnvironmentLayout {
             cemeteryWall(p);g(p,"iron-fence-border-gate",0,-24,0,5);
             g(p,"fire-basket",-4,-17,0,2.7f);g(p,"fire-basket",5,-18,0,2.4f);
         }
-        // Warm wayfinding lamps sit outside the road and sanctuary, rather than in combat lanes.
-        for(int waypoint:new int[]{2,4}) {
-            Point point=PATHS.get(chapter).get(waypoint);g(p,"lightpost-single",point.x()+3.5f,point.z()+2,0,2.8f);
+        // Natural tree belts extend the playable clearing into a wooded horizon.
+        // Keep the roadside corridor open while layering trunks behind its edges.
+        for(int side:new int[]{-1,1}) for(int i=0;i<12;i++) {
+            float z=-52+i*9+(random.nextFloat()-.5f)*3;
+            float x=pathCenterX(chapter,z)+side*(13+random.nextFloat()*4);
+            float scale=4.1f+random.nextFloat()*3.3f,yaw=random.nextFloat()*360;
+            String tree=chapter==0?(i%3==0?"tree_oak":"tree_pineTallA_detailed"):
+                chapter==2?(i%3==0?"tree_pineRoundC":"tree_pineTallA_detailed"):"pine-crooked";
+            if(chapter==1 || chapter==3)g(p,tree,x,z,yaw,scale);else n(p,tree,x,z,yaw,scale);
+            if(i%2==0) {
+                float bushX=x-side*(2+random.nextFloat()*2),bushZ=z+(random.nextFloat()-.5f)*3;
+                String undergrowth=chapter==0?"plant_bushDetailed":chapter==2?"stone_tallB":"rocks-tall";
+                if(chapter==1 || chapter==3)g(p,undergrowth,bushX,bushZ,yaw,1.8f+random.nextFloat()*1.4f);
+                else n(p,undergrowth,bushX,bushZ,yaw,1.8f+random.nextFloat()*1.4f);
+            }
         }
         // Mixed-scale groves form an irregular horizon beyond the playable boundary.
         float[][] groves={{-35,-27},{-41,4},{-28,35},{5,42},{34,29},{43,-4},{29,-34},{-4,-44}};
@@ -84,6 +95,15 @@ public final class EnvironmentLayout {
             else n(p,i%4==0?"stone_tallB":i%3==0?"tree_oak":"tree_pineTallA_detailed",x,z,yaw,scale);
         }
         return List.copyOf(p);
+    }
+    private static float pathCenterX(int chapter,float z) {
+        List<Point> path=PATHS.get(chapter);
+        for(int i=1;i<path.size();i++) {
+            Point a=path.get(i-1),b=path.get(i);
+            if(z<=b.z()) { float t=(z-a.z())/(b.z()-a.z());return a.x()+(b.x()-a.x())*t; }
+        }
+        Point a=path.get(path.size()-2),b=path.getLast();
+        return b.x()+(b.x()-a.x())/(b.z()-a.z())*(z-b.z());
     }
     private static void cemeteryWall(List<Prop> p) {
         // A deliberate built boundary with a gate opening and broken east/west sections.

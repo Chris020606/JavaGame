@@ -107,7 +107,7 @@ public final class WorldAssets implements AutoCloseable {
             if(model.meshCount()==0) throw new IllegalStateException("Missing equipment or skeleton roster model");
         for(Model model:new Model[]{skeletonMinion,skeletonRogue,skeletonMage})
             if(!IsModelAnimationValid(model,new ModelAnimation(bossAnimations).position(0))) throw new IllegalStateException("Skeleton roster rig mismatch");
-        for(String name:new String[]{"crypt","crypt-large","crypt-large-roof","crypt-door","gravestone-cross","gravestone-round","gravestone-broken","grave","coffin","iron-fence","iron-fence-border-gate","stone-wall","stone-wall-column","altar-stone","pillar-obelisk","pine-crooked","trunk","lantern-candle","lightpost-single","fire-basket","road","rocks-tall"}) {
+        for(String name:new String[]{"crypt","crypt-large","crypt-large-roof","crypt-door","gravestone-cross","gravestone-round","gravestone-broken","grave","coffin","iron-fence","iron-fence-border-gate","stone-wall","stone-wall-column","altar-stone","pillar-obelisk","pine-crooked","trunk","lantern-candle","fire-basket","road","rocks-tall"}) {
             Model model=LoadModel(AssetPaths.path("resources/outpost/graveyard/"+name+".obj"));
             if(model.meshCount()==0) throw new IllegalStateException("Missing cemetery model: "+name);graveyard.put(name,model);
         }
@@ -304,10 +304,6 @@ public final class WorldAssets implements AutoCloseable {
         for(var prop:EnvironmentLayout.props(chapter)) {
             if(prop.graveyard())graveAt(prop.model(),prop.x(),prop.y(),prop.z(),prop.yaw(),prop.scale());
             else sceneryAt(prop.model(),prop.x(),prop.y(),prop.z(),prop.yaw(),prop.scale());
-            if(!shadowPass && prop.model().equals("lightpost-single") && currentDay<.7f) {
-                float flicker=.35f+.035f*(float)Math.sin(time*6+prop.x());
-                DrawBillboard(viewCamera,skyGlow,v(prop.x(),prop.y()+prop.scale()*1.12f,prop.z()),.75f,Fade(Menu.GOLD,(1-currentDay)*flicker));
-            }
         }
         if(shadowPass)return;
         if(chapter==0 || chapter==2) {

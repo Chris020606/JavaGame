@@ -4,7 +4,18 @@ import java.util.*;
 public final class RoadLayout {
     public record Sample(float x,float z,float nx,float nz,float width) { }
     private static final List<List<Sample>> ROADS=new ArrayList<>();
-    static { for(int c=0;c<4;c++)ROADS.add(sample(EnvironmentLayout.path(c))); }
+    static { for(int c=0;c<4;c++)ROADS.add(sample(extendToHorizon(EnvironmentLayout.path(c)))); }
+    private static List<EnvironmentLayout.Point> extendToHorizon(List<EnvironmentLayout.Point> path) {
+        var first=path.getFirst();var next=path.get(1);var before=path.get(path.size()-2);var last=path.getLast();
+        float startLength=(float)Math.hypot(next.x()-first.x(),next.z()-first.z());
+        float endLength=(float)Math.hypot(last.x()-before.x(),last.z()-before.z());
+        float extension=27;
+        List<EnvironmentLayout.Point> extended=new ArrayList<>(path.size()+2);
+        extended.add(new EnvironmentLayout.Point(first.x()-(next.x()-first.x())/startLength*extension,first.z()-(next.z()-first.z())/startLength*extension));
+        extended.addAll(path);
+        extended.add(new EnvironmentLayout.Point(last.x()+(last.x()-before.x())/endLength*extension,last.z()+(last.z()-before.z())/endLength*extension));
+        return List.copyOf(extended);
+    }
     private static float curve(float a,float b,float c,float d,float t) { return .5f*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t); }
     public static List<Sample> sample(List<EnvironmentLayout.Point> points) {
         List<Sample> result=new ArrayList<>();
