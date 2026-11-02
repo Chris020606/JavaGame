@@ -120,7 +120,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v3.4.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v3.4.1**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -129,6 +129,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **3.4.1:** more forgiving Archer/Mage hits, faster projectiles, and gentle launch aim assistance toward nearby visible targets.
 - **3.4:** Recovery Wisps give battlefield health and stamina, with glowing pickups, nearby labels, radar markers, and save support.
 - **3.3.1:** fixed grass covering the river, restored blue water, and removed the ground tile edges along its banks.
 - **3.3:** meadow riverbanks and chapter roads blend into natural woodland edges, with the bridge aligned across the river; chapter skies shift with their biome; blessing clicks immediately apply and confirm their effects; cached terrain, model materials and transforms reduce repeated per-frame work.
@@ -158,7 +159,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–3.4.0 are development updates rather than published releases.
+Versions 1.3–3.4.1 are development updates rather than published releases.
 
 </details>
 

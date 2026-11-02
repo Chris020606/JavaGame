@@ -461,6 +461,19 @@ public class InputSmokeTest {
                 game.tutorial().hit(true);for(int f=0;f<3;f++)frame(game);capture("onboarding-parry");
                 System.out.println("PASS: central onboarding panel and contextual charge/parry cues render");return;
             }
+            if(java.util.Arrays.asList(args).contains("--ranged-assist-review")) {
+                for(HeroClass hero:new HeroClass[]{HeroClass.ARCHER,HeroClass.MAGE}) {
+                    Entities.Enemy target=new Entities.Enemy(1.3f,12,1);
+                    SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Aim",0,4,0,new Progression(hero),new WaveDirector.State(1,0,1,8,0,21,0),java.util.List.of(target),Arena.HIGHLANDS));
+                    check(game.loadCurrent(),"Ranged aim fixture failed");key(game,KEY_ENTER);target=game.getEnemies().getFirst();target.stun=target.cooldown=100;
+                    for(int f=0;f<22;f++)frame(game); // Let the save-load input grace period finish.
+                    float before=target.health;key(game,KEY_SPACE);
+                    for(int f=0;f<65;f++)frame(game);
+                    capture("ranged-assist-"+hero.name().toLowerCase());
+                    check(target.health<before,"Near-heading shot missed for "+hero+" facing="+game.getPlayer().getRotation().y()+" target="+target.x+","+target.z+" shots="+game.getHeroShots().size());
+                }
+                System.out.println("PASS: Archer and Mage near-heading attacks land through actual launch assistance");return;
+            }
             if(java.util.Arrays.asList(args).contains("--recovery-review")) {
                 Progression recovery=new Progression();recovery.damagePlayer(40);recovery.recoveryWisps().enemyDefeated(4,8,5,false);
                 SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Wisp",0,8,0,recovery,new WaveDirector.State(1,0,0,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));

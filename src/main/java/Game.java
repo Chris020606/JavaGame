@@ -565,8 +565,16 @@ public class Game {
         audio.play(progress.heroClass()==HeroClass.WARRIOR?"swing":progress.heroClass()==HeroClass.ARCHER?"bow":"magic");
         if (progress.heroClass()!=HeroClass.WARRIOR) {
             Vector3 origin=player.projectileOrigin();
-            HeroShot shot=new HeroShot(origin.x(),origin.z(),player.getRotation().y(),activeAttack,Math.round(progress.damage()*(1+.10f*progress.expedition().rank(Expedition.Blessing.HUNTERS_MARK))),progress.heroClass()==HeroClass.MAGE);
-            shot.startHeight(origin.y());shot.heavy=activeHeavy;shot.charged=activeCharged;shot.restorative=progress.heroClass()==HeroClass.MAGE && progress.weaponTier()>=3 && activeHeavy;heroShots.add(shot);
+            float facing=player.getRotation().y();
+            boolean restorative=progress.heroClass()==HeroClass.MAGE && progress.weaponTier()>=3 && activeHeavy;
+            FieldEvent ally=progress.fieldEvent();
+            boolean aimingSupport=restorative && (progress.baseHealth()<progress.maxBaseHealth() && Combat.inArc(px,pz,facing,0,0,activeAttack.range(),12)
+                || ally.kind()==FieldEvent.Kind.SURVIVOR && ally.vulnerable() && ally.health()<100 && Combat.inArc(px,pz,facing,ally.x(),ally.z(),activeAttack.range(),12));
+            Enemy assisted=aimingSupport?null:RangedAim.target(px,pz,facing,activeAttack.range(),enemies,
+                enemy->ArenaNavigation.projectileFraction(chapterIndex(),origin.x(),origin.z(),enemy.x,enemy.z)>=1);
+            if(assisted!=null)facing=(float)Math.toDegrees(Math.atan2(assisted.x-origin.x(),assisted.z-origin.z()));
+            HeroShot shot=new HeroShot(origin.x(),origin.z(),facing,activeAttack,Math.round(progress.damage()*(1+.10f*progress.expedition().rank(Expedition.Blessing.HUNTERS_MARK))),progress.heroClass()==HeroClass.MAGE);
+            shot.startHeight(origin.y());shot.heavy=activeHeavy;shot.charged=activeCharged;shot.restorative=restorative;heroShots.add(shot);
             return;
         }
         boolean hit=false;

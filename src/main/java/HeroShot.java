@@ -15,7 +15,7 @@ public final class HeroShot {
     public void startHeight(float height) { startHeight=height; }
     public HeroShot(float x,float z,float facing,Combat.Attack attack,int damage,boolean magic) {
         this.x=previousX=x;this.z=previousZ=z;this.magic=magic;
-        float speed=magic?12:20;
+        float speed=magic?18:26;
         vx=(float)Math.sin(Math.toRadians(facing))*speed;vz=(float)Math.cos(Math.toRadians(facing))*speed;
         remaining=attack.range()/speed;this.damage=Math.round(damage*attack.multiplier());
     }
@@ -26,7 +26,7 @@ public final class HeroShot {
         if (enemy.health<=0 || struck.contains(enemy)) return false;
         float dx=x-previousX,dz=z-previousZ,length=dx*dx+dz*dz;
         float t=length==0?0:Math.max(0,Math.min(1,((enemy.x-previousX)*dx+(enemy.z-previousZ)*dz)/length));
-        if (Math.hypot(previousX+dx*t-enemy.x,previousZ+dz*t-enemy.z)>.6f) return false;
+        if (Math.hypot(previousX+dx*t-enemy.x,previousZ+dz*t-enemy.z)>(enemy.boss()?1.25f:magic?.95f:.85f)) return false;
         struck.add(enemy);return true;
     }
     public boolean intersects(float targetX,float targetZ,float radius) {
