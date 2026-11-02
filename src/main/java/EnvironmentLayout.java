@@ -21,8 +21,7 @@ public final class EnvironmentLayout {
             n(p,"fence_simple",-17,-8,17,2.4f);n(p,"fence_simple",-17,-11,7,2.2f);
             n(p,"statue_columnDamaged",9,14,11,3.4f);n(p,"statue_columnDamaged",13,16,82,2.5f);
             n(p,"statue_obelisk",11,19,-9,3.1f);
-            // The river runs east-west here; the bridge model spans north-south in its base orientation.
-            n(p,"bridge_wood",-4,-28,0,4.2f);
+            n(p,"bridge_wood",-4,-28,90,4.2f);
             // Layered riverbank groves conceal the distant seam from low orbit angles.
             for(int side:new int[]{-1,1})for(int i=0;i<14;i++) {
                 float x=side*(31+i*2.8f+(random.nextFloat()-.5f)*1.4f),z=-24+(i%3)*4.2f+(random.nextFloat()-.5f)*2;
