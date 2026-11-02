@@ -86,6 +86,8 @@ Watch the radar for optional opportunities. Recover a lost supply cache, find a 
 
 Completed objectives grant crystals, supplies, and an **ember blessing**. Clearing siege waves also earns embers. When the field is clear, return to the sanctuary and press **G** to choose one of three blessings. Build around heavy strikes, healing on kills, rewarding parries, faster dodges, stronger projectiles, or a tougher sanctuary. Blessings have three ranks and stay with your save.
 
+**Chapter Feats:** open **Chronicle → Chapter Feats** from the pause menu to see three optional goals per chapter. Land charged hits, parry attacks, and finish a field objective—or evade boss attacks in a boss chapter. Each completed feat awards **15 bonus crystals when the chapter ends**, up to 45 per chapter. Progress and awarded rewards stay in your save. Use the arrows to review other chapters.
+
 **Recovery Wisps:** elites and every fifth defeated enemy leave a teal wisp. Walk into it to recover up to **18 health and 26 stamina**. Wisps wait when both resources are full and fade after 30 seconds of active play. Menus pause their timers, and saving preserves them.
 
 Hold **G** beside a supply cache to recover it; interact with a survivor or waystone to begin its objective. Objective timers pause when you open a menu. Failed optional objectives leave the main campaign playable.
@@ -120,7 +122,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v3.4.1**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**Published downloads currently contain v1.2.0.** The newer features on this page describe the latest development version, **v3.5.0**. Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -129,6 +131,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **3.5:** optional Chapter Feats reward charged hits, parries, objectives and boss dodges; the Chronicle tracks progress and earned rewards across all chapters.
 - **3.4.1:** more forgiving Archer/Mage hits, faster projectiles, and gentle launch aim assistance toward nearby visible targets.
 - **3.4:** Recovery Wisps give battlefield health and stamina, with glowing pickups, nearby labels, radar markers, and save support.
 - **3.3.1:** fixed grass covering the river, restored blue water, and removed the ground tile edges along its banks.
@@ -159,7 +162,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 - [**1.1 — Heroes and Inventory**](https://github.com/Chris020606/JavaGame/releases/tag/v1.1.0): published desktop downloads.
 - [**1.0.3**](https://github.com/Chris020606/JavaGame/releases/tag/v1.0.3): earlier desktop release.
 
-Versions 1.3–3.4.1 are development updates rather than published releases.
+Versions 1.3–3.5.0 are development updates rather than published releases.
 
 </details>
 

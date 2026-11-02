@@ -61,6 +61,7 @@ public class Game {
         audio.play("upgrade");
     }
     private void connected(Enemy enemy,boolean heavy,boolean charged) {
+        if(tutorial==null && charged)progress.chapterFeats().record(chapterIndex(),ChapterFeats.Action.CHARGED_HIT);
         hitMarker=.16f;if(progress.heroClass()==HeroClass.WARRIOR)hitPause=Math.max(hitPause,heavy?.045f:.025f);
         if(!heavy)mastery.lightHit(progress.heroClass());
         if(tutorial!=null)tutorial.hit(charged);
@@ -82,6 +83,8 @@ public class Game {
     private final ArrayList<Projectile> projectiles=new ArrayList<>();
     private Player player;
     private GameState journalReturn=GameState.MAIN_MENU;
+    private boolean journalFeats;
+    private int featsChapter;
     private GameState blessingReturn=GameState.PLAYING;
     private float storyTime;
     private Difficulty selectedDifficulty=Difficulty.NORMAL;
@@ -330,7 +333,7 @@ public class Game {
         }
         float px = player.getPosition().x(), pz = player.getPosition().z();
         FieldEvent event=progress.fieldEvent();FieldEvent.Status previousEventStatus=event.status();event.update(dt,px,pz,settings.controls.down(INTERACT));
-        if(event.claim()) { progress.rewardObjective();audio.play("upgrade");vfx.impact(event.x(),event.z(),Menu.GOLD,true);notifyPlayer("OBJECTIVE COMPLETE / +65 CRYSTALS / +1 EMBER BLESSING / SUPPLIES");saveCurrent(); }
+        if(event.claim()) { if(tutorial==null)progress.chapterFeats().record(chapterIndex(),ChapterFeats.Action.OBJECTIVE);progress.rewardObjective();audio.play("upgrade");vfx.impact(event.x(),event.z(),Menu.GOLD,true);notifyPlayer("OBJECTIVE COMPLETE / +65 CRYSTALS / +1 EMBER BLESSING / SUPPLIES");saveCurrent(); }
         float heroVx=Math.max(-15,Math.min(15,(px-lastHeroX)/Math.max(.001f,dt))),heroVz=Math.max(-15,Math.min(15,(pz-lastHeroZ)/Math.max(.001f,dt)));
         lastHeroX=px;lastHeroZ=pz;
         if (nearBase()) progress.heal(dt);
@@ -534,6 +537,7 @@ public class Game {
         nextWave=director.rest();
         if(director.levelCleared(enemies.size()) && !player.isAttacking()) {
             heroShots.clear();projectiles.clear();bossHazards.clear();heavyCharge=0;player.resetCombat();impactPending=false;attackCooldown=0;
+            progress.rewardChapterFeats(chapterIndex());
             state=wave>=10?GameState.VICTORY:GameState.LEVEL_COMPLETE;
             outcomeTime=0;audio.play("victory");player.poseForOutcome(true,0);
             vfx.impact(player.getPosition().x(),player.getPosition().z(),Menu.GOLD,true);
@@ -542,10 +546,10 @@ public class Game {
     }
     private void strikeHero(float damage,float sourceX,float sourceZ,boolean parryable,Enemy attacker) {
         float px=player.getPosition().x(),pz=player.getPosition().z();
-        if(player.invulnerable()) { mastery.evade(progress.heroClass());feedback.add(px,pz,progress.heroClass()==HeroClass.ARCHER?"EVADE / FOCUS":"EVADE",Menu.TEAL);return; }
+        if(player.invulnerable()) { if(tutorial==null)progress.chapterFeats().record(chapterIndex(),ChapterFeats.Action.EVADE);mastery.evade(progress.heroClass());feedback.add(px,pz,progress.heroClass()==HeroClass.ARCHER?"EVADE / FOCUS":"EVADE",Menu.TEAL);return; }
         if(parryable && Combat.inArc(px,pz,player.getRotation().y(),sourceX,sourceZ,1000,75) && player.discipline().deflect()) {
             if(attacker!=null) { attacker.stun=1.1f;attacker.attackTime=attacker.chargeTime=0;attacker.impactPending=false;attacker.cooldown=1.3f; }
-            mastery.parry(progress.heroClass());if(tutorial!=null)tutorial.parry();
+            mastery.parry(progress.heroClass());if(tutorial!=null)tutorial.parry();else progress.chapterFeats().record(chapterIndex(),ChapterFeats.Action.PARRY);
             player.discipline().stamina(player.discipline().stamina()+10*progress.expedition().rank(Expedition.Blessing.SECOND_WIND));
             vfx.impact(px,pz,Menu.TEAL,true);feedback.add(px,pz,"PARRY / RIPOSTE",Menu.GOLD);audio.play("parry");return;
         }
@@ -942,6 +946,7 @@ public class Game {
         if (Menu.button("SAVE & MAIN MENU",x,y+262,440,!lost)) { if (saveCurrent()) state=GameState.MAIN_MENU; }
         if (lost && Menu.button("MAIN MENU",x,y+262,440,true)) state=GameState.MAIN_MENU;
 
+        if(!lost)Menu.text("CHAPTER FEATS / "+progress.chapterFeats().completed(chapterIndex())+" OF 3 COMPLETE / CHRONICLE",x,y+332,14,Menu.GOLD);
         Menu.text(lost?"Retry restores your gear at the start of this chapter.":playtest?"Separate playtest save / Campaign save is preserved.":"Closing the game also saves an active defense.",x,y+380,15,Menu.MUTED);
     }
     private void drawChapterEnd() {
@@ -974,6 +979,7 @@ public class Game {
             Menu.text("Your watch is complete. The valley remembers its warden.",x,y+276,16,Menu.TEXT);
         }
         Menu.text(chapter().bossOnly()?"BOSS / +120 CRYSTALS / WEAPON UNLOCK / ARMOR: FORGE":"CHAPTER COMPLETE / The ember burns brighter.",x,y+310,17,Menu.TEAL);
+        Menu.text("CHAPTER FEATS / "+progress.chapterFeats().completed(chapterIndex())+" OF 3 / +"+progress.chapterFeats().awarded(chapterIndex())+" BONUS CRYSTALS",x,y+332,12,Menu.GOLD);
         if(Menu.button(state==GameState.VICTORY?"MAIN MENU [ENTER]":"CONTINUE [ENTER]",x,y+350,380,true)) continueCampaign();
         if(state!=GameState.VICTORY && Menu.button("INVENTORY",x+400,y+350,240,true)) inventory=true;
         Menu.text(playtest?"Your playtest has been saved separately.":"Your campaign progress has been saved.",x,y+424,16,Menu.MUTED);
@@ -983,14 +989,36 @@ public class Game {
         dim();int x=(GetScreenWidth()-760)/2,y=(GetScreenHeight()-610)/2;
         Menu.panel(x-20,y-16,800,642);
         Menu.icon("book",x,y,30,Menu.GOLD);Menu.text("CHRONICLE / THE LAST EMBER",x+46,y,30,Menu.TEXT);
-        for(int i=0;i<Campaign.CHAPTERS.length;i++) {
-            Campaign.Chapter c=Campaign.CHAPTERS[i];int top=y+66+i*112;
-            Menu.panel(x,top,760,100);
+        if(Menu.button("STORY",x,y+48,360,true))journalFeats=false;
+        if(Menu.button("CHAPTER FEATS",x+380,y+48,380,true)) { journalFeats=true;featsChapter=chapterIndex(); }
+        DrawRectangle(x+(journalFeats?380:0),y+94,journalFeats?380:360,2,Menu.GOLD);
+        if(journalFeats)drawFeatsPage(x,y);else for(int i=0;i<Campaign.CHAPTERS.length;i++) {
+            Campaign.Chapter c=Campaign.CHAPTERS[i];int top=y+108+i*100;
+            Menu.panel(x,top,760,94);
             Menu.text((i+1)+" / "+c.title(),x+16,top+9,21,Menu.GOLD);
             Menu.text(c.bossOnly()?"BOSS DUEL":c.waves()+" DEFENSE WAVES",x+530,top+12,15,Menu.TEAL);
-            Menu.wrapped(c.story(),x+16,top+43,718,16,Menu.TEXT);
+            Menu.wrapped(c.story(),x+16,top+43,718,14,Menu.TEXT);
         }
         if(Menu.button("RETURN [ENTER / ESC]",x,y+540,360,true)) state=journalReturn;
+    }
+    private void drawFeatsPage(int x,int y) {
+        int chapter=featsChapter;ChapterFeats feats=progress.chapterFeats();
+        for(int i=0;i<3;i++) {
+            int top=y+108+i*122;boolean complete=feats.complete(chapter,i),paid=feats.paid(chapter,i);
+            Menu.panel(x,top,760,112);Menu.icon(complete?"crown":"sword",x+16,top+15,26,complete?Menu.GOLD:Menu.MUTED);
+            Menu.text(feats.title(chapter,i),x+58,top+16,21,complete?Menu.GOLD:Menu.TEXT);
+            Menu.text(paid?"AWARDED +15":complete?"READY / +15 ON CLEAR":"15 CRYSTALS",x+520,top+20,14,paid?Menu.TEAL:Menu.GOLD);
+            Menu.text(feats.description(chapter,i),x+20,top+52,16,Menu.TEXT);
+            DrawRectangle(x+20,top+83,650,8,Menu.INK);
+            int fill=650*feats.progress(chapter,i)/feats.goal(chapter,i);
+            if(fill>0)DrawRectangle(x+20,top+83,fill,8,complete?Menu.GOLD:Menu.TEAL);
+            Menu.text(feats.progress(chapter,i)+" / "+feats.goal(chapter,i),x+688,top+79,16,Menu.TEXT);
+        }
+        Menu.text("CHAPTER "+(chapter+1)+" / "+Campaign.CHAPTERS[chapter].title()+" / UP TO 45 BONUS CRYSTALS",x+12,y+492,15,Menu.GOLD);
+        Menu.text("Optional goals. Rewards arrive when this chapter is cleared.",x+12,y+515,14,Menu.MUTED);
+        Menu.text("VIEW "+(chapter+1)+" OF 4",x+440,y+554,14,Menu.MUTED);
+        if(Menu.button("<",x+640,y+540,52,chapter>0))featsChapter--;
+        if(Menu.button(">",x+704,y+540,52,chapter<3))featsChapter++;
     }
     private void requestNewGame() {
         playtest=false;

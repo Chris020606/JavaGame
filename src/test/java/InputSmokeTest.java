@@ -461,6 +461,26 @@ public class InputSmokeTest {
                 game.tutorial().hit(true);for(int f=0;f<3;f++)frame(game);capture("onboarding-parry");
                 System.out.println("PASS: central onboarding panel and contextual charge/parry cues render");return;
             }
+            if(java.util.Arrays.asList(args).contains("--feats-review")) {
+                Progression feats=new Progression();
+                for(int i=0;i<2;i++) { feats.chapterFeats().record(1,ChapterFeats.Action.CHARGED_HIT);feats.chapterFeats().record(1,ChapterFeats.Action.PARRY); }
+                for(int i=0;i<3;i++)feats.chapterFeats().record(1,ChapterFeats.Action.EVADE);
+                Entities.Enemy boss=new Entities.Enemy(0,14,5,5,.5f);
+                SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",0,4,0,feats,new WaveDirector.State(5,0,1,8,0,21,0),java.util.List.of(boss),Arena.HIGHLANDS));
+                check(game.loadCurrent(),"Feat save failed");game.getEnemies().getFirst().health=0;key(game,KEY_ENTER);
+                for(int f=0;f<3;f++)frame(game);
+                check(game.getState()==GameState.LEVEL_COMPLETE && game.getProgression().chapterFeats().awarded(1)==45,"Completion did not pay earned feats");
+                check(game.getProgression().crystals()==165,"Boss and feat reward total incorrect");
+                check(game.saveCurrent() && game.loadCurrent(),"Completed feat save failed");check(game.getProgression().rewardChapterFeats(1)==0,"Reload duplicated feat reward");
+                game.setState(GameState.JOURNAL);for(int f=0;f<3;f++)frame(game);
+                int x=(GetScreenWidth()-760)/2,y=(GetScreenHeight()-610)/2;click(game,x+520,y+68);
+                for(int f=0;f<3;f++)frame(game);capture("chapter-feats");
+                SetWindowSize(1000,680);for(int f=0;f<3;f++)frame(game);capture("chapter-feats-compact");
+                click(game,(GetScreenWidth()-760)/2+730,(GetScreenHeight()-610)/2+560);for(int f=0;f<3;f++)frame(game);capture("chapter-feats-next");
+                click(game,(GetScreenWidth()-760)/2+120,(GetScreenHeight()-610)/2+68);for(int f=0;f<3;f++)frame(game);capture("chapter-story-tabs");
+                game.setState(GameState.LEVEL_COMPLETE);for(int f=0;f<120;f++)frame(game);capture("chapter-feats-complete");
+                System.out.println("PASS: chapter feat reward/save idempotency, feat/story tabs, compact journal and completion presentation");return;
+            }
             if(java.util.Arrays.asList(args).contains("--ranged-assist-review")) {
                 for(HeroClass hero:new HeroClass[]{HeroClass.ARCHER,HeroClass.MAGE}) {
                     Entities.Enemy target=new Entities.Enemy(1.3f,12,1);
