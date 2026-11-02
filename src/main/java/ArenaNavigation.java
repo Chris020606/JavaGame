@@ -33,8 +33,10 @@ public final class ArenaNavigation {
     /** First swept contact fraction, shared by player shots, enemy shots and ranged sight checks. */
     public static float projectileFraction(int chapter,float x,float z,float endX,float endZ) {
         float dx=endX-x,dz=endZ-z,a=dx*dx+dz*dz,best=1;
-        for(Obstacle o:obstacles(chapter)) {
+        float minX=Math.min(x,endX),maxX=Math.max(x,endX),minZ=Math.min(z,endZ),maxZ=Math.max(z,endZ);
+        for(Obstacle o:CHAPTERS.get(Math.max(0,Math.min(3,chapter)))) {
             float ox=x-o.x,oz=z-o.z,r=o.radius+.08f,c=ox*ox+oz*oz-r*r;
+            if(o.x+r<minX || o.x-r>maxX || o.z+r<minZ || o.z-r>maxZ)continue;
             if(c<=0)return 0;
             if(a<.000001f)continue;
             float b=2*(ox*dx+oz*dz),disc=b*b-4*a*c;

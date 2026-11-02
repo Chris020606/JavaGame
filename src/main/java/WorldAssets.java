@@ -20,7 +20,9 @@ public final class WorldAssets implements AutoCloseable {
     private final java.util.Map<String,int[][]> baseNatureColors=new java.util.HashMap<>();
     private final java.util.Map<Model,java.util.Map<String,Integer>> humanClips=new java.util.IdentityHashMap<>();
     private record RoadPart(Model model,boolean shoulder) {}
+    private record PropTransform(Vector3 position,Vector3 axis,Vector3 scale,Color tint) {}
     private final java.util.Map<Integer,java.util.List<RoadPart>> roadModels=new java.util.HashMap<>();
+    private final java.util.Map<EnvironmentLayout.Prop,PropTransform> propTransforms=new java.util.HashMap<>();
     private int lookIndex=-1;
     private final Texture whiteAlbedo=whiteAlbedo();
     private static Texture whiteAlbedo() { Image pixels=GenImageColor(2,2,WHITE);try { return LoadTextureFromImage(pixels); }finally { UnloadImage(pixels); } }
@@ -119,6 +121,12 @@ public final class WorldAssets implements AutoCloseable {
         for(int tier=0;tier<bladeLengths.length;tier++) {
             Model weapon=weaponModel(0,tier);
             for(int mesh=0;mesh<weapon.meshCount();mesh++)bladeLengths[tier]=Math.max(bladeLengths[tier],GetMeshBoundingBox(new Mesh(weapon.meshes()).position(mesh)).max().y());
+        }
+        for(int chapter=0;chapter<4;chapter++)for(var prop:EnvironmentLayout.props(chapter)) {
+            Vector3 position=v(prop.x(),prop.y(),prop.z());
+            Vector3 axis=v(0,1,0);Vector3 scale=v(prop.scale(),prop.scale(),prop.scale());
+            Color tint=prop.model().equals("grave")?Menu.color(132,142,126):prop.model().equals("pine-crooked")?Menu.color(118,142,128):WHITE;
+            propTransforms.put(prop,new PropTransform(position,axis,scale,tint));
         }
 
     }
@@ -302,8 +310,9 @@ public final class WorldAssets implements AutoCloseable {
         else grave("altar-stone",0,0,0,4);
         scenery("statue_ring",0,0,0,4.5f);
         for(var prop:EnvironmentLayout.props(chapter)) {
-            if(prop.graveyard())graveAt(prop.model(),prop.x(),prop.y(),prop.z(),prop.yaw(),prop.scale());
-            else sceneryAt(prop.model(),prop.x(),prop.y(),prop.z(),prop.yaw(),prop.scale());
+            PropTransform transform=propTransforms.get(prop);
+            Model model=prop.graveyard()?graveyard.get(prop.model()):nature.get(prop.model());
+            DrawModelEx(model,transform.position(),transform.axis(),prop.yaw(),transform.scale(),transform.tint());
         }
         if(shadowPass)return;
         if(chapter==0 || chapter==2) {

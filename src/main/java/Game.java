@@ -860,7 +860,7 @@ public class Game {
         var offers=progress.expedition().offers();if(index<0 || index>=offers.size())return;
         Expedition.Blessing choice=offers.get(index);
         if(progress.expedition().choose(choice)) {
-            audio.play("upgrade");state=blessingReturn;notifyPlayer(choice.title.toUpperCase()+" / RANK "+progress.expedition().rank(choice));saveCurrent();
+            audio.play("upgrade");state=blessingReturn;notifyPlayer("BLESSING CLAIMED / "+choice.title.toUpperCase()+" / RANK "+progress.expedition().rank(choice));saveCurrent();
         }
     }
     private void drawBlessings() {
@@ -869,13 +869,16 @@ public class Game {
         Menu.text("Shape your expedition / "+progress.expedition().embers()+" ember"+(progress.expedition().embers()==1?"":"s")+" to spend",x+20,y+60,18,Menu.TEAL);
         var offers=progress.expedition().offers();
         for(int i=0;i<offers.size();i++) {
-            var b=offers.get(i);int left=x+20+i*292;Menu.panel(left,y+108,272,300);
+            var b=offers.get(i);int left=x+20+i*292;int cardY=y+108;Vector2 mouse=GetMousePosition();
+            boolean overCard=mouse.x()>=left && mouse.x()<=left+272 && mouse.y()>=cardY && mouse.y()<=cardY+300;
+            Menu.panel(left,cardY,272,300);if(overCard)DrawRectangleLines(left-2,cardY-2,276,304,Menu.GOLD);
             Menu.icon(b==Expedition.Blessing.BLOODROOT?"heart":b==Expedition.Blessing.BULWARK?"crown":"sword",left+24,y+128,34,Menu.TEAL);
             Menu.text(b.title,left+22,y+182,25,Menu.GOLD);Menu.text("RANK "+progress.expedition().rank(b)+" > "+(progress.expedition().rank(b)+1)+" / 3",left+22,y+220,16,Menu.MUTED);
             Menu.wrapped(b.description,left+22,y+254,228,18,Menu.TEXT);
-            if(Menu.button("["+(i+1)+"] CLAIM",left+20,y+350,232,true)) { chooseBlessing(i);break; }
+            boolean claim=Menu.button("["+(i+1)+"] SELECT",left+20,y+350,232,true);
+            if(claim || overCard && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) { chooseBlessing(i);break; }
         }
-        Menu.text("Blessings persist with your save. Leave now to decide later.",x+20,y+440,17,Menu.MUTED);
+        Menu.text("Select anywhere on a card or press its number. Your choice is saved.",x+20,y+440,17,Menu.MUTED);
         if(Menu.button("RETURN [ESC]",x+620,y+466,252,true))state=blessingReturn;
     }
     private void drawWorkshop() {
