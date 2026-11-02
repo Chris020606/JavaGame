@@ -154,6 +154,23 @@ public final class EnvironmentLayout {
             if(i%3==0)n(p,"flower_purpleC",x+.4f,z+.2f,r.nextFloat()*360,.8f+r.nextFloat()*.5f);
         }
     }
+    /** Flat land runs leave the recessed river meshes open instead of covering their water. */
+    public record GroundStrip(float x,float z,float width,float depth) {}
+    public static List<GroundStrip> groundStrips(int chapter) {
+        List<GroundStrip> strips=new ArrayList<>();
+        int extent=chapter==0?RIVER_EXTENT:8;
+        for(int z=-8;z<=8;z++) {
+            int start=-extent;
+            for(int x=-extent;x<=extent+1;x++) {
+                boolean water=x<=extent && chapter==0 && riverTile(x,z)!=null;
+                if(water || x==extent+1) {
+                    if(start<x)strips.add(new GroundStrip((start+x-1)*2,z*4,(x-start)*4,4));
+                    start=x+1;
+                }
+            }
+        }
+        return List.copyOf(strips);
+    }
     public record RiverTile(String model,int yaw) {}
     public static final int RIVER_EXTENT=44;
     public static RiverTile riverTile(int x,int z) {

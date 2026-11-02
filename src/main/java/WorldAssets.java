@@ -22,7 +22,7 @@ public final class WorldAssets implements AutoCloseable {
     private record RoadPart(Model model,boolean shoulder) {}
     private record PropTransform(Vector3 position,Vector3 axis,Vector3 scale,Color tint) {}
     private record StaticDraw(Model model,PropTransform transform,float yaw) {}
-    private record TerrainTiles(StaticDraw ground,java.util.List<StaticDraw> water,
+    private record TerrainTiles(java.util.List<StaticDraw> ground,java.util.List<StaticDraw> water,
                                 java.util.List<StaticDraw> outer,java.util.List<StaticDraw> shadowOuter) {}
     private final java.util.Map<Integer,java.util.List<RoadPart>> roadModels=new java.util.HashMap<>();
     private final java.util.Map<EnvironmentLayout.Prop,PropTransform> propTransforms=new java.util.IdentityHashMap<>();
@@ -107,7 +107,7 @@ public final class WorldAssets implements AutoCloseable {
                 int r=Byte.toUnsignedInt(c.r()),g=Byte.toUnsignedInt(c.g()),b=Byte.toUnsignedInt(c.b());
                 if (name.startsWith("stone_") || name.startsWith("statue_")) diffuse.color(Menu.color(135+r/5,140+r/5,145+r/5));
                 else if (name.startsWith("tent_") && r>g*1.5f) diffuse.color(Menu.color(148,91,57));
-                else if(name.startsWith("ground_river") && b>=g && b>r*1.2f) diffuse.color(Menu.color(37,111,137));
+                else if(name.startsWith("ground_river") && b>=g && b>r*1.2f) diffuse.color(Menu.color(35,104,190));
                 else if (g>r*2 && b>r*2) diffuse.color(Menu.color(76,125,77));
                 else if (r>g*1.5f && g>b*1.2f) diffuse.color(Menu.color(113,78,52));
             }
@@ -168,8 +168,9 @@ public final class WorldAssets implements AutoCloseable {
     private void prepareTerrainDraws() {
         for(int chapter=0;chapter<4;chapter++) {
             java.util.List<StaticDraw> water=new java.util.ArrayList<>(),outer=new java.util.ArrayList<>(),shadowOuter=new java.util.ArrayList<>();
-            float groundWidth=chapter==0?360:68;
-            StaticDraw ground=new StaticDraw(nature.get("ground_grass"),new PropTransform(v(0,-.06f,0),axisUp,v(groundWidth,1,68),WHITE),0);
+            java.util.List<StaticDraw> ground=new java.util.ArrayList<>();
+            for(var strip:EnvironmentLayout.groundStrips(chapter))
+                ground.add(new StaticDraw(nature.get("ground_grass"),new PropTransform(v(strip.x(),0,strip.z()),axisUp,v(strip.width(),1,strip.depth()),WHITE),0));
             for(int x=-8;x<=8;x++)for(int z=-8;z<=8;z++) {
                 var river=chapter==0?EnvironmentLayout.riverTile(x,z):null;
                 if(river!=null)water.add(staticDraw(river.model(),x*4,0,z*4,river.yaw(),4,WHITE));
@@ -181,7 +182,7 @@ public final class WorldAssets implements AutoCloseable {
                     outer.add(draw);if(Math.abs(x)<=16)shadowOuter.add(draw);
                 }
             }
-            terrainLayers.put(chapter,new TerrainTiles(ground,java.util.List.copyOf(water),java.util.List.copyOf(outer),java.util.List.copyOf(shadowOuter)));
+            terrainLayers.put(chapter,new TerrainTiles(java.util.List.copyOf(ground),java.util.List.copyOf(water),java.util.List.copyOf(outer),java.util.List.copyOf(shadowOuter)));
         }
     }
     private void drawStatic(java.util.List<StaticDraw> draws) {
@@ -356,9 +357,8 @@ public final class WorldAssets implements AutoCloseable {
     private void drawFrozen(float time) { drawAuthoredLayout(2,time); }
     private void drawAuthoredLayout(int chapter,float time) {
         TerrainTiles tiles=terrainLayers.get(chapter);
-        drawStatic(shadowPass?tiles.shadowOuter():tiles.outer());
-        surface(.82f,.02f);StaticDraw ground=tiles.ground();PropTransform groundTransform=ground.transform();DrawModelEx(ground.model(),groundTransform.position(),groundTransform.axis(),ground.yaw(),groundTransform.scale(),groundTransform.tint());
-        if(!tiles.water().isEmpty()) { surface(.26f,.1f);drawStatic(tiles.water());surface(.82f,.02f); }
+        surface(.82f,.02f);drawStatic(tiles.ground());
+        surface(.26f,.1f);drawStatic(shadowPass?tiles.shadowOuter():tiles.outer());drawStatic(tiles.water());surface(.82f,.02f);
         if(!shadowPass)drawRoad(chapter);
         if(chapter==0 || chapter==2)scenery("platform_stone",0,0,0,5.2f);
         else grave("altar-stone",0,0,0,4);
