@@ -3,7 +3,7 @@ import Entities.ArmorSlot;
 /** Rules and economy kept independent of rendering so they can be tested. */
 public class Progression {
     public void store(java.util.Properties p) {
-        expedition.store(p);fieldEvent.store(p);
+        expedition.store(p);fieldEvent.store(p);recoveryWisps.store(p);
         p.setProperty("difficulty",difficulty.name());
         p.setProperty("vitality",vitality+"");p.setProperty("power",power+"");p.setProperty("endurance",endurance+"");p.setProperty("recovery",recovery+"");p.setProperty("agility",agility+"");
         p.setProperty("armorUnlocked",armorUnlocked+"");
@@ -16,7 +16,7 @@ public class Progression {
     }
     public static Progression restore(java.util.Properties p) {
         Progression result=new Progression(HeroClass.valueOf(p.getProperty("heroClass","WARRIOR")),Difficulty.valueOf(p.getProperty("difficulty","NORMAL")));
-        result.expedition=Expedition.restore(p);result.fieldEvent=FieldEvent.restore(p);
+        result.expedition=Expedition.restore(p);result.fieldEvent=FieldEvent.restore(p);result.recoveryWisps=RecoveryWisps.restore(p);
         result.potions=p.containsKey("potions")?SaveGame.integer(p,"potions",0,5):2;
         result.weaponUnlocked=p.containsKey("weaponUnlocked")?SaveGame.integer(p,"weaponUnlocked",0,3):0;
         result.weaponTier=p.containsKey("weaponTier")?SaveGame.integer(p,"weaponTier",0,result.weaponUnlocked):0;
@@ -37,6 +37,8 @@ public class Progression {
     private final int[] armor=new int[4];
     private Expedition expedition=new Expedition();
     private FieldEvent fieldEvent=new FieldEvent();
+    private RecoveryWisps recoveryWisps=new RecoveryWisps();
+    public RecoveryWisps recoveryWisps() { return recoveryWisps; }
     public Expedition expedition() { return expedition; }
     public FieldEvent fieldEvent() { return fieldEvent; }
     public void restoreHealth(float amount) { if(!defeated())health=Math.min(maxHealth(),health+Math.max(0,amount)); }

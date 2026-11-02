@@ -471,6 +471,18 @@ public final class WorldAssets implements AutoCloseable {
             break;
         }
     }
+    public void drawRecoveryWisps(RecoveryWisps wisps,float time) {
+        if(shadowPass)return;
+        for(var wisp:wisps.active()) {
+            float bob=.65f+.16f*(float)Math.sin(time*3+wisp.x()),alpha=Math.min(1,wisp.life()/4);
+            Vector3 position=v(wisp.x(),bob,wisp.z());
+            DrawSphereEx(position,.15f,8,12,Fade(Menu.TEAL,alpha));
+            BeginBlendMode(BLEND_ADDITIVE);rlDisableDepthMask();
+            DrawBillboard(viewCamera,skyGlow,position,1.15f,Fade(Menu.TEAL,.55f*alpha));
+            rlEnableDepthMask();EndBlendMode();
+            DrawCylinderWires(v(wisp.x(),.07f,wisp.z()),.45f,.45f,.03f,20,Fade(Menu.TEAL,.65f*alpha));
+        }
+    }
     public void drawFieldEvent(FieldEvent event,float time) {
         if(!event.visible() && !(event.kind()==FieldEvent.Kind.SURVIVOR && event.status()==FieldEvent.Status.COMPLETE))return;
         surface(.55f,.15f);

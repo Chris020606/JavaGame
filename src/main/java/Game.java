@@ -298,6 +298,14 @@ public class Game {
             else notifyPlayer("Return to the outpost to upgrade.");
         }
         if (workshop) { vfx.blade().clear();return; }
+        if(tutorial==null) {
+            RecoveryWisps wisps=progress.recoveryWisps();wisps.update(dt);
+            if(wisps.collect(player.getPosition().x(),player.getPosition().z(),progress.health()<progress.maxHealth() || player.discipline().stamina()<player.discipline().maximum()-1)) {
+                progress.restoreHealth(RecoveryWisps.HEALTH);player.discipline().stamina(player.discipline().stamina()+RecoveryWisps.STAMINA);
+                audio.play("ward");notifyPlayer("RECOVERY WISP / +18 HEALTH / +26 STAMINA");
+                vfx.impact(player.getPosition().x(),player.getPosition().z(),Menu.TEAL,false);
+            }
+        }
         noticeTime = Math.max(0, noticeTime - dt); storyTime=Math.max(0,storyTime-dt);
         attackCooldown = Math.max(0, attackCooldown - dt);
         slashTime = Math.max(0, slashTime - dt);
@@ -396,6 +404,7 @@ public class Game {
                 iterator.remove(); progress.rewardEnemy(enemy.boss());if(enemy.elite)progress.rewardElite(); audio.play(enemy.boss()?"boss-fall":"kill");
                 enemy.attackTime=enemy.chargeTime=enemy.stun=enemy.hitFlash=0;enemy.healingTarget=null;enemy.deathTime=0;
                 enemy.corpseSettled=false;
+                if(tutorial==null && !enemy.boss())progress.recoveryWisps().enemyDefeated(enemy.x,enemy.z,progress.kills(),enemy.elite);
                 if(fallen.size()>=48)fallen.remove(0);fallen.add(enemy);
                 vfx.impact(enemy.x,enemy.z,enemy.boss()?Menu.GOLD:Menu.TEAL,enemy.boss());
                 feedback.add(enemy.x,enemy.z,"+"+enemy.reward()+" crystals",Menu.TEAL);
@@ -546,7 +555,7 @@ public class Game {
     }
     private void continueCampaign() {
         if(state==GameState.VICTORY) { state=GameState.MAIN_MENU;return; }
-        director.advanceLevel(); storyTime=12; inventory=workshop=false;fallen.clear();outcomeTime=0;
+        director.advanceLevel();progress.recoveryWisps().clear(); storyTime=12; inventory=workshop=false;fallen.clear();outcomeTime=0;
         float sanctuaryBefore=progress.baseHealth();progress.chapterRespite();
         player.getPosition().x(0).y(0).z(4);player.resetCombat();
         state=GameState.PLAYING;writeCheckpoint();notifyPlayer("CHAPTER SUPPLIES / SANCTUARY +"+Math.round(progress.baseHealth()-sanctuaryBefore)+" INTEGRITY");saveCurrent();
@@ -676,6 +685,7 @@ public class Game {
         for(Enemy enemy:enemies) assets.drawEnemy(enemy);
         for(Enemy enemy:fallen)assets.drawEnemy(enemy);
         assets.drawFieldEvent(progress.fieldEvent(),(float)GetTime());
+        assets.drawRecoveryWisps(progress.recoveryWisps(),(float)GetTime());
         if(progress.baseLevel()>=2) {
             float pulse=(float)Math.sin(GetTime()*2)*.08f;
             DrawSphere(v(-2,1.7f+pulse,0),.22f,Menu.TEAL);DrawSphere(v(2,1.7f-pulse,0),.22f,Menu.GOLD);
@@ -691,6 +701,17 @@ public class Game {
         DrawCylinderWires(v(0,.10f,0),.52f,.52f,.08f,12,Menu.GOLD);
     }
     private void drawEnemyHealth() {
+        RecoveryWisps.Wisp nearestWisp=null;double nearestDistance=10;
+        for(var wisp:progress.recoveryWisps().active()) {
+            double distance=Math.hypot(wisp.x()-player.getPosition().x(),wisp.z()-player.getPosition().z());
+            if(distance<nearestDistance) { nearestDistance=distance;nearestWisp=wisp; }
+        }
+        if(nearestWisp!=null) {
+            Vector2 point=GetWorldToScreen(v(nearestWisp.x(),1.6f,nearestWisp.z()),sceneManager.getOpenScene().getCameraController().getCamera());
+            int x=(int)point.x(),y=(int)point.y();
+            Menu.panel(x-84,y-5,168,36);Menu.center("RECOVERY WISP",x,y,11,Menu.TEAL);
+            Menu.center("18 HP + 26 STAMINA",x,y+15,10,Menu.TEXT);
+        }
         for (Enemy enemy : enemies) {
             Vector2 screen = GetWorldToScreen(v(enemy.x, enemy.boss()?(enemy.king?6.0f:5.2f):2.1f, enemy.z), sceneManager.getOpenScene().getCameraController().getCamera());
             Menu.bar((int)screen.x()-22, (int)screen.y(), 44, enemy.health, enemy.maxHealth, enemy.boss()||enemy.elite||enemy.variant==2?Menu.GOLD:Menu.RED);
@@ -836,6 +857,7 @@ public class Game {
         DrawLine(cx-59,cy,cx+59,cy,Menu.LINE); DrawLine(cx,cy-59,cx,cy+59,Menu.LINE);
         DrawCircle(cx,cy,5,Menu.TEAL);
         if(progress.fieldEvent().visible())DrawCircle(cx+(int)(progress.fieldEvent().x()*2.5f),cy+(int)(progress.fieldEvent().z()*2.5f),4,Menu.TEAL);
+        for(var wisp:progress.recoveryWisps().active())DrawCircleLines(cx+(int)(wisp.x()*2.5f),cy+(int)(wisp.z()*2.5f),4,Menu.TEAL);
         for (Enemy e:enemies) DrawCircle(cx+(int)(e.x*2.5f),cy+(int)(e.z*2.5f),3,e.boss()||e.elite||e.variant==2?Menu.GOLD:Menu.RED);
         if (director.warning()) DrawCircleLines(cx+(int)(director.x()*2.5f),cy+(int)(director.z()*2.5f),6,Menu.GOLD);
         DrawCircle(cx+(int)(player.getPosition().x()*2.5f),cy+(int)(player.getPosition().z()*2.5f),4,Menu.TEXT);

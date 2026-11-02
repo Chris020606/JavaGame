@@ -223,6 +223,10 @@ public class InputSmokeTest {
         System.out.println("PASS: optional supplies, vulnerable escort, beacon defense, persistent blessing drafts and paused event timers");
     }
     private static void combatMotionRegression(Game game,java.nio.file.Path profile,java.util.concurrent.atomic.AtomicBoolean click) throws Exception {
+        // Native automation button states can carry over from earlier menu/combat scenarios.
+        click.set(false);event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);event(MOUSE_UP,MOUSE_BUTTON_RIGHT,0);
+        for(int held:new int[]{KEY_SPACE,KEY_Q,KEY_R,KEY_F,KEY_W,KEY_A,KEY_S,KEY_D,KEY_LEFT_SHIFT,KEY_LEFT_CONTROL})event(KEY_UP,held,0);
+        frame(game);
         for(HeroClass hero:corpseOnly?new HeroClass[0]:HeroClass.values())for(int tier:new int[]{0,3}) {
             Progression p=Progression.playtest(hero,Entities.Difficulty.NORMAL,false);p.equipWeapon(tier);
             Entities.Enemy boss=new Entities.Enemy(0,13,5,5,.5f);
@@ -456,6 +460,19 @@ public class InputSmokeTest {
                 for(int f=0;f<3;f++)frame(game);capture("onboarding-charge");
                 game.tutorial().hit(true);for(int f=0;f<3;f++)frame(game);capture("onboarding-parry");
                 System.out.println("PASS: central onboarding panel and contextual charge/parry cues render");return;
+            }
+            if(java.util.Arrays.asList(args).contains("--recovery-review")) {
+                Progression recovery=new Progression();recovery.damagePlayer(40);recovery.recoveryWisps().enemyDefeated(4,8,5,false);
+                SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Wisp",0,8,0,recovery,new WaveDirector.State(1,0,0,8,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
+                check(game.loadCurrent(),"Recovery save failed");key(game,KEY_ENTER);
+                for(int f=0;f<3;f++)frame(game);capture("recovery-wisp");
+                check(game.getProgression().recoveryWisps().active().size()==1,"Wisp consumed from a distance");
+                float before=game.getProgression().health();game.getPlayer().getPosition().x(4).z(8);game.getPlayer().discipline().stamina(0);
+                for(int f=0;f<3;f++)frame(game);
+                check(game.getProgression().recoveryWisps().active().isEmpty(),"Nearby wisp not collected");
+                check(game.getProgression().health()>=before+18,"Wisp did not restore health");
+                check(game.getPlayer().discipline().stamina()>=26,"Wisp did not restore stamina");
+                capture("recovery-collected");System.out.println("PASS: saved recovery wisp renders and restores health/stamina exactly once");return;
             }
             if(java.util.Arrays.asList(args).contains("--art-review")) {
                 int[] waves={0,4,5,9};
