@@ -7,10 +7,11 @@ public enum ChapterLook {
     FROST("FROZEN PASS",new int[]{54,92,133},new int[]{174,204,223},new int[]{195,211,223},new int[]{133,168,184},new int[]{151,176,194},new int[]{112,133,153}),
     NECROPOLIS("HOLLOW NECROPOLIS",new int[]{12,14,35},new int[]{42,42,68},new int[]{43,48,66},new int[]{58,64,89},new int[]{93,97,130},new int[]{55,58,79});
     public final String label;
-    private final int[] skyA,skyB,grass,leaf,stone,dirt;
-    ChapterLook(String label,int[] skyA,int[] skyB,int[] grass,int[] leaf,int[] stone,int[] dirt) { this.label=label;this.skyA=skyA;this.skyB=skyB;this.grass=grass;this.leaf=leaf;this.stone=stone;this.dirt=dirt; }
+    private final int[] grass,leaf,stone,dirt;
+    private final Color skyTopColor,skyBottomColor;
+    ChapterLook(String label,int[] skyA,int[] skyB,int[] grass,int[] leaf,int[] stone,int[] dirt) { this.label=label;this.grass=grass;this.leaf=leaf;this.stone=stone;this.dirt=dirt;skyTopColor=c(skyA);skyBottomColor=c(skyB); }
     private static Color c(int[] rgb) { return Menu.color(rgb[0],rgb[1],rgb[2]); }
-    public Color skyTop() { return c(skyA); }public Color skyBottom() { return c(skyB); }
+    public Color skyTop() { return skyTopColor; }public Color skyBottom() { return skyBottomColor; }
     public Color grass() { return c(grass); }public Color leaf() { return c(leaf); }
     public Color stone() { return c(stone); }public Color dirt() { return c(dirt); }
     public static ChapterLook at(int chapter) { return values()[Math.max(0,Math.min(3,chapter))]; }

@@ -24,8 +24,9 @@ public class Player extends Entity {
     private float chargePoseTime,aimLock,locomotionClock;
     private float lastOutcomeTime;
     private float visualLift;
+    private final Vector3 renderPosition=new Vector3();
     private boolean fallenPose;
-    public Vector3 renderPosition() { return new Vector3().x(getPosition().x()).y(getPosition().y()+visualLift).z(getPosition().z()); }
+    public Vector3 renderPosition() { return renderPosition.x(getPosition().x()).y(getPosition().y()+visualLift).z(getPosition().z()); }
     public void setCharging(boolean value) { if(value&&!charging)chargePoseTime=0;charging=value; }
     public void aimAt(float x,float z) {
         if(!isAttacking() && !isDodging() && Math.hypot(x-getPosition().x(),z-getPosition().z())>.2f) {

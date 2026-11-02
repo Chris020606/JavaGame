@@ -21,7 +21,8 @@ public final class RoadLayout {
         List<Sample> result=new ArrayList<>();
         for(int i=0;i<points.size()-1;i++) {
             var a=points.get(Math.max(0,i-1));var b=points.get(i);var c=points.get(i+1);var d=points.get(Math.min(points.size()-1,i+2));
-            int steps=Math.max(2,(int)Math.ceil(Math.hypot(c.x()-b.x(),c.z()-b.z())/.65));
+            // Tight sampling through the horizon extensions keeps the ribbon seamless where tangents bend.
+            int steps=Math.max(2,(int)Math.ceil(Math.hypot(c.x()-b.x(),c.z()-b.z())/.45));
             for(int j=0;j<steps;j++) {
                 float t=(float)j/steps,nt=Math.min(1,t+.01f),x=curve(a.x(),b.x(),c.x(),d.x(),t),z=curve(a.z(),b.z(),c.z(),d.z(),t);
                 float dx=curve(a.x(),b.x(),c.x(),d.x(),nt)-x,dz=curve(a.z(),b.z(),c.z(),d.z(),nt)-z,len=(float)Math.hypot(dx,dz);

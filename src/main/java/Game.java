@@ -107,6 +107,7 @@ public class Game {
     private final Random random = new Random();
     private final WaveDirector director = new WaveDirector(random);
     private final GameAudio audio = new GameAudio();
+    private final Color skyTopBlend=new Color(),skyHorizonBlend=new Color();
     private final CombatFeedback feedback = new CombatFeedback();
     private final CombatVfx vfx=new CombatVfx();
     private int wave, combo;
@@ -211,7 +212,7 @@ public class Game {
         }
         boolean titleAudio=state==GameState.PLAYTEST_SETUP && playtestReturn==GameState.MAIN_MENU || state==GameState.MAIN_MENU || state==GameState.LOGIN || state==GameState.PLAYER_HISTORY || state==GameState.JOURNAL && journalReturn==GameState.MAIN_MENU || state==GameState.SETTING_MENU && settingsReturn==GameState.MAIN_MENU;
         boolean battle=state==GameState.PLAYING && !inventory && !workshop && !enemies.isEmpty();
-        Enemy musicBoss=enemies.stream().filter(e->e.boss() && e.health>0).findFirst().orElse(null);
+        Enemy musicBoss=activeBoss();
         audio.update(dt,chapterIndex(),titleAudio,battle,battle && musicBoss!=null,battle && musicBoss!=null && musicBoss.enraged());
         if(state==GameState.RELIC_CHOICE) {
             if(IsKeyPressed(KEY_ESCAPE))state=blessingReturn;
@@ -339,7 +340,7 @@ public class Game {
             attackElapsed+=dt;
             if (attackElapsed>=activeAttack.impact()) { resolvePlayerHit(px,pz); impactPending=false; }
         }
-        boolean finishingChapter=director.levelCleared(0) && enemies.stream().noneMatch(e->e.health>0);
+        boolean finishingChapter=director.levelCleared(0) && !hasLivingEnemy();
         if(finishingChapter) { inputBuffer=0;heavyCharge=0;player.setCharging(false); }
         if(player.isDodging()) { inputBuffer=0;comboWindow=0;combo=0;heavyCharge=0;player.setCharging(false); }
         if(!finishingChapter && heavyDown && attackCooldown<=0 && !player.isDodging() && player.discipline().recovery()<=0) {
@@ -623,7 +624,14 @@ public class Game {
         }
     }
     private Vector3 v(float x, float y, float z) { return new Vector3().x(x).y(y).z(z); }
-    private static Color skyColor(DayNightCycle.Rgb c) { return Menu.color(Math.round(c.r()*255),Math.round(c.g()*255),Math.round(c.b()*255)); }
+    private Enemy activeBoss() { for(Enemy enemy:enemies)if(enemy.boss() && enemy.health>0)return enemy;return null; }
+    private boolean hasLivingEnemy() { for(Enemy enemy:enemies)if(enemy.health>0)return true;return false; }
+    private boolean enemyInsideParryWindow() { for(Enemy enemy:enemies)if(enemy.attackTime>.25f && enemy.attackTime<.43f)return true;return false; }
+    private static Color blendSky(DayNightCycle.Rgb base,Color chapter,float amount,Color target) {
+        return target.r((byte)Math.round(base.r()*255*(1-amount)+Byte.toUnsignedInt(chapter.r())*amount))
+            .g((byte)Math.round(base.g()*255*(1-amount)+Byte.toUnsignedInt(chapter.g())*amount))
+            .b((byte)Math.round(base.b()*255*(1-amount)+Byte.toUnsignedInt(chapter.b())*amount)).a((byte)255);
+    }
     private void drawWorld() {
         float time=(float)GetTime();Camera3D camera=sceneManager.getOpenScene().getCameraController().getCamera();
         assets.view(player,camera);
@@ -631,9 +639,10 @@ public class Game {
         renderer.beginShadow(time,light);assets.pass(renderer.shadowShader,true);
         assets.drawEnvironment(chapterIndex(),time);drawActors();renderer.endShadow();
         renderer.beginScene();
-        DrawRectangleGradientV(0,0,renderer.width(),renderer.height(),skyColor(light.top()),skyColor(light.horizon()));
+        ChapterLook palette=ChapterLook.at(chapterIndex());float atmosphere=.12f+.34f*light.daylight();
+        DrawRectangleGradientV(0,0,renderer.width(),renderer.height(),blendSky(light.top(),palette.skyTop(),atmosphere,skyTopBlend),blendSky(light.horizon(),palette.skyBottom(),atmosphere,skyHorizonBlend));
         BeginMode3D(camera);
-        Enemy boss=enemies.stream().filter(e->e.boss() && e.health>0).findFirst().orElse(null);
+        Enemy boss=activeBoss();
         assets.drawSky(camera,light);
         assets.litPass(renderer,camera,time,boss,light);assets.drawEnvironment(chapterIndex(),time);drawActors();drawSanctuaryRing();
         if (director.warning()) {
@@ -762,7 +771,7 @@ public class Game {
             case STRIKE -> "Hit the marked partner twice";
             case DODGE -> "Move + "+settings.controls.label(DODGE);
             case CHARGE -> heavyCharge>=.75f && heavyCharge<=1.05f?"RELEASE NOW":heavyCharge>1.05f?"Release, then try a shorter charge":"Hold "+settings.controls.label(HEAVY)+" - wait for gold";
-            case PARRY -> enemies.stream().anyMatch(e->e.attackTime>.25f && e.attackTime<.43f)?"PRESS "+settings.controls.label(PARRY)+" NOW":"Face the partner - wait for their strike";
+            case PARRY -> enemyInsideParryWindow()?"PRESS "+settings.controls.label(PARRY)+" NOW":"Face the partner - wait for their strike";
             case GEAR -> "Open and close your pack with "+settings.controls.label(INVENTORY);
             case HAVEN -> nearBase()?"Inside the healing ring - stay here":"Walk into the teal circle around the sanctuary";
             case COMPLETE -> "Your adventure is ready";
@@ -860,16 +869,16 @@ public class Game {
         var offers=progress.expedition().offers();if(index<0 || index>=offers.size())return;
         Expedition.Blessing choice=offers.get(index);
         if(progress.expedition().choose(choice)) {
-            audio.play("upgrade");state=blessingReturn;notifyPlayer("BLESSING CLAIMED / "+choice.title.toUpperCase()+" / RANK "+progress.expedition().rank(choice));saveCurrent();
+            applyProgression();audio.play("upgrade");state=blessingReturn;notifyPlayer("BLESSING CLAIMED / "+choice.title.toUpperCase()+" / RANK "+progress.expedition().rank(choice));saveCurrent();
         }
     }
     private void drawBlessings() {
         dim();int x=(GetScreenWidth()-900)/2,y=(GetScreenHeight()-510)/2;
         Menu.panel(x-20,y-20,940,550);Menu.text("CHOOSE YOUR EMBER BLESSING",x+20,y+12,32,Menu.GOLD);
         Menu.text("Shape your expedition / "+progress.expedition().embers()+" ember"+(progress.expedition().embers()==1?"":"s")+" to spend",x+20,y+60,18,Menu.TEAL);
-        var offers=progress.expedition().offers();
+        var offers=progress.expedition().offers();Vector2 mouse=GetMousePosition();
         for(int i=0;i<offers.size();i++) {
-            var b=offers.get(i);int left=x+20+i*292;int cardY=y+108;Vector2 mouse=GetMousePosition();
+            var b=offers.get(i);int left=x+20+i*292;int cardY=y+108;
             boolean overCard=mouse.x()>=left && mouse.x()<=left+272 && mouse.y()>=cardY && mouse.y()<=cardY+300;
             Menu.panel(left,cardY,272,300);if(overCard)DrawRectangleLines(left-2,cardY-2,276,304,Menu.GOLD);
             Menu.icon(b==Expedition.Blessing.BLOODROOT?"heart":b==Expedition.Blessing.BULWARK?"crown":"sword",left+24,y+128,34,Menu.TEAL);
@@ -908,6 +917,7 @@ public class Game {
     private void drawChapterEnd() {
         if(chapter().bossOnly() && outcomeTime<(state==GameState.VICTORY?8f:1.6f)) {
             int center=GetScreenWidth()/2;
+            if(noticeTime>0) { Menu.panel(center-270,122,540,48);Menu.center(notice,center,136,16,Menu.GOLD); }
             Menu.panel(center-270,186,540,80);Menu.center(chapter().title().toUpperCase()+" DEFEATED",center,201,27,Menu.GOLD);
             Menu.center(state==GameState.VICTORY?"The curse breaks. Watch the valley wake beneath the dawn.":"The ember endures. Congratulations, warden!",center,239,16,Menu.TEXT);
             return;
@@ -919,6 +929,7 @@ public class Game {
             DrawCircle(cx,cy,2+i%3,Fade(i%2==0?Menu.GOLD:Menu.TEAL,(1-life)*.65f));
         }
         Menu.panel(x-24,y-24,708,510);
+        if(noticeTime>0) { Menu.panel(x,y-78,660,48);Menu.center(notice,x+330,y-64,15,Menu.GOLD); }
         Menu.icon("crown",x,y,32,Menu.GOLD);
         Menu.text(state==GameState.VICTORY?"THE VALLEY SEES DAWN":"CONGRATULATIONS, WARDEN!",x+48,y,30,Menu.GOLD);
         Menu.text(chapter().title(),x,y+60,25,Menu.TEXT);

@@ -21,13 +21,20 @@ public final class EnvironmentLayout {
             n(p,"fence_simple",-17,-8,17,2.4f);n(p,"fence_simple",-17,-11,7,2.2f);
             n(p,"statue_columnDamaged",9,14,11,3.4f);n(p,"statue_columnDamaged",13,16,82,2.5f);
             n(p,"statue_obelisk",11,19,-9,3.1f);
-            n(p,"bridge_wood",-4,-28,90,4.2f);
+            // The river runs east-west here; the bridge model spans north-south in its base orientation.
+            n(p,"bridge_wood",-4,-28,0,4.2f);
             // Layered riverbank groves conceal the distant seam from low orbit angles.
             for(int side:new int[]{-1,1})for(int i=0;i<14;i++) {
                 float x=side*(31+i*2.8f+(random.nextFloat()-.5f)*1.4f),z=-24+(i%3)*4.2f+(random.nextFloat()-.5f)*2;
                 n(p,i%3==0?"tree_oak":"tree_pineTallA_detailed",x,z,random.nextFloat()*360,5.5f+random.nextFloat()*2.5f);
                 n(p,"plant_bushDetailed",x-side*1.7f,-17+(i%2)*2,random.nextFloat()*360,2.4f+random.nextFloat());
                 if(i%3==0)n(p,"stone_largeA",x,-23,random.nextFloat()*360,3.2f);
+            }
+            // Tree screens continue along both banks until the river leaves the distant view.
+            for(int end:new int[]{-1,1})for(int i=0;i<11;i++)for(int bank:new int[]{-1,1}) {
+                float x=end*(82+i*9+(random.nextFloat()-.5f)*3),z=bank<0?-31:-17+(random.nextFloat()-.5f)*2;
+                n(p,i%3==0?"tree_oak":"tree_pineTallA_detailed",x,z,random.nextFloat()*360,5+random.nextFloat()*2.8f);
+                if(i%2==0)n(p,"plant_bushDetailed",x-end*2.2f,z+bank*1.3f,random.nextFloat()*360,2+random.nextFloat());
             }
             n(p,"tree_oak",-19,6,110,3.2f);n(p,"tree_pineRoundC",18,-15,35,3.7f);n(p,"tree_oak",20,15,210,3.3f);
             n(p,"stump_old",-15,12,16,2.3f);n(p,"log_large",-17,15,58,2.1f);
@@ -45,6 +52,7 @@ public final class EnvironmentLayout {
             burialPlot(p,random,14,-14,-5,2,3);burialPlot(p,random,-16,14,16,2,2);
             g(p,"crypt",-28,-14,80,5);g(p,"crypt",24,-28,-23,5.8f);
             g(p,"pine-crooked",-21,-8,33,5);g(p,"pine-crooked",20,17,202,5.8f);
+            g(p,"pine-crooked",-22,12,18,4.1f);g(p,"pine-crooked",18,-3,227,4.5f);
             cemeteryWall(p);g(p,"iron-fence-border-gate",2,-24,0,5);
         } else if(chapter==2) {
             // Uneven outcrops suggest a winding cut through the mountain, not two tiled rails.
@@ -66,13 +74,14 @@ public final class EnvironmentLayout {
             }
             burialPlot(p,random,-18,-17,24,2,2);burialPlot(p,random,19,14,-20,2,2);
             g(p,"coffin",-17,19,27,2.6f);g(p,"gravestone-broken",-15,21,32,2);
+            g(p,"pine-crooked",-22,-4,18,4.3f);g(p,"pine-crooked",20,18,227,4.8f);
             cemeteryWall(p);g(p,"iron-fence-border-gate",0,-24,0,5);
             g(p,"fire-basket",-4,-17,0,2.7f);g(p,"fire-basket",5,-18,0,2.4f);
         }
         // Natural tree belts extend the playable clearing into a wooded horizon.
         // Keep the roadside corridor open while layering trunks behind its edges.
         for(int side:new int[]{-1,1}) for(int i=0;i<12;i++) {
-            float z=-52+i*9+(random.nextFloat()-.5f)*3;
+            float z=-56+i*10+(random.nextFloat()-.5f)*4;
             float x=pathCenterX(chapter,z)+side*(13+random.nextFloat()*4);
             float scale=4.1f+random.nextFloat()*3.3f,yaw=random.nextFloat()*360;
             String tree=chapter==0?(i%3==0?"tree_oak":"tree_pineTallA_detailed"):
@@ -83,6 +92,18 @@ public final class EnvironmentLayout {
                 String undergrowth=chapter==0?"plant_bushDetailed":chapter==2?"stone_tallB":"rocks-tall";
                 if(chapter==1 || chapter==3)g(p,undergrowth,bushX,bushZ,yaw,1.8f+random.nextFloat()*1.4f);
                 else n(p,undergrowth,bushX,bushZ,yaw,1.8f+random.nextFloat()*1.4f);
+            }
+        }
+        // A pair of far treelines breaks the road silhouette at both ends of the clearing.
+        String horizonTree=chapter==0?("tree_pineTallA_detailed"):chapter==2?"tree_pineRoundC":"pine-crooked";
+        for(int end:new int[]{-1,1}) {
+            float z=end*62,center=pathCenterX(chapter,z),yaw=random.nextFloat()*360;
+            if(chapter==1 || chapter==3)g(p,horizonTree,center,z,yaw,6.4f);
+            else n(p,horizonTree,center,z,yaw,6.4f);
+            for(int side:new int[]{-1,1}) {
+                float x=center+side*(6.5f+random.nextFloat()*2),backZ=z+end*(2+random.nextFloat()*2);
+                if(chapter==1 || chapter==3)g(p,horizonTree,x,backZ,random.nextFloat()*360,5+random.nextFloat()*2);
+                else n(p,horizonTree,x,backZ,random.nextFloat()*360,5+random.nextFloat()*2);
             }
         }
         // Mixed-scale groves form an irregular horizon beyond the playable boundary.
@@ -117,9 +138,9 @@ public final class EnvironmentLayout {
     private static void burialPlot(List<Prop> p,Random r,float cx,float cz,float yaw,int rows,int columns) {
         double a=Math.toRadians(yaw);
         for(int row=0;row<rows;row++)for(int col=0;col<columns;col++) {
-            float dx=(col-(columns-1)*.5f)*3.2f+(r.nextFloat()-.5f)*.35f,dz=(row-(rows-1)*.5f)*4.3f;
+            float dx=(col-(columns-1)*.5f)*3.2f+(r.nextFloat()-.5f)*.9f,dz=(row-(rows-1)*.5f)*4.3f+(r.nextFloat()-.5f)*1.2f;
             float x=cx+(float)(dx*Math.cos(a)+dz*Math.sin(a)),z=cz+(float)(dz*Math.cos(a)-dx*Math.sin(a));
-            float tilt=yaw+(r.nextFloat()-.5f)*8;
+            float tilt=yaw+(r.nextFloat()-.5f)*17;
             g(p,"grave",x,z,tilt,2.6f);
             g(p,(row+col)%4==0?"gravestone-broken":(row+col)%3==0?"gravestone-cross":"gravestone-round",x-(float)Math.sin(a),z-(float)Math.cos(a),tilt,1.5f+r.nextFloat()*.3f);
             if(row==0 && col==0)g(p,"lantern-candle",x+1.1f,z,tilt,2.2f);

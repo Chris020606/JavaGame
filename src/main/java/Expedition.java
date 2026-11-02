@@ -14,6 +14,8 @@ public final class Expedition {
     }
     private final int[] ranks=new int[Blessing.values().length];
     private int embers,lastWave,choices,objectives;
+    private int offerRevision=-1;
+    private List<Blessing> cachedOffers=List.of();
     public int rank(Blessing blessing) { return ranks[blessing.ordinal()]; }
     public int embers() { return embers; }
     public int objectives() { return objectives; }
@@ -27,13 +29,14 @@ public final class Expedition {
     public void objectiveCompleted() { objectives++;embers++; }
     public List<Blessing> offers() {
         if(embers<=0)return List.of();
+        if(offerRevision==choices)return cachedOffers;
         ArrayList<Blessing> available=new ArrayList<>();
         // Rotate the draft so every choice can lead to a different build.
         Blessing[] all=Blessing.values();
         for(int i=0;i<all.length && available.size()<3;i++) {
             Blessing b=all[Math.floorMod(i+choices*2,all.length)];if(rank(b)<3)available.add(b);
         }
-        return List.copyOf(available);
+        cachedOffers=List.copyOf(available);offerRevision=choices;return cachedOffers;
     }
     public boolean choose(Blessing blessing) {
         if(!offers().contains(blessing))return false;

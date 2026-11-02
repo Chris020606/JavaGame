@@ -16,6 +16,9 @@ public final class ModernRenderer implements AutoCloseable {
     private boolean high=true;
     private final FloatPointer values=new FloatPointer(4);
     private final Camera2D screen=new Camera2D().zoom(1);
+    private final Rectangle source=new Rectangle();
+    private final Rectangle destination=new Rectangle();
+    private final Vector2 origin=new Vector2();
     public ModernRenderer() {
         if(!IsShaderValid(shadowShader)||!IsShaderValid(post)) throw new IllegalStateException("Modern rendering shaders did not load");
         quality(true);
@@ -56,9 +59,10 @@ public final class ModernRenderer implements AutoCloseable {
         values.put(0,width).put(1,height);SetShaderValue(post,postResolution,values,SHADER_UNIFORM_VEC2);
         values.put(0,high?.16f:.06f);SetShaderValue(post,postBloom,values,SHADER_UNIFORM_FLOAT);
         screen.zoom((float)GetRenderWidth()/Math.max(1,GetScreenWidth()));
+        source.x(0).y(0).width(width).height(-height);
+        destination.x(0).y(0).width(GetScreenWidth()).height(GetScreenHeight());
         BeginMode2D(screen);BeginShaderMode(post);
-        DrawTexturePro(scene.texture(),new Rectangle().width(width).height(-height),
-            new Rectangle().width(GetScreenWidth()).height(GetScreenHeight()),new Vector2(),0,WHITE);
+        DrawTexturePro(scene.texture(),source,destination,origin,0,WHITE);
         EndShaderMode();EndMode2D();
     }
     boolean shadowAtlasValid() {

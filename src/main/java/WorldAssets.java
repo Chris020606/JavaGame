@@ -21,8 +21,13 @@ public final class WorldAssets implements AutoCloseable {
     private final java.util.Map<Model,java.util.Map<String,Integer>> humanClips=new java.util.IdentityHashMap<>();
     private record RoadPart(Model model,boolean shoulder) {}
     private record PropTransform(Vector3 position,Vector3 axis,Vector3 scale,Color tint) {}
+    private record StaticDraw(Model model,PropTransform transform,float yaw) {}
+    private record TerrainTiles(StaticDraw ground,java.util.List<StaticDraw> water,
+                                java.util.List<StaticDraw> outer,java.util.List<StaticDraw> shadowOuter) {}
     private final java.util.Map<Integer,java.util.List<RoadPart>> roadModels=new java.util.HashMap<>();
-    private final java.util.Map<EnvironmentLayout.Prop,PropTransform> propTransforms=new java.util.HashMap<>();
+    private final java.util.Map<EnvironmentLayout.Prop,PropTransform> propTransforms=new java.util.IdentityHashMap<>();
+    private final java.util.Map<Integer,TerrainTiles> terrainLayers=new java.util.HashMap<>();
+    private final java.util.List<StaticDraw> backdrops=new java.util.ArrayList<>();
     private int lookIndex=-1;
     private final Texture whiteAlbedo=whiteAlbedo();
     private static Texture whiteAlbedo() { Image pixels=GenImageColor(2,2,WHITE);try { return LoadTextureFromImage(pixels); }finally { UnloadImage(pixels); } }
@@ -31,6 +36,13 @@ public final class WorldAssets implements AutoCloseable {
     private float currentDay=1;
     private float viewerX,viewerZ,heroX,heroZ;
     private Camera3D viewCamera;
+    private final float[] starDirections=starDirections();
+    private final Vector3[] starPositions=vectors(85),cloudPositions=vectors(30);
+    private final Vector3[] birdPositions=vectors(18);
+    private final Vector3 sunPosition=new Vector3(),moonPosition=new Vector3();
+    private final Color starTint=new Color().r((byte)255).g((byte)255).b((byte)255).a((byte)0);
+    private final Color cloudTint=new Color(),sunTint=Menu.color(255,229,170),moonTint=Menu.color(200,215,236);
+    private final Color sunGlowTint=Fade(Menu.GOLD,.42f),moonGlowTint=Fade(Menu.color(155,184,229),.18f);
     public void view(Player player,Camera3D camera) { viewCamera=camera;heroX=player.getPosition().x();heroZ=player.getPosition().z();viewerX=camera._position().x();viewerZ=camera._position().z(); }
     private ChapterLook look=ChapterLook.MEADOW;
     private final Model skeletonMinion=LoadModel(AssetPaths.path("resources/outpost/bosses/Skeleton_Minion.glb"));
@@ -59,6 +71,9 @@ public final class WorldAssets implements AutoCloseable {
     private final ModelAnimation kingAnimations=LoadModelAnimations(AssetPaths.path("resources/outpost/bosses/Hollow_King.glb"),kingCount);
     private final java.util.Map<String,Integer> bossClips=new java.util.HashMap<>();
     private final java.util.Map<String,Integer> uniformLocations=new java.util.HashMap<>();
+    private final java.util.Map<Model,int[]> modelBindings=new java.util.IdentityHashMap<>();
+    private final java.util.Map<ModelAnimation,java.util.Map<Integer,ModelAnimation>> animationViews=new java.util.IdentityHashMap<>();
+    private final Vector3 axisUp=v(0,1,0),axisX=v(1,0,0),unitScale=v(1,1,1);
     private int uniform(String name) { return uniformLocations.computeIfAbsent(name,n->GetShaderLocation(daylight,n)); }
     private Shader passShader=daylight;
     private Texture shadowTexture;
@@ -123,16 +138,54 @@ public final class WorldAssets implements AutoCloseable {
             for(int mesh=0;mesh<weapon.meshCount();mesh++)bladeLengths[tier]=Math.max(bladeLengths[tier],GetMeshBoundingBox(new Mesh(weapon.meshes()).position(mesh)).max().y());
         }
         for(int chapter=0;chapter<4;chapter++)for(var prop:EnvironmentLayout.props(chapter)) {
-            Vector3 position=v(prop.x(),prop.y(),prop.z());
-            Vector3 axis=v(0,1,0);Vector3 scale=v(prop.scale(),prop.scale(),prop.scale());
             Color tint=prop.model().equals("grave")?Menu.color(132,142,126):prop.model().equals("pine-crooked")?Menu.color(118,142,128):WHITE;
-            propTransforms.put(prop,new PropTransform(position,axis,scale,tint));
+            propTransforms.put(prop,transform(prop.x(),prop.y(),prop.z(),prop.scale(),tint));
         }
+        prepareTerrainDraws();
+        for(int x=-6;x<=6;x++)for(int z=-6;z<=6;z++)if(Math.abs(x)>2 || Math.abs(z)>2)
+            backdrops.add(staticDraw("ground_grass",x*12,-.25f,z*12,0,12,WHITE));
+        for(int x=-2;x<=2;x++)for(int z=-2;z<=2;z++)if(x!=0 || z!=0)
+            backdrops.add(staticDraw("ground_grass",x*80,-.4f,z*80,0,80,WHITE));
 
     }
     private void loadEquipment(String name) {
         Model model=LoadModel(AssetPaths.path("resources/outpost/equipment/"+name+".obj"));
         if(model.meshCount()==0) throw new IllegalStateException("Missing equipment model: "+name);equipment.put(name,model);
+    }
+    private PropTransform transform(float x,float y,float z,float scale,Color tint) {
+        return new PropTransform(v(x,y,z),axisUp,v(scale,scale,scale),tint);
+    }
+    private StaticDraw staticDraw(String model,float x,float y,float z,float yaw,float scale,Color tint) {
+        return new StaticDraw(nature.get(model),transform(x,y,z,scale,tint),yaw);
+    }
+    private ModelAnimation animationView(ModelAnimation source,int index) {
+        java.util.Map<Integer,ModelAnimation> views=animationViews.get(source);
+        if(views==null) { views=new java.util.HashMap<>();animationViews.put(source,views); }
+        ModelAnimation view=views.get(index);
+        if(view==null) { view=new ModelAnimation(source).position(index);views.put(index,view); }
+        return view;
+    }
+    private void prepareTerrainDraws() {
+        for(int chapter=0;chapter<4;chapter++) {
+            java.util.List<StaticDraw> water=new java.util.ArrayList<>(),outer=new java.util.ArrayList<>(),shadowOuter=new java.util.ArrayList<>();
+            float groundWidth=chapter==0?360:68;
+            StaticDraw ground=new StaticDraw(nature.get("ground_grass"),new PropTransform(v(0,-.06f,0),axisUp,v(groundWidth,1,68),WHITE),0);
+            for(int x=-8;x<=8;x++)for(int z=-8;z<=8;z++) {
+                var river=chapter==0?EnvironmentLayout.riverTile(x,z):null;
+                if(river!=null)water.add(staticDraw(river.model(),x*4,0,z*4,river.yaw(),4,WHITE));
+            }
+            if(chapter==0)for(int x=-EnvironmentLayout.RIVER_EXTENT;x<=EnvironmentLayout.RIVER_EXTENT;x++)if(Math.abs(x)>8)for(int z=-6;z<=-4;z++) {
+                var river=EnvironmentLayout.riverTile(x,z);
+                if(river!=null) {
+                    StaticDraw draw=staticDraw(river.model(),x*4,0,z*4,river.yaw(),4,WHITE);
+                    outer.add(draw);if(Math.abs(x)<=16)shadowOuter.add(draw);
+                }
+            }
+            terrainLayers.put(chapter,new TerrainTiles(ground,java.util.List.copyOf(water),java.util.List.copyOf(outer),java.util.List.copyOf(shadowOuter)));
+        }
+    }
+    private void drawStatic(java.util.List<StaticDraw> draws) {
+        for(int i=0,size=draws.size();i<size;i++) { StaticDraw draw=draws.get(i);PropTransform t=draw.transform();DrawModelEx(draw.model(),t.position(),t.axis(),draw.yaw(),t.scale(),t.tint()); }
     }
     private void loadClips(Model model,ModelAnimation animations,int count) {
         if(count==0) throw new IllegalStateException("No enemy animation clips");
@@ -156,7 +209,16 @@ public final class WorldAssets implements AutoCloseable {
         }
     }
     private static Vector3 v(float x,float y,float z) { return new Vector3().x(x).y(y).z(z); }
+    private static Vector3[] vectors(int count) { Vector3[] result=new Vector3[count];for(int i=0;i<count;i++)result[i]=new Vector3();return result; }
+    private static float[] starDirections() {
+        float[] result=new float[85*3];
+        for(int i=0;i<85;i++) { double a=i*2.399963;float y=.12f+(i%13)*.058f,r=(float)Math.sqrt(1-y*y);result[i*3]=(float)Math.cos(a)*r;result[i*3+1]=y;result[i*3+2]=(float)Math.sin(a)*r; }
+        return result;
+    }
     public void lightModel(Model model) {
+        int shaderId=passShader.id(),shadowId=!shadowPass && shadowTexture!=null?shadowTexture.id():0;
+        int[] previous=modelBindings.get(model);
+        if(previous!=null && previous[0]==shaderId && previous[1]==shadowId && previous[2]==(shadowPass?1:0))return;
         for(int i=0;i<model.materialCount();i++) {
             Material material=new Material(model.materials()).position(i);material.shader().put(passShader);
             MaterialMap albedo=new MaterialMap(material.maps()).position(MATERIAL_MAP_ALBEDO);
@@ -164,6 +226,8 @@ public final class WorldAssets implements AutoCloseable {
             MaterialMap map=new MaterialMap(material.maps()).position(MATERIAL_MAP_BRDF);
             if(!shadowPass && shadowTexture!=null) map.texture(shadowTexture);else map.texture().id(0);
         }
+        if(previous==null)modelBindings.put(model,new int[]{shaderId,shadowId,shadowPass?1:0});
+        else { previous[0]=shaderId;previous[1]=shadowId;previous[2]=shadowPass?1:0; }
     }
     public void pass(Shader shader,boolean shadow) {
         passShader=shader;shadowPass=shadow;
@@ -210,42 +274,40 @@ public final class WorldAssets implements AutoCloseable {
     }
     public void drawSky(Camera3D camera,DayNightCycle.Frame light) {
         Vector3 eye=camera._position();
-        Vector3 sun=v(eye.x()+light.sunX()*180,eye.y()+light.sunY()*180,eye.z()+light.sunZ()*180);
-        Vector3 moon=v(eye.x()-light.sunX()*180,eye.y()-light.sunY()*180,eye.z()-light.sunZ()*180);
+        Vector3 sun=sunPosition.x(eye.x()+light.sunX()*180).y(eye.y()+light.sunY()*180).z(eye.z()+light.sunZ()*180);
+        Vector3 moon=moonPosition.x(eye.x()-light.sunX()*180).y(eye.y()-light.sunY()*180).z(eye.z()-light.sunZ()*180);
         if(light.sunY()>-.08f) {
-            DrawSphereEx(sun,5.5f,16,24,Menu.color(255,229,170));BeginBlendMode(BLEND_ADDITIVE);rlDisableDepthMask();DrawBillboard(camera,skyGlow,sun,30,Fade(Menu.GOLD,.42f));rlEnableDepthMask();EndBlendMode();
+            DrawSphereEx(sun,5.5f,16,24,sunTint);BeginBlendMode(BLEND_ADDITIVE);rlDisableDepthMask();DrawBillboard(camera,skyGlow,sun,30,sunGlowTint);rlEnableDepthMask();EndBlendMode();
         }
         if(light.sunY()<.08f) {
-            DrawSphereEx(moon,4.2f,16,24,Menu.color(200,215,236));BeginBlendMode(BLEND_ADDITIVE);rlDisableDepthMask();DrawBillboard(camera,skyGlow,moon,16,Fade(Menu.color(155,184,229),.18f));rlEnableDepthMask();EndBlendMode();
+            DrawSphereEx(moon,4.2f,16,24,moonTint);BeginBlendMode(BLEND_ADDITIVE);rlDisableDepthMask();DrawBillboard(camera,skyGlow,moon,16,moonGlowTint);rlEnableDepthMask();EndBlendMode();
         }
-        if(light.daylight()<.7f)for(int i=0;i<85;i++) {
-            double a=i*2.399963,alt=.12+(i%13)*.058;float r=(float)Math.sqrt(1-alt*alt);
-            DrawSphere(v(eye.x()+(float)Math.cos(a)*r*175,eye.y()+(float)alt*175,eye.z()+(float)Math.sin(a)*r*175),.10f+(i%3)*.04f,Fade(WHITE,(1-light.daylight())*.8f));
+        if(light.daylight()<.7f) {
+            starTint.a((byte)Math.round((1-light.daylight())*.8f*255));
+            for(int i=0;i<85;i++) {
+                int p=i*3;Vector3 star=starPositions[i];star.x(eye.x()+starDirections[p]*175).y(eye.y()+starDirections[p+1]*175).z(eye.z()+starDirections[p+2]*175);
+                DrawSphere(star,.10f+(i%3)*.04f,starTint);
+            }
         }
     }
     private void drawBackdrop(float time) {
+        // The backdrop sits outside the playable/shadowed area and cannot cast onto combat actors.
+        if(shadowPass)return;
         Model ridge=lookIndex==2?frostMountains:mountains;lightModel(ridge);
         DrawModel(ridge,v(0,-.4f,0),1,WHITE);
         // Surrounding land extends well beyond the movement boundary, hiding the square edge.
-        for(int x=-6;x<=6;x++) for(int z=-6;z<=6;z++) {
-            if(Math.abs(x)<=2 && Math.abs(z)<=2) continue;
-            sceneryAt("ground_grass",x*12,-.25f,z*12,0,12);
-        }
-        for(int x=-2;x<=2;x++) for(int z=-2;z<=2;z++) {
-            if(x==0 && z==0) continue;
-            sceneryAt("ground_grass",x*80,-.4f,z*80,0,80);
-        }
-        if(shadowPass) return;
+        drawStatic(backdrops);
         // Clouds drift above the distant hills. They are atmosphere, not reachable terrain.
+        cloudTint.r((byte)(int)(48+176*currentDay)).g((byte)(int)(61+174*currentDay)).b((byte)(int)(88+140*currentDay)).a((byte)Math.round(.85f*255));
         for(int i=0;i<10;i++) {
             float x=-85+(i*19+time*.65f)%170,z=-58+(i%3)*47;
-            for(int j=0;j<3;j++) DrawSphereEx(v(x+j*3,55+i%3*7,z),4-j*.5f,6,8,Fade(Menu.color((int)(48+176*currentDay),(int)(61+174*currentDay),(int)(88+140*currentDay)),.85f));
+            for(int j=0;j<3;j++) { Vector3 cloud=cloudPositions[i*3+j];cloud.x(x+j*3).y(55+i%3*7).z(z);DrawSphereEx(cloud,4-j*.5f,6,8,cloudTint); }
         }
         for(int i=0;i<6;i++) {
             float x=(float)Math.sin(time*.11f+i)*38,z=(float)Math.cos(time*.11f+i)*38,y=13+i%3;
             float wing=.45f+(float)Math.sin(time*4+i)*.25f;
-            DrawLine3D(v(x-.7f,y+wing,z),v(x,y,z),Menu.INK);
-            DrawLine3D(v(x,y,z),v(x+.7f,y+wing,z),Menu.INK);
+            Vector3 left=birdPositions[i*3].x(x-.7f).y(y+wing).z(z),body=birdPositions[i*3+1].x(x).y(y).z(z),right=birdPositions[i*3+2].x(x+.7f).y(y+wing).z(z);
+            DrawLine3D(left,body,Menu.INK);DrawLine3D(body,right,Menu.INK);
         }
     }
     private Model roadMesh(java.util.List<RoadLayout.Sample> points,float extra,float height) {
@@ -293,23 +355,18 @@ public final class WorldAssets implements AutoCloseable {
     private void drawCemetery(boolean necropolis,float time) { drawAuthoredLayout(necropolis?3:1,time); }
     private void drawFrozen(float time) { drawAuthoredLayout(2,time); }
     private void drawAuthoredLayout(int chapter,float time) {
-        if(chapter==0)for(int x=-EnvironmentLayout.RIVER_EXTENT;x<=EnvironmentLayout.RIVER_EXTENT;x++) {
-            if(Math.abs(x)<=8 || shadowPass && Math.abs(x)>16)continue;
-            for(int z=-6;z<=-4;z++) {
-                var river=EnvironmentLayout.riverTile(x,z);
-                scenery(river==null?"ground_grass":river.model(),x*4,z*4,river==null?0:river.yaw(),4);
-            }
-        }
-        for(int x=-8;x<=8;x++) for(int z=-8;z<=8;z++) {
-            var river=chapter==0?EnvironmentLayout.riverTile(x,z):null;
-            if(river!=null) { surface(.26f,.1f);scenery(river.model(),x*4,z*4,river.yaw(),4);surface(.82f,.02f); }
-            else scenery("ground_grass",x*4,z*4,0,4);
-        }
+        TerrainTiles tiles=terrainLayers.get(chapter);
+        drawStatic(shadowPass?tiles.shadowOuter():tiles.outer());
+        surface(.82f,.02f);StaticDraw ground=tiles.ground();PropTransform groundTransform=ground.transform();DrawModelEx(ground.model(),groundTransform.position(),groundTransform.axis(),ground.yaw(),groundTransform.scale(),groundTransform.tint());
+        if(!tiles.water().isEmpty()) { surface(.26f,.1f);drawStatic(tiles.water());surface(.82f,.02f); }
         if(!shadowPass)drawRoad(chapter);
         if(chapter==0 || chapter==2)scenery("platform_stone",0,0,0,5.2f);
         else grave("altar-stone",0,0,0,4);
         scenery("statue_ring",0,0,0,4.5f);
-        for(var prop:EnvironmentLayout.props(chapter)) {
+        java.util.List<EnvironmentLayout.Prop> props=EnvironmentLayout.props(chapter);
+        for(int i=0,size=props.size();i<size;i++) {
+            var prop=props.get(i);
+            if(shadowPass && prop.x()*prop.x()+prop.z()*prop.z()>72*72)continue;
             PropTransform transform=propTransforms.get(prop);
             Model model=prop.graveyard()?graveyard.get(prop.model()):nature.get(prop.model());
             DrawModelEx(model,transform.position(),transform.axis(),prop.yaw(),transform.scale(),transform.tint());
@@ -359,21 +416,21 @@ public final class WorldAssets implements AutoCloseable {
     private void graveAt(String name,float x,float y,float z,float angle,float scale) {
         Model model=graveyard.get(name);
         Color tint=name.equals("grave")?Menu.color(132,142,126):name.equals("pine-crooked")?Menu.color(118,142,128):WHITE;
-        DrawModelEx(model,v(x,y,z),v(0,1,0),angle,v(scale,scale,scale),tint);
+        DrawModelEx(model,v(x,y,z),axisUp,angle,v(scale,scale,scale),tint);
     }
     private void scenery(String name,float x,float z,float angle,float scale) {
         sceneryAt(name,x,0,z,angle,scale);
     }
     private void sceneryAt(String name,float x,float y,float z,float angle,float scale) {
         Model model=nature.get(name);
-        DrawModelEx(model,v(x,y,z),v(0,1,0),angle,v(scale,scale,scale),WHITE);
+        DrawModelEx(model,v(x,y,z),axisUp,angle,v(scale,scale,scale),WHITE);
     }
     private void drawBoss(Enemy enemy) {
         Model model=enemy.king?bossKing:bossWarrior;
         ModelAnimation animations=enemy.king?kingAnimations:bossAnimations;
         String name=enemy.health<=0?"Death_A":enemy.stun>0?"Hit_A":enemy.chargeTime>0?"Running_A":enemy.attackTime>0?
             switch(enemy.bossMove) { case CLEAVE -> "2H_Melee_Attack_Slice";case SLAM -> "2H_Melee_Attack_Chop";case CHARGE -> "Taunt";case SIGILS -> "Spellcast_Raise"; }:"Walking_D_Skeletons";
-        ModelAnimation clip=new ModelAnimation(animations).position(bossClips.get(name));
+        ModelAnimation clip=animationView(animations,bossClips.get(name));
         float frame=enemy.health<=0?AnimationFrames.sample(enemy.deathTime/1.6f,clip.keyframeCount()):enemy.attackTime>0?AnimationFrames.sample(1-enemy.attackTime/enemy.attackDuration(),clip.keyframeCount()):
             AnimationFrames.looping(enemy.animationTime*45,clip.keyframeCount());
         if(enemy.health<=0)poseCorpse(model,animations,clip,frame,bossClips.get("Lie_Pose"),enemy.deathTime,true);
@@ -389,7 +446,7 @@ public final class WorldAssets implements AutoCloseable {
         }
         if(enemy.health<=0)tint=Fade(tint,CorpsePresentation.opacity(enemy.deathTime,true));
         float modelY=enemy.health<=0?corpseSupport(enemy,model,scale):0;
-        DrawModelEx(model,v(enemy.x,modelY,enemy.z),v(0,1,0),enemy.facing,v(scale,scale,scale),tint);
+        DrawModelEx(model,v(enemy.x,modelY,enemy.z),axisUp,enemy.facing,v(scale,scale,scale),tint);
         if(enemy.health>0)drawWeapon(model,v(enemy.x,0,enemy.z),enemy.facing,enemy.king?bossStaff:bossAxe,Fade(WHITE,opacity),scale);
         if(shadowPass || enemy.health<=0) return;
         Color energy=enemy.enraged()?Menu.RED:enemy.king?Menu.color(185,105,255):Menu.GOLD;
@@ -419,11 +476,11 @@ public final class WorldAssets implements AutoCloseable {
         surface(.55f,.15f);
         if(event.kind()==FieldEvent.Kind.SURVIVOR) {
             String name=event.status()==FieldEvent.Status.ACTIVE?"Walking_A.001":"Melee_2H_Idle";
-            ModelAnimation clip=new ModelAnimation(animations).position(humanClips.get(raider).get(name));
+            ModelAnimation clip=animationView(animations,humanClips.get(raider).get(name));
             UpdateModelAnimation(raider,clip,AnimationFrames.looping(time*40,clip.keyframeCount()));lightModel(raider);
-            DrawModelEx(raider,v(event.x(),0,event.z()),v(0,1,0),event.facing(),v(.9f,.9f,.9f),Menu.TEAL);
+            DrawModelEx(raider,v(event.x(),0,event.z()),axisUp,event.facing(),v(.9f,.9f,.9f),Menu.TEAL);
         } else if(event.kind()==FieldEvent.Kind.SUPPLIES) {
-            lightModel(supplyCache);DrawModelEx(supplyCache,v(event.x(),0,event.z()),v(0,1,0),25,v(1.4f,1.4f,1.4f),WHITE);
+            lightModel(supplyCache);DrawModelEx(supplyCache,v(event.x(),0,event.z()),axisUp,25,v(1.4f,1.4f,1.4f),WHITE);
         } else scenery("statue_obelisk",event.x(),event.z(),0,1.8f);
         if(!shadowPass && event.visible()) {
             DrawCylinderWires(v(event.x(),.06f,event.z()),2.5f,2.5f,.08f,32,Menu.TEAL);
@@ -444,7 +501,7 @@ public final class WorldAssets implements AutoCloseable {
         if(enemy.health<=0)clipName="Death_A";
         Integer index=(bone?bossClips:humanClips.get(character)).get(clipName);
         if(index==null) throw new IllegalStateException("Missing enemy clip "+clipName);
-        ModelAnimation clip=new ModelAnimation(clips).position(index);
+        ModelAnimation clip=animationView(clips,index);
         float phase=enemy.attackTime>0?1-enemy.attackTime/enemy.attackDuration():0;
         if(!bone && enemy.variant==3 && enemy.attackTime>0) phase=enemy.attackTime>.25f?(enemy.attackDuration()-enemy.attackTime)/Math.max(.01f,enemy.attackDuration()-.25f):(.25f-enemy.attackTime)/.25f;
         float frame=enemy.health<=0?AnimationFrames.sample(enemy.deathTime,clip.keyframeCount()):enemy.attackTime>0?AnimationFrames.sample(phase,clip.keyframeCount()):AnimationFrames.looping(enemy.animationTime*60,clip.keyframeCount());
@@ -454,7 +511,7 @@ public final class WorldAssets implements AutoCloseable {
         float scale=enemy.variant==2?1.18f:1;
         Color tint=enemy.hitFlash>0?Menu.GOLD:bone?Menu.color(174,205,228):WHITE;
         if(enemy.health<=0)tint=Fade(tint,CorpsePresentation.opacity(enemy.deathTime,false));
-        DrawModelEx(character,v(enemy.x,enemy.health<=0?corpseSupport(enemy,character,scale):0,enemy.z),v(0,1,0),enemy.facing,v(scale,scale,scale),tint);
+        DrawModelEx(character,v(enemy.x,enemy.health<=0?corpseSupport(enemy,character,scale):0,enemy.z),axisUp,enemy.facing,v(scale,scale,scale),tint);
         if(enemy.health>0)drawWeapon(character,v(enemy.x,0,enemy.z),enemy.facing,enemy.variant==3?bow:enemy.variant==4?staff:enemy.variant==2?waraxe:sword,WHITE,scale);
     }
     private float corpseSupport(Enemy enemy,Model model,float scale) {
@@ -468,7 +525,7 @@ public final class WorldAssets implements AutoCloseable {
     }
     private void poseCorpse(Model model,ModelAnimation clips,ModelAnimation fall,float frame,int restIndex,float age,boolean boss) {
         float settle=Entities.AttackMotion.smooth((age-(boss?1.1f:.8f))/(boss?.5f:.4f));
-        ModelAnimation rest=new ModelAnimation(clips).position(restIndex);
+        ModelAnimation rest=animationView(clips,restIndex);
         UpdateModelAnimationEx(model,fall,frame,rest,0,settle);
     }
     public void drawArmor(Player player,Progression progress) {
@@ -478,14 +535,14 @@ public final class WorldAssets implements AutoCloseable {
             Model armor=equipment.get(progress.heroClass().name().toLowerCase(java.util.Locale.ROOT)+"-"+slot.icon()+"-"+tier);
             if(verifiedArmor.add(armor) && !IsModelAnimationValid(armor,new ModelAnimation(player.getAnimation()).position(player.getAnimationIndex())))throw new IllegalStateException("Fitted armor rig mismatch");
             player.copyPoseTo(armor);lightModel(armor);
-            DrawModelEx(armor,player.renderPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),WHITE);
+            DrawModelEx(armor,player.renderPosition(),axisUp,player.getRotation().y(),unitScale,WHITE);
         }
     }
     public void drawHeroSilhouette(Player player) {
         Model model=player.getModel();
         for(int i=0;i<model.materialCount();i++) new Material(model.materials()).position(i).shader().put(silhouette);
         rlDisableDepthTest();rlDisableDepthMask();
-        DrawModelEx(model,player.renderPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),WHITE);
+        DrawModelEx(model,player.renderPosition(),axisUp,player.getRotation().y(),unitScale,WHITE);
         rlEnableDepthMask();rlEnableDepthTest();lightModel(model);
     }
     public void preparePlayer(Player player) { lightModel(player.getModel());surface(.48f,.15f); }
@@ -506,7 +563,7 @@ public final class WorldAssets implements AutoCloseable {
             Mesh mesh=new Mesh(model.meshes()).position(hidden[i]);triangles[i]=mesh.triangleCount();vertices[i]=mesh.vertexCount();
             mesh.triangleCount(0).vertexCount(0);
         }
-        try { DrawModelEx(model,player.renderPosition(),v(0,1,0),player.getRotation().y(),v(1,1,1),tint); }
+        try { DrawModelEx(model,player.renderPosition(),axisUp,player.getRotation().y(),unitScale,tint); }
         finally { for(int i=0;i<hidden.length;i++)new Mesh(model.meshes()).position(hidden[i]).triangleCount(triangles[i]).vertexCount(vertices[i]); }
     }
     private Model weaponModel(int style,int tier) { return style==1?(tier==0?bow:tier==1?stringBow:crossbow):style==2?(tier==0?staff:tier==1?wand:tier==2?bossStaff:equipment.get("dawnstaff")):(tier==0?sword:tier==1?longsword:tier==2?waraxe:equipment.get("dawnblade")); }
@@ -525,7 +582,7 @@ public final class WorldAssets implements AutoCloseable {
         else { ArmorSlot slot=ArmorSlot.values()[(item-4)%4];model=equipment.get(progress.heroClass().name().toLowerCase(java.util.Locale.ROOT)+"-"+slot.icon()+"-"+(1+(item-4)/4));player.copyPoseTo(model); }
         Matrix original=new Matrix().put(model.transform());model.transform(MatrixIdentity());lightModel(model);
         boolean bow=item<2 && progress.heroClass()==HeroClass.ARCHER;
-        DrawModelEx(model,v(0,0,0),v(1,0,0),bow?90:0,v(1,1,1),WHITE);model.transform(original);
+        DrawModelEx(model,v(0,0,0),axisX,bow?90:0,unitScale,WHITE);model.transform(original);
     }
     public void drawPlayerWeapon(Player player,int style,int tier) {
         Model weapon=weaponModel(style,tier);drawWeapon(player.getModel(),player.renderPosition(),player.getRotation().y(),weapon,WHITE);
@@ -579,11 +636,12 @@ public final class WorldAssets implements AutoCloseable {
                 m.m4(-m.m4()).m5(-m.m5()).m6(-m.m6());
             }
             weapon.transform(m);
-            DrawModelEx(weapon,position,v(0,1,0),facing,v(scale,scale,scale),tint);
+            DrawModelEx(weapon,position,axisUp,facing,v(scale,scale,scale),tint);
             return;
         }
     }
     @Override public void close() {
+        animationViews.clear();modelBindings.clear();propTransforms.clear();terrainLayers.clear();backdrops.clear();
         for(var parts:roadModels.values())for(var part:parts)UnloadModel(part.model());roadModels.clear();
         for (Model model:nature.values()) UnloadModel(model);
         for(Model model:graveyard.values()) UnloadModel(model);
