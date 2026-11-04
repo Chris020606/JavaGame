@@ -175,24 +175,33 @@ public final class TrailerCapture {
         }
     }
     public static void main(String[] args) throws Exception {
+        boolean shortVideo=Arrays.asList(args).contains("--short");
+        Shot[] shots=shortVideo?new Shot[]{
+            new Shot("01-ember",3,HeroClass.WARRIOR,0,"scenic","OUTPOST","Guard the last light.","title"),
+            new Shot("03-warrior",6,HeroClass.WARRIOR,3,"combat","STRIKE. PARRY. EVADE.","Commit to your attacks. Protect the sanctuary.","battle"),
+            new Shot("05-archer",6,HeroClass.ARCHER,6,"combat","FIND YOUR OPENING","Reposition and fire through the enemy ranks.","battle"),
+            new Shot("06-mage",6,HeroClass.MAGE,8,"combat","CHANNEL THE EMBER","Piercing spells and powerful charged attacks.","battle"),
+            new Shot("13-warden",6,HeroClass.WARRIOR,5,"boss","FACE THE ASH WARDEN","Read the warning. Survive the rush.","boss"),
+            new Shot("16-return",3,HeroClass.WARRIOR,0,"ending","OUTPOST","Choose your warden. Bring back the dawn.","title")
+        }:SHOTS;
         boolean preview=Arrays.asList(args).contains("--preview");int from=0;Set<Integer> only=new HashSet<>();
         for(String arg:args) {
             if(arg.startsWith("--from="))from=Integer.parseInt(arg.substring(7));
             if(arg.startsWith("--only="))for(String id:arg.substring(7).split(","))only.add(Integer.parseInt(id));
         }
-        Path out=Path.of(preview?"build/marketing-preview":"build/marketing").toAbsolutePath();Files.createDirectories(out.resolve("raw"));
+        Path out=Path.of(shortVideo?"build/marketing-short":preview?"build/marketing-preview":"build/marketing").toAbsolutePath();Files.createDirectories(out.resolve("raw"));
         profile=Files.createTempDirectory(Path.of("build"),"trailer-profile-").toAbsolutePath();System.setProperty("outpost.dataDir",profile.toString());
         Settings settings=new Settings();settings.playerName="Ember";settings.volume=0;settings.sensitivity=0;settings.save(profile.resolve("settings.properties"));
         SetTraceLogLevel(LOG_WARNING);SetConfigFlags(FLAG_MSAA_4X_HINT);InitWindow(WIDTH,HEIGHT,"Outpost | Capturing actual gameplay");SetExitKey(KEY_NULL);SetTargetFPS(0);
         Game game=null;
         try(PrintWriter manifest=new PrintWriter(Files.newBufferedWriter(out.resolve("shots.tsv")))) {
             manifest.println("id\tseconds\ttitle\tsubtitle\tmusic");
-            for(Shot shot:SHOTS)manifest.printf(Locale.ROOT,"%s\t%d\t%s\t%s\t%s%n",shot.id,preview?Math.min(3,shot.seconds):shot.seconds,shot.title,shot.subtitle,shot.music);
+            for(Shot shot:shots)manifest.printf(Locale.ROOT,"%s\t%d\t%s\t%s\t%s%n",shot.id,preview?Math.min(3,shot.seconds):shot.seconds,shot.title,shot.subtitle,shot.music);
             manifest.flush();game=new Game(()->attack.getAndSet(false));game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
             game.audio().observeCues(name->{if(cues!=null && activeFrame>=0)cues.printf(Locale.ROOT,"%.6f\t%s%n",activeFrame/(float)FPS,name);});
-            for(int index=from;index<SHOTS.length;index++) {
+            for(int index=from;index<shots.length;index++) {
                 if(!only.isEmpty() && !only.contains(index))continue;
-                Shot shot=SHOTS[index];activeFrame=-1;setup(game,shot);int frames=(preview?Math.min(3,shot.seconds):shot.seconds)*FPS;
+                Shot shot=shots[index];activeFrame=-1;setup(game,shot);int frames=(preview?Math.min(3,shot.seconds):shot.seconds)*FPS;
                 Path clip=out.resolve("raw/"+shot.id+".mp4");
                 Process encoder=new ProcessBuilder(System.getenv().getOrDefault("OUTPOST_FFMPEG","ffmpeg"),"-hide_banner","-loglevel","error","-y","-f","rawvideo","-pix_fmt","rgba","-s",WIDTH+"x"+HEIGHT,"-r",FPS+"","-i","pipe:0","-an","-vf","scale=1920:1080:flags=lanczos","-c:v","libx264","-preset","veryfast","-crf","19","-pix_fmt","yuv420p","-movflags","+faststart",clip.toString()).redirectError(out.resolve("raw/"+shot.id+"-encoder.log").toFile()).start();
                 int defeats=0,playing=0;
