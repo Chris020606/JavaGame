@@ -22,7 +22,7 @@ public final class WorkshopScreen {
             Menu.button(TABS[i],x+24,top,184,true);
         }
         Menu.text("YOUR WARDEN",x+28,y+340,13,Menu.GOLD);
-        String[] stats={p.maxHealth()+"  HEALTH",p.damage()+"  DAMAGE",p.maxStamina()+"  STAMINA",p.defense()+"  DEFENSE"};
+        String[] stats={p.maxHealth()+"  HEALTH",p.damage()+"  DAMAGE",p.maxStamina()+"  "+p.resourceLabel(),p.defense()+"  DEFENSE"};
         for(int i=0;i<stats.length;i++)Menu.text(stats[i],x+28,y+374+i*31,17,i==2?Menu.TEAL:Menu.TEXT);
         Menu.text(TABS[tab],x+CONTENT,y+28,28,Menu.TEXT);
         Menu.text(p.crystals()+" CRYSTALS",x+720,y+32,20,Menu.GOLD);

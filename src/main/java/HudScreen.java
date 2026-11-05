@@ -13,19 +13,19 @@ public final class HudScreen {
         int frameWidth=compact?216:320,fx=16,fy=20;
         Menu.panel(fx,fy,frameWidth,138);
         DrawRectangle(fx+1,fy+10,3,118,Menu.GOLD);
-        String crest=p.heroClass()==HeroClass.WARRIOR?"sword":p.heroClass()==HeroClass.ARCHER?"bow":"staff";
+        String crest=p.heroClass()==HeroClass.WARRIOR?"sword":p.heroClass()==HeroClass.ARCHER?(p.weaponTier()>=2?"crossbow":"bow"):"staff";
         Menu.icon(crest,fx+14,fy+12,18,Menu.GOLD);
         String identity=player.getName()+" / LV "+p.characterLevel();int identitySize=14;
         while(identitySize>9 && Menu.measure(identity,identitySize)>frameWidth-56)identitySize--;
         Menu.text(identity,fx+42,fy+13,identitySize,Menu.TEXT);
         Menu.text(p.heroClass().label+" / "+p.difficulty().label+" / DEF "+p.defense(),fx+14,fy+38,compact?9:11,Menu.MUTED);
         Menu.resourceBar(fx+14,fy+60,frameWidth-28,30,p.health(),p.maxHealth(),p.health()<p.maxHealth()*.25f?Menu.RED:Menu.color(49,153,94),"HEALTH");
-        Menu.resourceBar(fx+14,fy+100,frameWidth-28,24,player.discipline().stamina(),p.maxStamina(),Menu.color(190,147,48),"STAMINA");
+        Menu.resourceBar(fx+14,fy+100,frameWidth-28,24,player.discipline().stamina(),p.maxStamina(),p.heroClass()==HeroClass.MAGE?Menu.color(65,135,235):Menu.color(190,147,48),p.heroClass()==HeroClass.MAGE?"MANA":"STAMINA");
         DrawRectangle(x-8,y-144,span+16,22,Fade(Menu.INK,.9f));
         Menu.center(state.mastery(),GetScreenWidth()/2,y-139,11,state.empowered()?Menu.GOLD:Menu.TEXT);
         Menu.frame(x-8,y-8,span+16,78,Menu.PANEL,Menu.LINE);
         Vector2 mouse=GetMousePosition();int hover=layout.hit(mouse.x(),mouse.y());
-        String weapon=p.heroClass()==HeroClass.WARRIOR?"sword":p.heroClass()==HeroClass.ARCHER?"bow":"staff";
+        String weapon=p.heroClass()==HeroClass.WARRIOR?"sword":p.heroClass()==HeroClass.ARCHER?(p.weaponTier()>=2?"crossbow":"bow"):"staff";
         String[] icons={weapon,"charge","shield","lunge","potion","bag"};
         String[] labels={p.heroClass()==HeroClass.WARRIOR?"STRIKE":p.heroClass()==HeroClass.ARCHER?"SHOOT":"CAST","CHARGE","PARRY","LUNGE","HEAL","PACK"};
         for(int i=0;i<HudLayout.SLOTS;i++) {

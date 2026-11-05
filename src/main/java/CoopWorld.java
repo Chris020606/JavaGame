@@ -126,8 +126,8 @@ public final class CoopWorld {
         else {
             float len=Math.max(1,(float)Math.hypot(p.input.moveX(),p.input.moveZ())),speed=p.type.speed*(p.attack>0?.38f:p.charge>0?.55f:1);
             if(p.stamina>=25)p.sprintExhausted=false;
-            if((p.input.buttons()&CoopInput.SPRINT)!=0 && !p.sprintExhausted && p.attack<=0 && p.charge<=0 && Math.hypot(p.input.moveX(),p.input.moveZ())>.1) {
-                if(p.stamina>1) { speed*=1.35f;spend(p,Math.min(p.stamina,12*dt)); }else p.sprintExhausted=true;
+            if((p.input.buttons()&CoopInput.SPRINT)!=0 && (p.type==HeroClass.MAGE || !p.sprintExhausted) && p.attack<=0 && p.charge<=0 && Math.hypot(p.input.moveX(),p.input.moveZ())>.1) {
+                if(p.type==HeroClass.MAGE || p.stamina>1) { speed*=1.35f;if(p.type!=HeroClass.MAGE)spend(p,Math.min(p.stamina,12*dt)); }else p.sprintExhausted=true;
             }
             p.vx=p.input.moveX()/len*speed;p.vz=p.input.moveZ()/len*speed;
         }

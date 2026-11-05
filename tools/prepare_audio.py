@@ -30,8 +30,8 @@ def effect(name,duration,kind,seed=1):
         elif kind=='wave':value=sum(.08*math.sin(TAU*f*t+.15*math.sin(TAU*4*t)) for f in (146.83,220,293.66))*math.sin(math.pi*u)
         elif kind=='upgrade':
             value=sum(.13*math.sin(TAU*f*t)*math.exp(-max(0,t-start)*5)*(t>=start) for f,start in ((523.25,0),(659.25,.09),(783.99,.18),(1046.5,.30)))
-        elif kind=='bow':value=.20*(noise-low)*math.exp(-t*70)+.10*math.sin(TAU*92*t)*math.exp(-t*30)+.38*math.sin(TAU*(170*t+180*t*t))*math.exp(-t*24)+.13*(noise-low)*math.exp(-t*15)
-        elif kind=='magic':value=.18*math.sin(TAU*(110*t+80*t*t))*math.exp(-t*12)+.12*(noise-low)*math.exp(-t*20)+(.15*math.sin(TAU*(380*t+320*t*t))+.13*math.sin(TAU*(570*t+500*t*t))+.12*low)*math.sin(math.pi*u)
+        elif kind=='bow':value=.32*low*math.exp(-t*90)+.22*math.sin(TAU*310*t)*math.exp(-t*45)+.20*(noise-low)*math.exp(-t*70)+.10*math.sin(TAU*92*t)*math.exp(-t*30)+.38*math.sin(TAU*(170*t+180*t*t))*math.exp(-t*24)+.13*(noise-low)*math.exp(-t*15)
+        elif kind=='magic':value=.22*math.sin(TAU*(740*t-350*t*t))*math.exp(-t*6)+.18*math.sin(TAU*(110*t+80*t*t))*math.exp(-t*12)+.12*(noise-low)*math.exp(-t*20)+(.15*math.sin(TAU*(380*t+320*t*t))+.13*math.sin(TAU*(570*t+500*t*t))+.12*low)*math.sin(math.pi*u)
         elif kind=='parry':value=sum(.16*math.sin(TAU*f*t)*math.exp(-t*decay) for f,decay in ((1318,9),(2093,14),(2794,20)))+.12*noise*math.exp(-t*80)
         elif kind=='slam':value=.45*math.sin(TAU*(55*t-12*t*t))*math.exp(-t*4)+.38*low*math.exp(-t*7)
         elif kind=='dash':value=.35*(noise-low)*math.sin(math.pi*u)*tail
@@ -57,7 +57,7 @@ for kind in ('swing','hit'):
 
 RATE=24000;BEAT=.75;LENGTH=24;FRAMES=RATE*LENGTH
 CHORDS=((50,53,57),(46,50,53),(53,57,60),(48,52,55),(50,53,57),(46,50,53),(43,46,50),(45,49,52))
-MELODIES=((74,77,81,79,77,74,72,69),(74,69,72,65,69,67,64,61),(81,79,77,74,76,72,69,72),(62,69,65,61,62,58,57,61),(74,77,72,69,70,74,69,73))
+MELODIES=((69,76,74,81,79,76,72,74),(62,69,65,72,70,65,61,64),(76,83,81,79,86,83,79,81),(50,57,62,61,65,64,57,61),(69,76,79,81,76,74,72,69))
 def score(name,theme):
     left=array('f',[0])*FRAMES;right=array('f',[0])*FRAMES
     def note(start,duration,midi,amp,voice,pan=0):
@@ -68,6 +68,10 @@ def score(name,theme):
             if voice=='pad':
                 env=math.sin(math.pi*u)**1.5
                 sound=.65*math.sin(TAU*freq*t)+.22*math.sin(TAU*freq*1.003*t)+.13*math.sin(TAU*freq*2*t)
+            elif voice=='strings':
+                env=min(1,t/.025)*min(1,(duration-t)/.12)*math.exp(-t*.8)
+                phase=TAU*freq*t+.012*math.sin(TAU*5*t)
+                sound=sum(math.sin(phase*h)/h for h in range(1,7))*.55
             elif voice=='pluck':
                 env=(1-math.exp(-t*180))*math.exp(-t*3.4)*min(1,(duration-t)/.08)
                 sound=math.sin(TAU*freq*t)+.28*math.sin(TAU*freq*2*t)*math.exp(-t*5)+.12*math.sin(TAU*freq*3*t)*math.exp(-t*8)
@@ -86,8 +90,10 @@ def score(name,theme):
                 pitch=chord[beat%3]+12
                 note(start+beat*BEAT,1.8,pitch,.07 if theme in (0,2,4) else .035,'pluck',(-1 if beat%2 else 1)*.4)
             melody=MELODIES[theme]
-            note(start+.375,1.3,melody[bar],.10 if theme!=3 else .07,'flute',.18)
-            if bar%2==1:note(start+1.875,1.6,melody[(bar+2)%8],.07,'pluck',-.25)
+            note(start+.375,1.3,melody[bar],.13 if theme!=3 else .09,'strings',.18)
+            if bar%2==1:note(start+1.875,1.6,melody[(bar+2)%8],.11,'pluck',-.25)
+            for step in range(8):
+                note(start+step*.375,.30,chord[step%3]+12,.075,'pluck',(-1 if step%2 else 1)*.6)
         else:
             # Harmony-free percussion stem follows the same 8-bar loop as every theme.
             rng=random.Random(700+bar)

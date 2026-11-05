@@ -62,33 +62,36 @@ public class Menu {
         if(!line.isEmpty()) text(line,x,row,size,color);
     }
     /** Small vector pictograms remain crisp at both display scales. */
+    private static final Vector2 iconFrom=new Vector2(),iconTo=new Vector2();
+    private static void iconLine(int x1,int y1,int x2,int y2,Color color) { DrawLineEx(iconFrom.x(x1).y(y1),iconTo.x(x2).y(y2),2,color); }
     public static void icon(String kind,int x,int y,int size,Color color) {
         int u=Math.max(1,size/8),cx=x+size/2,cy=y+size/2;
         switch(kind) {
-            case "charge" -> { DrawLine(cx,y,x+u,cy+u,color);DrawLine(x+u,cy+u,cx,cy+u,color);DrawLine(cx,cy+u,cx,y+size,color);DrawLine(cx,y+size,x+size-u,cy-u,color);DrawLine(x+size-u,cy-u,cx,cy-u,color);DrawLine(cx,cy-u,cx,y,color); }
-            case "lunge" -> { for(int i=0;i<2;i++) { int dx=x+i*size/3;DrawLine(dx,y+u,dx+size/2,cy,color);DrawLine(dx+size/2,cy,dx,y+size-u,color); } }
-            case "crystal" -> { DrawLine(cx,y,x+size,cy,color);DrawLine(x+size,cy,cx,y+size,color);DrawLine(cx,y+size,x,cy,color);DrawLine(x,cy,cx,y,color);DrawLine(cx,y,cx,y+size,color); }
-            case "potion" -> { DrawRectangleLines(cx-u,y,2*u,2*u,color);DrawRectangleLines(x+u,y+2*u,size-2*u,size-2*u,color);DrawRectangle(x+2*u,cy,size-4*u,size/2-u,color); }
-            case "dodge" -> { DrawLine(x,cy,cx,y,color);DrawLine(cx,y,x+size,cy,color);DrawLine(x+size,cy,cx,y+size,color);DrawLine(cx,y+size,x,cy,color);DrawLine(x+2*u,cy,x+size-2*u,cy,color); }
+            case "charge" -> { iconLine(cx,y,x+u,cy+u,color);iconLine(x+u,cy+u,cx,cy+u,color);iconLine(cx,cy+u,cx,y+size,color);iconLine(cx,y+size,x+size-u,cy-u,color);iconLine(x+size-u,cy-u,cx,cy-u,color);iconLine(cx,cy-u,cx,y,color); }
+            case "lunge" -> { for(int i=0;i<2;i++) { int dx=x+i*size/3;iconLine(dx,y+u,dx+size/2,cy,color);iconLine(dx+size/2,cy,dx,y+size-u,color); } }
+            case "crystal" -> { iconLine(cx,y,x+size,cy,color);iconLine(x+size,cy,cx,y+size,color);iconLine(cx,y+size,x,cy,color);iconLine(x,cy,cx,y,color);iconLine(cx,y,cx,y+size,color); }
+            case "potion" -> { DrawRectangleLines(cx-u,y,2*u,2*u,color);DrawRectangleLines(x+u,y+2*u,size-2*u,size-2*u,color);DrawRectangle(cx-u,y,2*u,u,color);DrawRectangle(x+2*u,cy,size-4*u,size/2-u,color); }
+            case "dodge" -> { iconLine(x,cy,cx,y,color);iconLine(cx,y,x+size,cy,color);iconLine(x+size,cy,cx,y+size,color);iconLine(cx,y+size,x,cy,color);iconLine(x+2*u,cy,x+size-2*u,cy,color); }
             case "lock" -> { DrawRectangleLines(x+u,cy,size-2*u,size/2,color);DrawRectangleLines(x+2*u,y,size-4*u,size/2,color); }
-            case "head" -> { DrawRectangleLines(x,y+u,size,size-2*u,color);DrawLine(x,cy,x+size,cy,color);DrawLine(cx,cy,cx,y+size,color); }
-            case "chest" -> { DrawRectangleLines(x+u,y+u,size-2*u,size-u,color);DrawLine(x,cy,x+u,y+u,color);DrawLine(x+size,cy,x+size-u,y+u,color); }
-            case "legs" -> { DrawRectangleLines(x+u,y,size-2*u,size,color);DrawLine(cx,cy,cx,y+size,color); }
+            case "head" -> { DrawRectangleLines(x,y+u,size,size-2*u,color);iconLine(x,cy,x+size,cy,color);iconLine(cx,cy,cx,y+size,color); }
+            case "chest" -> { DrawRectangleLines(x+u,y+u,size-2*u,size-u,color);iconLine(x,cy,x+u,y+u,color);iconLine(x+size,cy,x+size-u,y+u,color); }
+            case "legs" -> { DrawRectangleLines(x+u,y,size-2*u,size,color);iconLine(cx,cy,cx,y+size,color); }
             case "boots" -> { DrawRectangleLines(x+u,y,size/3,size-u,color);DrawRectangleLines(cx,cy,size/2,size/2-u,color); }
-            case "bow" -> { DrawLine(x+u,y,cx+2*u,cy,color);DrawLine(cx+2*u,cy,x+u,y+size,color);DrawLine(x+u,y,x+u,y+size,color);DrawLine(x,cy,x+size,cy,color);DrawLine(x+size,cy,x+size-u,cy-u,color);DrawLine(x+size,cy,x+size-u,cy+u,color); }
-            case "staff" -> { DrawLine(cx,cy,cx,y+size,color);DrawCircleLines(cx,y+2*u,2*u,color); }
+            case "crossbow" -> { iconLine(cx,y,cx,y+size,color);iconLine(x,y+u,cx,cy,color);iconLine(cx,cy,x+size,y+u,color);iconLine(x,y+u,x+size,y+u,color);DrawRectangle(cx-u,cy,2*u,size/2,color); }
+            case "bow" -> { iconLine(x+u,y,cx+2*u,cy,color);iconLine(cx+2*u,cy,x+u,y+size,color);iconLine(x+u,y,x+u,y+size,color);iconLine(x,cy,x+size,cy,color);iconLine(x+size,cy,x+size-u,cy-u,color);iconLine(x+size,cy,x+size-u,cy+u,color); }
+            case "staff" -> { DrawRectangle(cx-u/2,cy,u,size/2,color);DrawCircle(cx,y+2*u,2*u,color);DrawCircle(cx,y+2*u,u,INK);iconLine(cx-3*u,y+2*u,cx+3*u,y+2*u,color);iconLine(cx,y,cx,y+4*u,color); }
             case "heart" -> {
                 DrawRectangle(cx-u,y,u*2,size,color);DrawRectangle(x,cy-u,size,u*2,color);
             }
             case "sword" -> {
-                DrawLine(x+u,y+size-u,x+size-u,y+u,color);
-                DrawLine(x+2*u,y+size-u,x+size-u,y+2*u,color);
-                DrawLine(x,y+size-3*u,x+3*u,y+size,color);
+                iconLine(x+u,y+size-u,x+size-u,y+u,color);iconLine(x+2*u,y+size-u,x+size-u,y+u,color);iconLine(x+u,y+size-2*u,x+size-u,y+u,color);
+                iconLine(x+2*u,y+size-u,x+size-u,y+2*u,color);
+                iconLine(x,y+size-3*u,x+3*u,y+size,color);
             }
             case "bag" -> {
                 DrawRectangleLines(x+u,y+3*u,size-2*u,size-3*u,color);
                 DrawRectangleLines(cx-2*u,y,u*4,u*3,color);
-                DrawLine(x+u,cy+u,x+size-u,cy+u,color);
+                iconLine(x+u,cy+u,x+size-u,cy+u,color);
             }
             case "save" -> {
                 DrawRectangleLines(x,y,size,size,color);
@@ -96,24 +99,24 @@ public class Menu {
                 DrawRectangleLines(x+u,cy+u,size-2*u,size/2-u,color);
             }
             case "book" -> {
-                DrawRectangleLines(x,y+u,size,size-2*u,color);DrawLine(cx,y+u,cx,y+size-u,color);
-                DrawLine(x+u,y+3*u,cx-u,y+3*u,color);DrawLine(cx+u,y+3*u,x+size-u,y+3*u,color);
+                DrawRectangleLines(x,y+u,size,size-2*u,color);iconLine(cx,y+u,cx,y+size-u,color);
+                iconLine(x+u,y+3*u,cx-u,y+3*u,color);iconLine(cx+u,y+3*u,x+size-u,y+3*u,color);
             }
             case "gear" -> {
                 DrawCircleLines(cx,cy,size/3f,color);DrawCircle(cx,cy,u,color);
-                for(int i=0;i<8;i++) { double a=i*Math.PI/4;DrawLine(cx+(int)(Math.cos(a)*size*.3),cy+(int)(Math.sin(a)*size*.3),cx+(int)(Math.cos(a)*size*.5),cy+(int)(Math.sin(a)*size*.5),color); }
+                for(int i=0;i<8;i++) { double a=i*Math.PI/4;iconLine(cx+(int)(Math.cos(a)*size*.3),cy+(int)(Math.sin(a)*size*.3),cx+(int)(Math.cos(a)*size*.5),cy+(int)(Math.sin(a)*size*.5),color); }
             }
             case "shield" -> {
-                DrawLine(x,y+u,x+size,y+u,color);DrawLine(x,y+u,x+u,y+size-2*u,color);
-                DrawLine(x+size,y+u,x+size-u,y+size-2*u,color);DrawLine(x+u,y+size-2*u,cx,y+size,color);
-                DrawLine(cx,y+size,x+size-u,y+size-2*u,color);
+                iconLine(x,y+u,x+size,y+u,color);iconLine(x,y+u,x+u,y+size-2*u,color);
+                iconLine(x+size,y+u,x+size-u,y+size-2*u,color);iconLine(x+u,y+size-2*u,cx,y+size,color);
+                iconLine(cx,y+size,x+size-u,y+size-2*u,color);
             }
             case "crown" -> {
-                DrawLine(x,y+u,x+u,y+size-u,color);DrawLine(x+size,y+u,x+size-u,y+size-u,color);
-                DrawLine(x,y+u,cx,cy,color);DrawLine(cx,cy,cx,y,color);DrawLine(cx,y,x+size,cy,color);
-                DrawLine(x+u,y+size-u,x+size-u,y+size-u,color);
+                iconLine(x,y+u,x+u,y+size-u,color);iconLine(x+size,y+u,x+size-u,y+size-u,color);
+                iconLine(x,y+u,cx,cy,color);iconLine(cx,cy,cx,y,color);iconLine(cx,y,x+size,cy,color);
+                iconLine(x+u,y+size-u,x+size-u,y+size-u,color);
             }
-            default -> { DrawLine(x,cy,x+size,cy,color);DrawLine(x+size,cy,cx,y+u,color);DrawLine(x+size,cy,cx,y+size-u,color); }
+            default -> { iconLine(x,cy,x+size,cy,color);iconLine(x+size,cy,cx,y+u,color);iconLine(x+size,cy,cx,y+size-u,color); }
         }
     }
     private static String buttonIcon(String label) {

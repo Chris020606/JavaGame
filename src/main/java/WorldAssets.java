@@ -51,6 +51,7 @@ public final class WorldAssets implements AutoCloseable {
     private final Model longsword=LoadModel(AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/sword_2handed.gltf"));
     private final Model waraxe=LoadModel(AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/axe_2handed.gltf"));
     private final Model stringBow=LoadModel(AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/bow_withString.gltf"));
+    private final Model handCrossbow=LoadModel(AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/crossbow_1handed.gltf"));
     private final Model crossbow=LoadModel(AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/crossbow_2handed.gltf"));
     private final Model wand=LoadModel(AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/wand.gltf"));
     private final int[] count = new int[1];
@@ -120,7 +121,7 @@ public final class WorldAssets implements AutoCloseable {
         for (Model model : new Model[]{raider,archer,shaman,bow,staff,sword})
             if (model.meshCount() == 0) throw new IllegalStateException("Missing world model; run from project directory");
         loadClips(raider,animations,count[0]);loadClips(archer,archerAnimations,archerCount[0]);loadClips(shaman,shamanAnimations,shamanCount[0]);
-        for(Model model:new Model[]{skeletonMinion,skeletonRogue,skeletonMage,longsword,waraxe,stringBow,crossbow,wand})
+        for(Model model:new Model[]{skeletonMinion,skeletonRogue,skeletonMage,longsword,waraxe,stringBow,crossbow,handCrossbow,wand})
             if(model.meshCount()==0) throw new IllegalStateException("Missing equipment or skeleton roster model");
         for(Model model:new Model[]{skeletonMinion,skeletonRogue,skeletonMage})
             if(!IsModelAnimationValid(model,new ModelAnimation(bossAnimations).position(0))) throw new IllegalStateException("Skeleton roster rig mismatch");
@@ -513,6 +514,7 @@ public final class WorldAssets implements AutoCloseable {
         ModelAnimation clips=bone?bossAnimations:enemy.variant==3?archerAnimations:enemy.variant==4?shamanAnimations:animations;
         String clipName;
         if(enemy.attackTime>0) clipName=enemy.variant==3?(bone?"2H_Ranged_Shoot":enemy.attackTime>.25f?"Ranged_Bow_Draw":"Ranged_Bow_Release"):enemy.variant==4?(bone?"Spellcasting":"Ranged_Magic_Spellcasting"):(bone?"1H_Melee_Attack_Chop":"Melee_1H_Attack_Chop");
+        else if(!bone && enemy.variant==3) clipName=enemy.locomotion<.1f?"Ranged_Bow_Idle":enemy.action.equals("RETREAT")?"Walking_Backwards":"Running_HoldingBow";
         else if(enemy.locomotion<.1f) clipName=bone?"Idle_Combat":"Melee_2H_Idle";
         else if(enemy.action.equals("STRAFE")) clipName="Running_Strafe_Left";
         else clipName=enemy.variant==1?"Running_A":bone?"Walking_D_Skeletons":"Walking_A.001";
@@ -584,7 +586,7 @@ public final class WorldAssets implements AutoCloseable {
         try { DrawModelEx(model,player.renderPosition(),axisUp,player.getRotation().y(),unitScale,tint); }
         finally { for(int i=0;i<hidden.length;i++)new Mesh(model.meshes()).position(hidden[i]).triangleCount(triangles[i]).vertexCount(vertices[i]); }
     }
-    private Model weaponModel(int style,int tier) { return style==1?(tier==0?bow:tier==1?stringBow:crossbow):style==2?(tier==0?staff:tier==1?wand:tier==2?bossStaff:equipment.get("dawnstaff")):(tier==0?sword:tier==1?longsword:tier==2?waraxe:equipment.get("dawnblade")); }
+    private Model weaponModel(int style,int tier) { return style==1?(tier==0?bow:tier==1?stringBow:tier==2?handCrossbow:crossbow):style==2?(tier==0?staff:tier==1?wand:tier==2?bossStaff:equipment.get("dawnstaff")):(tier==0?sword:tier==1?longsword:tier==2?waraxe:equipment.get("dawnblade")); }
     boolean weaponMaterialsValid() {
         for(Model model:new Model[]{equipment.get("dawnblade"),equipment.get("dawnstaff"),mountains,frostMountains}) {
             for(int i=0;i<model.materialCount();i++) {
@@ -664,7 +666,7 @@ public final class WorldAssets implements AutoCloseable {
         for (Model model:nature.values()) UnloadModel(model);
         for(Model model:graveyard.values()) UnloadModel(model);
         for(Model model:equipment.values()) UnloadModel(model);
-        for(Model model:new Model[]{skeletonMinion,skeletonRogue,skeletonMage,longsword,waraxe,stringBow,crossbow,wand}) UnloadModel(model);
+        for(Model model:new Model[]{skeletonMinion,skeletonRogue,skeletonMage,longsword,waraxe,stringBow,crossbow,handCrossbow,wand}) UnloadModel(model);
 
         UnloadModelAnimations(animations,count[0]);
         UnloadModelAnimations(archerAnimations,archerCount[0]); UnloadModelAnimations(shamanAnimations,shamanCount[0]);

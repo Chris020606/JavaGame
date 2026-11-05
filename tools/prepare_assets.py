@@ -31,11 +31,11 @@ def append_animations(d,b,source,selected):
 for character,output in [('Rogue_Hooded','raider'),('Ranger','archer'),('Mage','shaman')]:
     d,b=read_glb(ROOT/('resources/KayKit_Adventurers_2.0_FREE/Characters/gltf/'+character+'.glb'))
     d['animations']=[]
-    b=append_animations(d,b,ROOT/'resources/knight.glb',('Running_A','Melee_1H_Attack_Chop','Melee_2H_Idle','Walking_A.001','Running_Strafe_Left','Running_Strafe_Right'))
+    b=append_animations(d,b,ROOT/'resources/knight.glb',('Running_A','Melee_1H_Attack_Chop','Melee_2H_Idle','Walking_A.001','Running_Strafe_Left','Running_Strafe_Right','Running_HoldingBow','Walking_Backwards'))
     b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_General.glb',('Death_A',))
     b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_Simulation.glb',('Lie_Idle',))
     if output!='raider':
-        clips=('Ranged_Bow_Draw','Ranged_Bow_Release') if output=='archer' else ('Ranged_Magic_Spellcasting',)
+        clips=('Ranged_Bow_Draw','Ranged_Bow_Release','Ranged_Bow_Idle') if output=='archer' else ('Ranged_Magic_Spellcasting',)
         b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_CombatRanged.glb',clips)
     for img in d.get('images',[]):
         if 'uri' in img: img['uri']='../KayKit_Adventurers_2.0_FREE/Characters/gltf/'+img['uri']
@@ -43,7 +43,7 @@ for character,output in [('Rogue_Hooded','raider'),('Ranger','archer'),('Mage','
 # Player variants retain the full shared locomotion/combat set plus ranged clips.
 for character, output, clips in [
     ('Knight', 'hero_warrior', ()),
-    ('Ranger', 'hero_archer', ('Ranged_Bow_Draw', 'Ranged_Bow_Release', 'Ranged_Bow_Idle', 'Ranged_2H_Aiming', 'Ranged_2H_Shoot', 'Ranged_2H_Reload')),
+    ('Ranger', 'hero_archer', ('Ranged_Bow_Draw', 'Ranged_Bow_Release', 'Ranged_Bow_Idle', 'Ranged_2H_Aiming', 'Ranged_2H_Shoot', 'Ranged_2H_Reload','Ranged_1H_Aiming','Ranged_1H_Shoot','Ranged_1H_Reload')),
     ('Mage', 'hero_mage', ('Ranged_Magic_Spellcasting','Ranged_Magic_Raise','Ranged_Magic_Shoot'))]:
     d,b=read_glb(ROOT/('resources/KayKit_Adventurers_2.0_FREE/Characters/gltf/'+character+'.glb'))
     d['animations']=[]

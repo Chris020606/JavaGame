@@ -21,6 +21,11 @@ public final class EnvironmentLayout {
             n(p,"fence_simple",-17,-8,17,2.4f);n(p,"fence_simple",-17,-11,7,2.2f);
             n(p,"statue_columnDamaged",9,14,11,3.4f);n(p,"statue_columnDamaged",13,16,82,2.5f);
             n(p,"statue_obelisk",11,19,-9,3.1f);
+            // A ruined lookout and stone stair terrace frame the eastern approach.
+            n(p,"platform_stone",24,7,0,5.5f);n(p,"platform_stone",27,7,0,5.5f);
+            n(p,"statue_columnDamaged",23,4,0,5);n(p,"statue_columnDamaged",28,4,180,4);
+            n(p,"statue_ring",26,8,90,4);n(p,"stone_largeA",22,11,35,3);
+            n(p,"flower_purpleC",21,9,0,2);n(p,"plant_bushDetailed",29,11,40,3);
             n(p,"bridge_wood",-4,-28,90,4.2f);
             // Layered riverbank groves conceal the distant seam from low orbit angles.
             for(int side:new int[]{-1,1})for(int i=0;i<14;i++) {

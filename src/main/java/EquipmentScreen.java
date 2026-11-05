@@ -28,8 +28,8 @@ public final class EquipmentScreen implements AutoCloseable {
         if(thumbnailClass!=progress.heroClass()) {
             for(int item=0;item<16;item++) {
                 if(thumbnails[item]==null)thumbnails[item]=LoadRenderTexture(128,128);
-                float target=item<4?(progress.heroClass()==HeroClass.ARCHER?0:.85f):slot(item)==ArmorSlot.HEAD?1.85f:slot(item)==ArmorSlot.CHEST?.85f:slot(item)==ArmorSlot.LEGS?.34f:.12f;
-                float distance=item<4?4.3f:slot(item)==ArmorSlot.HEAD?2.7f:slot(item)==ArmorSlot.CHEST?2.8f:1.2f;
+                float target=item<4?(progress.heroClass()==HeroClass.ARCHER?(item>=2?.12f:0):.85f):slot(item)==ArmorSlot.HEAD?1.85f:slot(item)==ArmorSlot.CHEST?.85f:slot(item)==ArmorSlot.LEGS?.34f:.12f;
+                float distance=item<4?(progress.heroClass()==HeroClass.ARCHER && item>=2?1.7f:4.3f):slot(item)==ArmorSlot.HEAD?2.7f:slot(item)==ArmorSlot.CHEST?2.8f:1.2f;
                 Camera3D itemCamera=new Camera3D()._position(new Vector3().x(distance*.5f).y(target+distance*.25f).z(distance)).target(new Vector3().y(target)).up(new Vector3().y(1)).fovy(34).projection(CAMERA_PERSPECTIVE);
                 BeginTextureMode(thumbnails[item]);ClearBackground(new Color().a((byte)0));BeginMode3D(itemCamera);
                 assets.drawInventoryItem(player,progress,item);EndMode3D();EndTextureMode();
@@ -114,7 +114,7 @@ public final class EquipmentScreen implements AutoCloseable {
         boolean wearing=equipped(p,selected);String action=!owned(p,selected)?"LOCKED / VISIT FORGE":selected==16?(p.health()<p.maxHealth()?"USE POTION":"HEALTH FULL"):wearing&&selected==0?"STARTER EQUIPPED":wearing?"UNEQUIP":"EQUIP [ENTER]";
         if(Menu.button(action,x+416,y+408,245,owned(p,selected) && !(wearing && selected==0) && (selected!=16 || p.health()<p.maxHealth()))) { if(wearing)remove(p,selected);else equip(p,selected); }
         Menu.text(wearing?"EQUIPPED":owned(p,selected)?"OWNED":"NOT OWNED",x+708,y+421,15,wearing?Menu.TEAL:Menu.MUTED);
-        Menu.text("HEALTH "+p.maxHealth()+"   DAMAGE "+p.damage(),x+24,y+480,18,Menu.TEXT);Menu.text("STAMINA "+p.maxStamina()+"   DEFENSE "+p.defense(),x+24,y+510,18,Menu.TEAL);
+        Menu.text("HEALTH "+p.maxHealth()+"   DAMAGE "+p.damage(),x+24,y+480,18,Menu.TEXT);Menu.text(p.resourceLabel()+" "+p.maxStamina()+"   DEFENSE "+p.defense(),x+24,y+510,18,Menu.TEAL);
         Menu.text(String.format("SPEED %.1f   RECOVERY %d/s",p.movementSpeed(),p.staminaRecovery()),x+24,y+540,16,Menu.MUTED);
         if(Menu.button("USE POTION / "+p.potions(),x+400,y+485,220,p.potions()>0 && p.health()<p.maxHealth()))p.usePotion();
         if(Menu.button("BEST GEAR",x+635,y+485,130,true)) { p.equipWeapon(p.weaponUnlocked());for(ArmorSlot slot:ArmorSlot.values())p.equipArmor(slot,p.armorUnlocked()); }

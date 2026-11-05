@@ -8,7 +8,7 @@ The valley's fires have gone cold. One ember still burns beneath a forgotten san
 
 ## Play together — two-player co-op
 
-Choose **Play Together** on the main menu. Both computers must install the same v4.1 release.
+Choose **Play Together** on the main menu. Both computers must install the same v4.2 release.
 
 1. On one computer, choose your name/class and difficulty, then **Host New Game**.
 2. Copy the invite from the lobby and send it to your partner.
@@ -27,11 +27,15 @@ Each chapter grants an upgrade point and improved visible equipment. Each player
 
 - **Warrior:** get close, chain sword swings, parry a strike, and answer with a powerful counterattack.
 - **Archer:** keep your distance, pick your openings, and trade your bow for a crossbow as your equipment improves.
-- **Mage:** send piercing spells through enemies. The crafted Dawnweaver staff turns a perfect charged shot into a healing ward for the survivor or sanctuary.
+- **Mage:** spend blue mana on spells and magical defenses; sprinting does not consume mana. Send piercing spells through enemies. The crafted Dawnweaver staff turns a perfect charged shot into a healing ward for the survivor or sanctuary.
 
 Name your warden, choose **Easy, Normal, Hard, or Extreme**, and light the beacon. The difficulty stays with your adventure.
 
 ![Choose your name, hero, and challenge with an animated character preview](docs/images/player-welcome.png)
+
+![Distinct hand and siege crossbows in the Archer pack](docs/images/player-crossbows.png)
+
+![Mage blue mana resource and clearer action icons](docs/images/player-mana.png)
 
 ## Every swing matters
 
@@ -143,7 +147,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**[Download Outpost v4.1.0](https://github.com/Chris020606/JavaGame/releases/tag/v4.1.0)** for Windows, Linux, or Mac. [Watch the 30-second gameplay video](https://github.com/Chris020606/JavaGame/releases/download/v4.1.0/Outpost-v4.1-Gameplay-30s.mp4). Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**[Download Outpost v4.2.0](https://github.com/Chris020606/JavaGame/releases/tag/v4.2.0)** for Windows, Linux, or Mac. [Watch the 30-second gameplay video](https://github.com/Chris020606/JavaGame/releases/download/v4.1.0/Outpost-v4.1-Gameplay-30s.mp4). Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -152,6 +156,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **4.2:** distinct hand/siege crossbows and matching attack/reload clips, bow-holding enemy locomotion, blue Mage mana with free sprinting, new chapter score arrangements and an eastern meadow ruin landmark.
 - **4.1:** independent weapon and armor purchases, green ally health above their head, directional co-op movement animations, smoother camera follow and restrained melee impact feedback. Existing inventories are preserved.
 - **4.0:** two-player host/join co-op campaign, balanced encounters, shared sanctuary, revives, support magic, upgrades, reconnects and separate chapter checkpoints.
 - **3.5:** optional Chapter Feats reward charged hits, parries, objectives and boss dodges; the Chronicle tracks progress and earned rewards across all chapters.

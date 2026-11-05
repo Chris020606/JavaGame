@@ -243,7 +243,7 @@ public final class CoopGame implements AutoCloseable {
         String title=h.name()+" / "+HeroClass.values()[h.hero()].label;int size=18;while(size>12 && Menu.measure(title,size)>width-24)size--;
         Menu.text(title,x+12,y+10,size,color);
         Menu.text(h.connected()?(h.health()<=0?"DOWNED / PARTNER HOLD G TO REVIVE":h.ready()?"READY":state.phase()==CoopState.Phase.PLAYING && Math.hypot(h.x(),h.z())<6?"SANCTUARY / +12 HEALTH PER SECOND":"LEVEL "+(state.chapter()+1)):"DISCONNECTED / GAME PAUSED",x+12,y+36,11,h.health()<=0?Menu.RED:Menu.MUTED);
-        meter(x+12,y+57,width-24,h.health(),h.maxHealth(),"HEALTH",Menu.TEAL);meter(x+12,y+83,width-24,h.stamina(),h.maxStamina(),"STAMINA",Menu.GOLD);
+        meter(x+12,y+57,width-24,h.health(),h.maxHealth(),"HEALTH",Menu.TEAL);meter(x+12,y+83,width-24,h.stamina(),h.maxStamina(),h.hero()==HeroClass.MAGE.ordinal()?"MANA":"STAMINA",h.hero()==HeroClass.MAGE.ordinal()?Menu.color(65,135,235):Menu.GOLD);
     }
     private void meter(int x,int y,int width,float value,float maximum,String label,Color color) {
         DrawRectangle(x,y,width,19,Menu.INK);DrawRectangle(x,y,Math.round(width*Math.max(0,Math.min(1,value/maximum))),19,Fade(color,.65f));
@@ -300,10 +300,10 @@ public final class CoopGame implements AutoCloseable {
         int card=0;for(var hero:state.heroes()) { heroPanel(hero,x+30+card*430,y+184,410);card++; }
         if(state.heroes().size()<2) { Menu.panel(x+460,y+184,410,112);Menu.center("WAITING FOR YOUR PARTNER",x+665,y+223,20,Menu.MUTED); }
         if(me!=null) {
-            Menu.text(me.credits()>0?"UPGRADE POINTS / "+me.credits()+" / CHOOSE YOUR BUILD":"YOUR BUILD / +"+(me.vitality()*25)+" HP / +"+(me.power()*15)+"% DAMAGE / +"+(me.endurance()*25)+" STAMINA",x+30,y+320,15,Menu.GOLD);
+            Menu.text(me.credits()>0?"UPGRADE POINTS / "+me.credits()+" / CHOOSE YOUR BUILD":"YOUR BUILD / +"+(me.vitality()*25)+" HP / +"+(me.power()*15)+"% DAMAGE / +"+(me.endurance()*25)+(me.hero()==HeroClass.MAGE.ordinal()?" MANA":" STAMINA"),x+30,y+320,15,Menu.GOLD);
             if(Menu.button("+25 MAX HEALTH",x+30,y+350,265,me.credits()>0))pendingButtons|=CoopInput.VITALITY;
             if(Menu.button("+15% DAMAGE",x+317,y+350,265,me.credits()>0))pendingButtons|=CoopInput.POWER;
-            if(Menu.button("+25 STAMINA",x+605,y+350,265,me.credits()>0))pendingButtons|=CoopInput.ENDURANCE;
+            if(Menu.button(me.hero()==HeroClass.MAGE.ordinal()?"+25 MANA":"+25 STAMINA",x+605,y+350,265,me.credits()>0))pendingButtons|=CoopInput.ENDURANCE;
             if(Menu.primaryButton(me.ready()?"UNREADY [ENTER]":state.phase()==CoopState.Phase.DEFEAT?"READY TO RETRY [ENTER]":"READY [ENTER]",x+30,y+420,550))pendingButtons|=CoopInput.READY;
         }
         if(Menu.button("LEAVE SESSION",x+605,y+420,265,true))confirmLeave=true;

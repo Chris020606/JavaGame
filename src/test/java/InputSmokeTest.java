@@ -227,7 +227,7 @@ public class InputSmokeTest {
         click.set(false);event(MOUSE_UP,MOUSE_BUTTON_LEFT,0);event(MOUSE_UP,MOUSE_BUTTON_RIGHT,0);
         for(int held:new int[]{KEY_SPACE,KEY_Q,KEY_R,KEY_F,KEY_W,KEY_A,KEY_S,KEY_D,KEY_LEFT_SHIFT,KEY_LEFT_CONTROL})event(KEY_UP,held,0);
         frame(game);
-        for(HeroClass hero:corpseOnly?new HeroClass[0]:HeroClass.values())for(int tier:new int[]{0,3}) {
+        for(HeroClass hero:corpseOnly?new HeroClass[0]:HeroClass.values())for(int tier:new int[]{0,2,3}) {
             Progression p=Progression.playtest(hero,Entities.Difficulty.NORMAL,false);p.equipWeapon(tier);
             Entities.Enemy boss=new Entities.Enemy(0,13,5,5,.5f);
             SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Motion",0,8,180,p,new WaveDirector.State(5,0,1,8,0,21,0),java.util.List.of(boss),Arena.HIGHLANDS));
@@ -460,6 +460,16 @@ public class InputSmokeTest {
                 for(int f=0;f<3;f++)frame(game);capture("onboarding-charge");
                 game.tutorial().hit(true);for(int f=0;f<3;f++)frame(game);capture("onboarding-parry");
                 System.out.println("PASS: central onboarding panel and contextual charge/parry cues render");return;
+            }
+            if(java.util.Arrays.asList(args).contains("--class-review")) {
+                for(HeroClass hero:new HeroClass[]{HeroClass.ARCHER,HeroClass.MAGE}) {
+                    Progression kit=Progression.playtest(hero,Entities.Difficulty.NORMAL,false);
+                    SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Warden",0,8,0,kit,new WaveDirector.State(1,0,1,8,0,21,0),java.util.List.of(new Entities.Enemy(0,20,1,3,.5f)),Arena.HIGHLANDS));
+                    check(game.loadCurrent(),"Class review load failed");key(game,KEY_ENTER);for(int f=0;f<4;f++)frame(game);
+                    capture("class-review-"+hero.name().toLowerCase());
+                    key(game,KEY_TAB);for(int f=0;f<4;f++)frame(game);capture("class-pack-"+hero.name().toLowerCase());key(game,KEY_ESCAPE);
+                }
+                System.out.println("PASS: class resource HUD and distinct crossbow inventory renders");return;
             }
             if(java.util.Arrays.asList(args).contains("--ownership-review")) {
                 Progression kit=new Progression(HeroClass.ARCHER);java.util.Properties props=new java.util.Properties();kit.store(props);props.setProperty("crystals","2000");kit=Progression.restore(props);

@@ -308,7 +308,7 @@ public class Game {
             RecoveryWisps wisps=progress.recoveryWisps();wisps.update(dt);
             if(wisps.collect(player.getPosition().x(),player.getPosition().z(),progress.health()<progress.maxHealth() || player.discipline().stamina()<player.discipline().maximum()-1)) {
                 progress.restoreHealth(RecoveryWisps.HEALTH);player.discipline().stamina(player.discipline().stamina()+RecoveryWisps.STAMINA);
-                audio.play("ward");notifyPlayer("RECOVERY WISP / +18 HEALTH / +26 STAMINA");
+                audio.play("ward");notifyPlayer("RECOVERY WISP / +18 HEALTH / +26 "+progress.resourceLabel());
                 vfx.impact(player.getPosition().x(),player.getPosition().z(),Menu.TEAL,false);
             }
         }
@@ -378,7 +378,7 @@ public class Game {
         if(inputBuffer>0 && attackCooldown<=0 && !player.isDodging() && heavyCharge<=0 && player.discipline().recovery()<=0) {
             float cost=bufferedLunge?CombatDiscipline.LUNGE:bufferedHeavy?CombatDiscipline.HEAVY:CombatDiscipline.LIGHT;
             inputBuffer=0;
-            if(!player.discipline().spend(cost)) notifyPlayer("LOW STAMINA / Breathe before attacking");
+            if(!player.discipline().spend(cost)) notifyPlayer("LOW "+progress.resourceLabel()+" / Recover before attacking");
             else {
                 combo=bufferedLunge||bufferedHeavy?0:bufferedTimed?combo%3+1:1;
                 activeAttack=bufferedLunge?Combat.lunge(progress.heroClass()):progress.heroClass().attack(combo,bufferedHeavy);
@@ -725,7 +725,7 @@ public class Game {
             Vector2 point=GetWorldToScreen(v(nearestWisp.x(),1.6f,nearestWisp.z()),sceneManager.getOpenScene().getCameraController().getCamera());
             int x=(int)point.x(),y=(int)point.y();
             Menu.panel(x-84,y-5,168,36);Menu.center("RECOVERY WISP",x,y,11,Menu.TEAL);
-            Menu.center("18 HP + 26 STAMINA",x,y+15,10,Menu.TEXT);
+            Menu.center("18 HP + 26 "+progress.resourceLabel(),x,y+15,10,Menu.TEXT);
         }
         for (Enemy enemy : enemies) {
             Vector2 screen = GetWorldToScreen(v(enemy.x, enemy.boss()?(enemy.king?6.0f:5.2f):2.1f, enemy.z), sceneManager.getOpenScene().getCameraController().getCamera());
@@ -803,7 +803,7 @@ public class Game {
         Menu.text(tutorial.title(),x+20,y+39,24,Menu.GOLD);
         Menu.wrapped(tutorial.instruction(settings.controls,progress.heroClass()),x+20,y+77,width-40,18,Menu.TEXT);
         String hint=switch(tutorial.step()) {
-            case MOVE -> "Green health / Gold stamina / Sanctuary health: upper left";
+            case MOVE -> "Green health / "+(progress.heroClass()==HeroClass.MAGE?"Blue mana":"Gold stamina")+" / Sanctuary: upper left";
             case STRIKE -> "Hit the marked partner twice";
             case DODGE -> "Move + "+settings.controls.label(DODGE);
             case CHARGE -> heavyCharge>=.75f && heavyCharge<=1.05f?"RELEASE NOW":heavyCharge>1.05f?"Release, then try a shorter charge":"Hold "+settings.controls.label(HEAVY)+" - wait for gold";

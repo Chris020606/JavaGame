@@ -11,12 +11,13 @@ public class Player extends Entity {
     private Controls controls=new Controls();
     public void setControls(Controls controls) { this.controls=controls; }
     private String name;
-    private int weaponStyle;
+    private int weaponStyle,weaponTier;
     private boolean crossbow;
     private boolean twoHanded;
-    public void setWeaponTier(int tier) { twoHanded=weaponStyle==0 && tier>0; }
+    public void setWeaponTier(int tier) { weaponTier=tier; twoHanded=weaponStyle==0 && tier>0; }
     public void setCrossbow(boolean value) { crossbow=value; }
-    private PlayerAnimation rangedIdle() { return crossbow?PlayerAnimation.CROSSBOW_IDLE:PlayerAnimation.BOW_IDLE; }
+    private PlayerAnimation crossbowClip(PlayerAnimation clip) { if(weaponTier!=2)return clip;return switch(clip) { case CROSSBOW_IDLE -> PlayerAnimation.HAND_CROSSBOW_IDLE;case CROSSBOW_SHOOT -> PlayerAnimation.HAND_CROSSBOW_SHOOT;case CROSSBOW_RELOAD -> PlayerAnimation.HAND_CROSSBOW_RELOAD;default -> clip; }; }
+    private PlayerAnimation rangedIdle() { return crossbow?crossbowClip(PlayerAnimation.CROSSBOW_IDLE):PlayerAnimation.BOW_IDLE; }
     public void setWeaponStyle(int style) { weaponStyle=style; }
     private final CombatDiscipline discipline=new CombatDiscipline();
     private boolean charging,lungeAttack;
@@ -159,7 +160,7 @@ public class Player extends Entity {
 
         float moveLength = (float)Math.sqrt(moveX * moveX + moveZ * moveZ);
 
-        discipline.tick(dt,sprinting);
+        discipline.tick(dt,sprinting && weaponStyle!=2);
         dodgeCooldown=Math.max(0,dodgeCooldown-dt);
         if(controls.pressed(PARRY) || requestedParry)parry();
         requestedParry=false;
@@ -175,7 +176,7 @@ public class Player extends Entity {
                 side>0?PlayerAnimation.DODGE_RIGHT:PlayerAnimation.DODGE_LEFT;
             dodgeTime=.34f;dodgeCooldown=dodgeRecovery;restartAnimation();
         }
-        sprinting=controls.down(SPRINT) && moving && !isAttacking() && !isDodging() && !charging && discipline.recovery()<=0 && discipline.canSprint();
+        sprinting=controls.down(SPRINT) && moving && !isAttacking() && !isDodging() && !charging && discipline.recovery()<=0 && (weaponStyle==2 || discipline.canSprint());
         float recover=AttackMotion.recovery(attackDuration-attackTime,attackImpact,attackDuration);
         if(weaponStyle==1 && crossbow && isAttacking())recover=AttackMotion.smooth((1-attackTime/attackDuration-.88f)/.12f);
         float speed=movementSpeed*(sprinting?1.55f:1)*(isAttacking()?recover:charging||discipline.recovery()>0?.18f:1);
@@ -212,7 +213,7 @@ public class Player extends Entity {
         } else if (attackTime > 0) {
             poseAttack(dt,moving?locomotion:null);return;
         } else if(charging) {
-            setAnimation(weaponStyle==1?(crossbow?PlayerAnimation.CROSSBOW_IDLE:PlayerAnimation.BOW_DRAW):weaponStyle==2?PlayerAnimation.MAGIC_RAISE:twoHanded?PlayerAnimation.TWO_HANDED_CHOP:PlayerAnimation.ATTACK_CHOP);
+            setAnimation(weaponStyle==1?(crossbow?crossbowClip(PlayerAnimation.CROSSBOW_IDLE):PlayerAnimation.BOW_DRAW):weaponStyle==2?PlayerAnimation.MAGIC_RAISE:twoHanded?PlayerAnimation.TWO_HANDED_CHOP:PlayerAnimation.ATTACK_CHOP);
             advancePose(dt);playAnimationProgress(weaponStyle==1?(crossbow?0:AttackMotion.smooth(chargePoseTime/.7f)):weaponStyle==2?AttackMotion.smooth(chargePoseTime/.65f):.28f*AttackMotion.smooth(chargePoseTime/.7f));return;
         } else if(discipline.recovery()>0) {
             setAnimation(weaponStyle==0?PlayerAnimation.BLOCK_IDLE:weaponStyle==1?rangedIdle():PlayerAnimation.MAGIC_RAISE);
@@ -237,9 +238,9 @@ public class Player extends Entity {
         float elapsed=attackDuration-attackTime,after=Math.max(0,elapsed-attackImpact),progress;
         PlayerAnimation clip=attackClip;
         if(weaponStyle==1 && crossbow) {
-            if(elapsed<attackImpact) { clip=PlayerAnimation.CROSSBOW_IDLE;progress=0; }
-            else if(after<.13f) { clip=PlayerAnimation.CROSSBOW_SHOOT;progress=after/.13f*.55f; }
-            else { clip=PlayerAnimation.CROSSBOW_RELOAD;progress=(after-.13f)/Math.max(.1f,attackDuration-attackImpact-.13f); }
+            if(elapsed<attackImpact) { clip=crossbowClip(PlayerAnimation.CROSSBOW_IDLE);progress=0; }
+            else if(after<.13f) { clip=crossbowClip(PlayerAnimation.CROSSBOW_SHOOT);progress=after/.13f; }
+            else { clip=crossbowClip(PlayerAnimation.CROSSBOW_RELOAD);progress=(after-.13f)/Math.max(.1f,attackDuration-attackImpact-.13f); }
         } else if(weaponStyle==1) {
             clip=elapsed<attackImpact?PlayerAnimation.BOW_DRAW:PlayerAnimation.BOW_RELEASE;
             progress=elapsed<attackImpact?AttackMotion.contact(elapsed,attackImpact,attackDuration,1,attackStartPose):after/Math.max(.1f,attackDuration-attackImpact);
@@ -264,9 +265,9 @@ public class Player extends Entity {
         attackImpact=impact;attackStartPose=heavy&&heldCharge>.3f?(weaponStyle==1||weaponStyle==2?1:.28f):0;
         velocityX=velocityZ=0;
         attackClip=twoHanded?(heavy||combo==2?PlayerAnimation.TWO_HANDED_CHOP:combo==3?PlayerAnimation.TWO_HANDED_FINISHER:PlayerAnimation.TWO_HANDED_SLICE):heavy?PlayerAnimation.ATTACK_CHOP:combo==3?PlayerAnimation.ATTACK_STAB:combo==2?PlayerAnimation.ATTACK_DIAGONAL:PlayerAnimation.ATTACK_HORIZONTAL;
-        if (weaponStyle==1) attackClip=crossbow?PlayerAnimation.CROSSBOW_SHOOT:PlayerAnimation.BOW_RELEASE;
+        if (weaponStyle==1) attackClip=crossbow?crossbowClip(PlayerAnimation.CROSSBOW_SHOOT):PlayerAnimation.BOW_RELEASE;
         if (weaponStyle==2) attackClip=PlayerAnimation.MAGIC_CAST;
-        beginPoseTransition();setAnimation(weaponStyle==1?(crossbow?PlayerAnimation.CROSSBOW_IDLE:PlayerAnimation.BOW_DRAW):weaponStyle==2?PlayerAnimation.MAGIC_RAISE:attackClip);
+        beginPoseTransition();setAnimation(weaponStyle==1?(crossbow?crossbowClip(PlayerAnimation.CROSSBOW_IDLE):PlayerAnimation.BOW_DRAW):weaponStyle==2?PlayerAnimation.MAGIC_RAISE:attackClip);
         restartAnimation();playAnimationProgress(attackStartPose);
     }
 
@@ -318,7 +319,7 @@ public class Player extends Entity {
         if(victory) { setAnimation(PlayerAnimation.CHEER);updateAnimation(dt);return; }
         if(dodge>0) { setAnimation(PlayerAnimation.DODGE_FORWARD);advancePose(dt);playAnimationProgress(1-dodge/.34f); }
         else if(remaining>0)poseAttack(dt,speed>.2f?movement:null);
-        else if(charge>0) { setAnimation(weaponStyle==1?(crossbow?PlayerAnimation.CROSSBOW_IDLE:PlayerAnimation.BOW_DRAW):weaponStyle==2?PlayerAnimation.MAGIC_RAISE:twoHanded?PlayerAnimation.TWO_HANDED_CHOP:PlayerAnimation.ATTACK_CHOP);advancePose(dt);playAnimationProgress(weaponStyle==0?.28f*Math.min(1,charge/.7f):Math.min(1,charge/.7f)); }
+        else if(charge>0) { setAnimation(weaponStyle==1?(crossbow?crossbowClip(PlayerAnimation.CROSSBOW_IDLE):PlayerAnimation.BOW_DRAW):weaponStyle==2?PlayerAnimation.MAGIC_RAISE:twoHanded?PlayerAnimation.TWO_HANDED_CHOP:PlayerAnimation.ATTACK_CHOP);advancePose(dt);playAnimationProgress(weaponStyle==0?.28f*Math.min(1,charge/.7f):Math.min(1,charge/.7f)); }
         else if(parry>0) { setAnimation(PlayerAnimation.BLOCK_IDLE);advancePose(dt);playAnimationProgress(0); }
         else if(speed>.2f) { setAnimation(movement);updateAnimation(dt*Math.min(1.4f,speed/5)); }
         else { setAnimation(weaponStyle==1?rangedIdle():weaponStyle==2?PlayerAnimation.UNARMED_IDLE:PlayerAnimation.MELEE_IDLE);updateAnimation(dt); }

@@ -88,6 +88,7 @@ public class Progression {
         if(tier<1 || tier>3 || ownsArmor(tier) || crystals<armorPrice(tier) || defeated()) return false;
         crystals-=armorPrice(tier);ownedArmor|=1<<tier;armorUnlocked=Math.max(armorUnlocked,tier);return true;
     }
+    public String resourceLabel() { return heroClass==HeroClass.MAGE?"MANA":"STAMINA"; }
     public int maxStamina() { return 100+(endurance-1)*15; }
     public int staminaRecovery() { return 22+(recovery-1)*3; }
     public float movementSpeed() { return heroClass.speed*(1+(agility-1)*.04f)+armorTier(ArmorSlot.BOOTS)*.12f; }
@@ -106,7 +107,7 @@ public class Progression {
     public int weaponBonus(int tier) { return tier*8; }
     public String weaponName(int tier) {
         String quality=switch(tier) { case 1 -> "Forged"; case 2 -> "Runic"; case 3 -> "Legendary"; default -> "Starter"; };
-        return quality+" "+switch(heroClass) { case WARRIOR -> tier==1?"Longsword":tier==2?"Waraxe":tier==3?"Dawnblade":"Sword"; case ARCHER -> tier>=2?"Crossbow":"Bow"; case MAGE -> tier==3?"Dawnweaver":tier==1?"Wand":"Staff"; };
+        return quality+" "+switch(heroClass) { case WARRIOR -> tier==1?"Longsword":tier==2?"Waraxe":tier==3?"Dawnblade":"Sword"; case ARCHER -> tier==2?"Hand Crossbow":tier==3?"Siege Crossbow":"Bow"; case MAGE -> tier==3?"Dawnweaver":tier==1?"Wand":"Staff"; };
     }
     public boolean equipWeapon(int tier) {
         if (!ownsWeapon(tier) || defeated()) return false;
@@ -135,7 +136,7 @@ public class Progression {
     public int cost(Upgrade type) { int lv=level(type);return switch(type) { case BASE,ARMOR,CHARACTER -> 45*lv;default -> 45*lv+10*(lv-1)*(lv-1); }; }
     public int maxLevel(Upgrade type) { return type==Upgrade.CHARACTER?1000:10; }
     public String upgradeLabel(Upgrade type) { return switch(type) { case BASE -> "SANCTUARY";case ARMOR -> "RESILIENCE";case CHARACTER -> "WARDEN";case VITALITY -> "VITALITY";case POWER -> "POWER";case ENDURANCE -> "ENDURANCE";case RECOVERY -> "RECOVERY";case AGILITY -> "AGILITY"; }; }
-    public String upgradeEffect(Upgrade type) { return switch(type) { case BASE -> baseLevel==1?"+100 integrity / guardian ward":maxBaseHealth()+" > "+(maxBaseHealth()+100)+" integrity";case ARMOR -> defense()+" > "+(defense()+2)+" defense";case CHARACTER -> "+25 HP / +10 damage";case VITALITY -> maxHealth()+" > "+(maxHealth()+20)+" max HP";case POWER -> damage()+" > "+(damage()+5)+" damage";case ENDURANCE -> maxStamina()+" > "+(maxStamina()+15)+" stamina";case RECOVERY -> staminaRecovery()+" > "+(staminaRecovery()+3)+" stamina / s";case AGILITY -> String.format("%.1f > %.1f movement",movementSpeed(),movementSpeed()+heroClass.speed*.04f); }; }
+    public String upgradeEffect(Upgrade type) { return switch(type) { case BASE -> baseLevel==1?"+100 integrity / guardian ward":maxBaseHealth()+" > "+(maxBaseHealth()+100)+" integrity";case ARMOR -> defense()+" > "+(defense()+2)+" defense";case CHARACTER -> "+25 HP / +10 damage";case VITALITY -> maxHealth()+" > "+(maxHealth()+20)+" max HP";case POWER -> damage()+" > "+(damage()+5)+" damage";case ENDURANCE -> maxStamina()+" > "+(maxStamina()+15)+" "+resourceLabel().toLowerCase(java.util.Locale.ROOT);case RECOVERY -> staminaRecovery()+" > "+(staminaRecovery()+3)+" "+resourceLabel().toLowerCase(java.util.Locale.ROOT)+" / s";case AGILITY -> String.format("%.1f > %.1f movement",movementSpeed(),movementSpeed()+heroClass.speed*.04f); }; }
     public boolean purchase(Upgrade type) {
         int cost = cost(type);
         if (crystals < cost || defeated() || level(type)>=maxLevel(type)) return false;

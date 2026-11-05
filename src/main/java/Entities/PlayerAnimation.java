@@ -1,6 +1,9 @@
 package Entities;
 
 public enum PlayerAnimation {
+    HAND_CROSSBOW_IDLE("Ranged_1H_Aiming"),
+    HAND_CROSSBOW_SHOOT("Ranged_1H_Shoot"),
+    HAND_CROSSBOW_RELOAD("Ranged_1H_Reload"),
     CROSSBOW_IDLE("Ranged_2H_Aiming"),
     CROSSBOW_SHOOT("Ranged_2H_Shoot"),
     CROSSBOW_RELOAD("Ranged_2H_Reload"),
