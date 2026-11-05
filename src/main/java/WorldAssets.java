@@ -373,7 +373,9 @@ public final class WorldAssets implements AutoCloseable {
             if(shadowPass && prop.x()*prop.x()+prop.z()*prop.z()>72*72)continue;
             PropTransform transform=propTransforms.get(prop);
             Model model=prop.graveyard()?graveyard.get(prop.model()):nature.get(prop.model());
-            DrawModelEx(model,transform.position(),transform.axis(),prop.yaw(),transform.scale(),transform.tint());
+            boolean foliage=prop.model().startsWith("tree") || prop.model().startsWith("grass") || prop.model().startsWith("flower");
+            float wind=foliage?(float)Math.sin(time*.85f+prop.x()*.19f+prop.z()*.13f)*.8f:0;
+            DrawModelEx(model,transform.position(),transform.axis(),prop.yaw()+wind,transform.scale(),transform.tint());
         }
         if(shadowPass)return;
         if(chapter==0 || chapter==2) {

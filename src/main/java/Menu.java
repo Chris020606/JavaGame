@@ -65,6 +65,8 @@ public class Menu {
     public static void icon(String kind,int x,int y,int size,Color color) {
         int u=Math.max(1,size/8),cx=x+size/2,cy=y+size/2;
         switch(kind) {
+            case "charge" -> { DrawLine(cx,y,x+u,cy+u,color);DrawLine(x+u,cy+u,cx,cy+u,color);DrawLine(cx,cy+u,cx,y+size,color);DrawLine(cx,y+size,x+size-u,cy-u,color);DrawLine(x+size-u,cy-u,cx,cy-u,color);DrawLine(cx,cy-u,cx,y,color); }
+            case "lunge" -> { for(int i=0;i<2;i++) { int dx=x+i*size/3;DrawLine(dx,y+u,dx+size/2,cy,color);DrawLine(dx+size/2,cy,dx,y+size-u,color); } }
             case "crystal" -> { DrawLine(cx,y,x+size,cy,color);DrawLine(x+size,cy,cx,y+size,color);DrawLine(cx,y+size,x,cy,color);DrawLine(x,cy,cx,y,color);DrawLine(cx,y,cx,y+size,color); }
             case "potion" -> { DrawRectangleLines(cx-u,y,2*u,2*u,color);DrawRectangleLines(x+u,y+2*u,size-2*u,size-2*u,color);DrawRectangle(x+2*u,cy,size-4*u,size/2-u,color); }
             case "dodge" -> { DrawLine(x,cy,cx,y,color);DrawLine(cx,y,x+size,cy,color);DrawLine(x+size,cy,cx,y+size,color);DrawLine(cx,y+size,x,cy,color);DrawLine(x+2*u,cy,x+size-2*u,cy,color); }
@@ -73,7 +75,7 @@ public class Menu {
             case "chest" -> { DrawRectangleLines(x+u,y+u,size-2*u,size-u,color);DrawLine(x,cy,x+u,y+u,color);DrawLine(x+size,cy,x+size-u,y+u,color); }
             case "legs" -> { DrawRectangleLines(x+u,y,size-2*u,size,color);DrawLine(cx,cy,cx,y+size,color); }
             case "boots" -> { DrawRectangleLines(x+u,y,size/3,size-u,color);DrawRectangleLines(cx,cy,size/2,size/2-u,color); }
-            case "bow" -> { DrawLine(x+u,y,cx+2*u,cy,color);DrawLine(cx+2*u,cy,x+u,y+size,color);DrawLine(x+u,y,x+u,y+size,color); }
+            case "bow" -> { DrawLine(x+u,y,cx+2*u,cy,color);DrawLine(cx+2*u,cy,x+u,y+size,color);DrawLine(x+u,y,x+u,y+size,color);DrawLine(x,cy,x+size,cy,color);DrawLine(x+size,cy,x+size-u,cy-u,color);DrawLine(x+size,cy,x+size-u,cy+u,color); }
             case "staff" -> { DrawLine(cx,cy,cx,y+size,color);DrawCircleLines(cx,y+2*u,2*u,color); }
             case "heart" -> {
                 DrawRectangle(cx-u,y,u*2,size,color);DrawRectangle(x,cy-u,size,u*2,color);

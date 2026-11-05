@@ -43,6 +43,8 @@ Your action belt puts strike, charge, parry, lunge, healing, and equipment toget
 
 ![The Warden's Pack with a character preview, fitted armor slots, item grid and equipment comparisons](docs/images/player-inventory.png)
 
+Bow releases and spell casts play through their follow-through and blend back into an idle or movement pose. The action belt uses lightning for charge and forward chevrons for lunge. Gentle foliage movement keeps the surroundings active.
+
 Scouts attack quickly; brutes show a longer windup and leave a longer opening afterward. Read their rhythm before committing.
 
 Watch your stamina. Sprint to reach a threatened gate, dodge through danger, or save enough strength for a heavy attack. Time your next light strike to continue a combo. A well-timed parry opens the way for a stronger riposte.

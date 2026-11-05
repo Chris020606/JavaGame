@@ -26,7 +26,7 @@ public final class HudScreen {
         Menu.frame(x-8,y-8,span+16,78,Menu.PANEL,Menu.LINE);
         Vector2 mouse=GetMousePosition();int hover=layout.hit(mouse.x(),mouse.y());
         String weapon=p.heroClass()==HeroClass.WARRIOR?"sword":p.heroClass()==HeroClass.ARCHER?"bow":"staff";
-        String[] icons={weapon,"crown","shield","sword","potion","bag"};
+        String[] icons={weapon,"charge","shield","lunge","potion","bag"};
         String[] labels={p.heroClass()==HeroClass.WARRIOR?"STRIKE":p.heroClass()==HeroClass.ARCHER?"SHOOT":"CAST","CHARGE","PARRY","LUNGE","HEAL","PACK"};
         for(int i=0;i<HudLayout.SLOTS;i++) {
             int sx=layout.slotX(i),size=layout.cell();boolean active=i==0&&player.isAttacking() || i==1&&state.charge()>0 || i==2&&player.discipline().parrying();

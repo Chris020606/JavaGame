@@ -29,7 +29,7 @@ public final class GameAudio implements AutoCloseable {
         float blend=1-(float)Math.exp(-Math.max(0,dt)*2.4f);
         for(int i=0;i<music.length;i++)if(music[i]!=null) {
             UpdateMusicStream(music[i]);
-            float target=i==theme?1:i==7 && boss && enraged && !title?1:i==5 && battle && !boss && !title?.85f:0;
+            float target=i==theme?(battle && !boss && !title?.55f:1):i==7 && boss && enraged && !title?1:i==5 && battle && !boss && !title?.85f:0;
             gains[i]+=(target-gains[i])*blend;
             SetMusicVolume(music[i],muted?0:volume*(i==7?.34f:i==5?.5f:.48f)*gains[i]*(duck>0?.78f:1));
         }
@@ -38,7 +38,7 @@ public final class GameAudio implements AutoCloseable {
         if(name.equals("swing") || name.equals("hit"))name+=variation++%3;
         if(cueObserver!=null)cueObserver.accept(name);
         if(muted || !ready)return;
-        Sound sound=sounds.get(name);if(sound!=null) { PlaySound(sound);duck=.13f; }
+        Sound sound=sounds.get(name);if(sound!=null) { if(name.equals("bow") || name.equals("magic"))SetSoundPitch(sound,.96f+(variation++%5)*.02f);PlaySound(sound);if(name.startsWith("hit") || name.equals("slam") || name.equals("parry"))duck=.10f; }
     }
     public void configure(float volume,boolean mute) {
         this.volume=volume;muted=mute;

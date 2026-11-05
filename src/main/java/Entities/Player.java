@@ -219,7 +219,7 @@ public class Player extends Entity {
         } else if (moving) {
             setAnimation(locomotion);
         } else {
-            setAnimation(weaponStyle==1?rangedIdle():weaponStyle==2?PlayerAnimation.MAGIC_RAISE:PlayerAnimation.MELEE_IDLE);
+            setAnimation(weaponStyle==1?rangedIdle():weaponStyle==2?PlayerAnimation.UNARMED_IDLE:PlayerAnimation.MELEE_IDLE);
         }
 
         if(isDodging()) { advancePose(dt);playAnimationProgress(1-dodgeTime/.34f); }
@@ -242,15 +242,16 @@ public class Player extends Entity {
             else { clip=PlayerAnimation.CROSSBOW_RELOAD;progress=(after-.13f)/Math.max(.1f,attackDuration-attackImpact-.13f); }
         } else if(weaponStyle==1) {
             clip=elapsed<attackImpact?PlayerAnimation.BOW_DRAW:PlayerAnimation.BOW_RELEASE;
-            progress=elapsed<attackImpact?AttackMotion.contact(elapsed,attackImpact,attackDuration,1,attackStartPose):after/Math.max(.1f,attackDuration-attackImpact)*.45f;
+            progress=elapsed<attackImpact?AttackMotion.contact(elapsed,attackImpact,attackDuration,1,attackStartPose):after/Math.max(.1f,attackDuration-attackImpact);
         } else if(weaponStyle==2) {
             clip=elapsed<attackImpact?PlayerAnimation.MAGIC_RAISE:PlayerAnimation.MAGIC_SHOOT;
-            progress=elapsed<attackImpact?AttackMotion.contact(elapsed,attackImpact,attackDuration,1,attackStartPose):after/Math.max(.1f,attackDuration-attackImpact)*.65f;
+            progress=elapsed<attackImpact?AttackMotion.contact(elapsed,attackImpact,attackDuration,1,attackStartPose):after/Math.max(.1f,attackDuration-attackImpact);
         } else progress=AttackMotion.contact(elapsed,attackImpact,attackDuration,twoHanded && attackClip==PlayerAnimation.TWO_HANDED_CHOP?.54f:.44f,attackStartPose);
         setAnimation(clip);advancePose(dt);playAnimationProgress(progress);
         float weight=AttackMotion.recovery(elapsed,attackImpact,attackDuration);
         if(crossbow && weaponStyle==1)weight=AttackMotion.smooth((elapsed/attackDuration-.88f)/.12f);
-        if(moving!=null)blendLocomotion(getAnimationIndex(moving.getAnimationName()),locomotionClock*70,weight);
+        PlayerAnimation recovery=moving!=null?moving:weaponStyle==1?rangedIdle():weaponStyle==2?PlayerAnimation.UNARMED_IDLE:PlayerAnimation.MELEE_IDLE;
+        blendLocomotion(getAnimationIndex(recovery.getAnimationName()),locomotionClock*(moving!=null?70:30),weight);
     }
 
     public void attack(boolean hasWeapon) { attack(1,false,.5f); }
@@ -320,7 +321,7 @@ public class Player extends Entity {
         else if(charge>0) { setAnimation(weaponStyle==1?(crossbow?PlayerAnimation.CROSSBOW_IDLE:PlayerAnimation.BOW_DRAW):weaponStyle==2?PlayerAnimation.MAGIC_RAISE:twoHanded?PlayerAnimation.TWO_HANDED_CHOP:PlayerAnimation.ATTACK_CHOP);advancePose(dt);playAnimationProgress(weaponStyle==0?.28f*Math.min(1,charge/.7f):Math.min(1,charge/.7f)); }
         else if(parry>0) { setAnimation(PlayerAnimation.BLOCK_IDLE);advancePose(dt);playAnimationProgress(0); }
         else if(speed>.2f) { setAnimation(movement);updateAnimation(dt*Math.min(1.4f,speed/5)); }
-        else { setAnimation(weaponStyle==1?rangedIdle():weaponStyle==2?PlayerAnimation.MAGIC_RAISE:PlayerAnimation.MELEE_IDLE);updateAnimation(dt); }
+        else { setAnimation(weaponStyle==1?rangedIdle():weaponStyle==2?PlayerAnimation.UNARMED_IDLE:PlayerAnimation.MELEE_IDLE);updateAnimation(dt); }
     }
     private void activeCoopAttack(boolean heavy,int combo) {
         attackClip=twoHanded?(heavy||combo==2?PlayerAnimation.TWO_HANDED_CHOP:combo==3?PlayerAnimation.TWO_HANDED_FINISHER:PlayerAnimation.TWO_HANDED_SLICE):heavy?PlayerAnimation.ATTACK_CHOP:combo==3?PlayerAnimation.ATTACK_STAB:combo==2?PlayerAnimation.ATTACK_DIAGONAL:PlayerAnimation.ATTACK_HORIZONTAL;

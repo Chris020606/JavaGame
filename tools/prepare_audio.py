@@ -30,8 +30,8 @@ def effect(name,duration,kind,seed=1):
         elif kind=='wave':value=sum(.08*math.sin(TAU*f*t+.15*math.sin(TAU*4*t)) for f in (146.83,220,293.66))*math.sin(math.pi*u)
         elif kind=='upgrade':
             value=sum(.13*math.sin(TAU*f*t)*math.exp(-max(0,t-start)*5)*(t>=start) for f,start in ((523.25,0),(659.25,.09),(783.99,.18),(1046.5,.30)))
-        elif kind=='bow':value=.38*math.sin(TAU*(170*t+180*t*t))*math.exp(-t*24)+.13*(noise-low)*math.exp(-t*15)
-        elif kind=='magic':value=(.15*math.sin(TAU*(380*t+320*t*t))+.13*math.sin(TAU*(570*t+500*t*t))+.12*low)*math.sin(math.pi*u)
+        elif kind=='bow':value=.20*(noise-low)*math.exp(-t*70)+.10*math.sin(TAU*92*t)*math.exp(-t*30)+.38*math.sin(TAU*(170*t+180*t*t))*math.exp(-t*24)+.13*(noise-low)*math.exp(-t*15)
+        elif kind=='magic':value=.18*math.sin(TAU*(110*t+80*t*t))*math.exp(-t*12)+.12*(noise-low)*math.exp(-t*20)+(.15*math.sin(TAU*(380*t+320*t*t))+.13*math.sin(TAU*(570*t+500*t*t))+.12*low)*math.sin(math.pi*u)
         elif kind=='parry':value=sum(.16*math.sin(TAU*f*t)*math.exp(-t*decay) for f,decay in ((1318,9),(2093,14),(2794,20)))+.12*noise*math.exp(-t*80)
         elif kind=='slam':value=.45*math.sin(TAU*(55*t-12*t*t))*math.exp(-t*4)+.38*low*math.exp(-t*7)
         elif kind=='dash':value=.35*(noise-low)*math.sin(math.pi*u)*tail
@@ -97,6 +97,8 @@ def score(name,theme):
                     t=i/RATE;noise=rng.uniform(-1,1)
                     drum=.24*math.sin(TAU*(72*t-54*t*t))*math.exp(-t*16) if beat%2==0 else .07*noise*math.exp(-t*45)
                     if beat in (2,6):drum+=.12*noise*math.exp(-t*22)
+                    if bar%4==3 and beat>=6:drum+=.16*math.sin(TAU*(105*t-90*t*t))*math.exp(-t*18)
+                    drum+=.025*(noise)*math.exp(-t*95)
                     index=(offset+i)%FRAMES;left[index]+=drum;right[index]+=drum*.94
     # Circular delay preserves the tails over the loop boundary, with no hard reset.
     dryL=array('f',left);dryR=array('f',right)
