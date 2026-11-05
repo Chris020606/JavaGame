@@ -43,6 +43,8 @@ Your action belt puts strike, charge, parry, lunge, healing, and equipment toget
 
 ![The Warden's Pack with a character preview, fitted armor slots, item grid and equipment comparisons](docs/images/player-inventory.png)
 
+Scouts attack quickly; brutes show a longer windup and leave a longer opening afterward. Read their rhythm before committing.
+
 Watch your stamina. Sprint to reach a threatened gate, dodge through danger, or save enough strength for a heavy attack. Time your next light strike to continue a combo. A well-timed parry opens the way for a stronger riposte.
 
 Point at a target and click to aim and strike; hold the mouse button to repeat basic attacks. Tap near the end of a swing to chain the next strike. Space attacks toward your facing. Bows visibly draw and release, crossbows have a full reload, and Mages raise and fire their staff. Two-handed Warrior weapons use their own swings. Movement settles during the strike and returns through recovery.

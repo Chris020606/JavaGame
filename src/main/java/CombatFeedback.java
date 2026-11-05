@@ -11,6 +11,7 @@ public final class CombatFeedback {
     }
     private final ArrayList<Popup> labels=new ArrayList<>();
     private int serial;
+    private final Vector3 anchor=new Vector3();
     public void add(float x,float z,String text,Color color) {
         if (labels.size()>=64) labels.remove(0);
         labels.add(new Popup(x,z,text,color,(serial++%3-1)*.28f));
@@ -27,7 +28,7 @@ public final class CombatFeedback {
     public void draw(Camera3D camera) {
         for (Popup p:labels) {
             float age=1.05f-p.time;
-            Vector3 world=new Vector3().x(p.x+p.lane).y(2.4f+age*1.3f).z(p.z);
+            Vector3 world=anchor.x(p.x+p.lane).y(2.4f+age*1.3f).z(p.z);
             Vector2 point=GetWorldToScreen(world,camera);
             int size=age<.12f?26:21;
             int x=(int)point.x()-(age<.12f?p.largeWidth:p.smallWidth)/2,y=(int)point.y();

@@ -114,7 +114,7 @@ public class Enemy {
         facing=(float)Math.toDegrees(Math.atan2(px-x,pz-z));
         // Enrage speeds up the next attack, never the animation already in flight.
         startedAttackDuration=nextAttackDuration();
-        attackTime=startedAttackDuration; cooldown=(boss()?startedAttackDuration+(enraged()?.65f:1.1f):1.3f)*difficulty.cadence+personality*.35f; impactPending=true;
+        attackTime=startedAttackDuration; cooldown=(boss()?startedAttackDuration+(enraged()?.65f:1.1f):variant==2?1.5f:1.3f)*difficulty.cadence+personality*.35f; impactPending=true;
     }
     public void hit(float damage,float px,float pz,float push) {
         health=Math.max(0,health-damage); hitFlash=.16f;
@@ -131,7 +131,7 @@ public class Enemy {
     /** Snapshot replicas retain the host's windup when a boss crosses the enrage threshold. */
     public void presentationDuration(float duration) { startedAttackDuration=duration; }
     public float attackDuration() { return attackTime>0 && startedAttackDuration>0?startedAttackDuration:nextAttackDuration(); }
-    private float nextAttackDuration() { return Math.max(.42f,(boss()?bossMove.duration*(enraged()?.82f:1):.7f)*difficulty.cadence); }
+    private float nextAttackDuration() { return Math.max(.42f,(boss()?bossMove.duration*(enraged()?.82f:1):variant==2?1.05f:variant==1?.6f:.7f)*difficulty.cadence); }
     public float meleeRange() { return boss()?3.8f:2.2f; }
     public float meleeDamage(int wave) { return (boss()?22+wave*3:8+wave*2+(variant==2?5:0))*difficulty.damage; }
     public float siegeDamage(int wave) { return (boss()?30+wave*3:10+wave*2)*difficulty.damage; }
