@@ -461,6 +461,15 @@ public class InputSmokeTest {
                 game.tutorial().hit(true);for(int f=0;f<3;f++)frame(game);capture("onboarding-parry");
                 System.out.println("PASS: central onboarding panel and contextual charge/parry cues render");return;
             }
+            if(java.util.Arrays.asList(args).contains("--ownership-review")) {
+                Progression kit=new Progression(HeroClass.ARCHER);java.util.Properties props=new java.util.Properties();kit.store(props);props.setProperty("crystals","2000");kit=Progression.restore(props);
+                check(kit.buyWeapon(3) && kit.buyArmor(3),"Top-tier purchases failed");kit.equipWeapon(3);for(Entities.ArmorSlot slot:Entities.ArmorSlot.values())kit.equipArmor(slot,3);
+                SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Forged",0,4,0,kit,new WaveDirector.State(1,0,1,8,0,21,0),java.util.List.of(new Entities.Enemy(0,18,1)),Arena.HIGHLANDS));
+                check(game.loadCurrent(),"Ownership save failed");key(game,KEY_ENTER);key(game,KEY_TAB);for(int f=0;f<4;f++)frame(game);capture("equipment-independent-ownership");
+                check(!game.getProgression().equipWeapon(1) && !game.getProgression().equipArmor(Entities.ArmorSlot.CHEST,2),"Top tier granted lower gear");
+                key(game,KEY_ESCAPE);check(game.saveCurrent() && game.loadCurrent(),"Owned equipment reload failed");check(!game.getProgression().ownsWeapon(2) && !game.getProgression().ownsArmor(1),"Ownership gaps lost on reload");
+                System.out.println("PASS: top-tier forge ownership stays separate in real inventory and save/load");return;
+            }
             if(java.util.Arrays.asList(args).contains("--feats-review")) {
                 Progression feats=new Progression();
                 for(int i=0;i<2;i++) { feats.chapterFeats().record(1,ChapterFeats.Action.CHARGED_HIT);feats.chapterFeats().record(1,ChapterFeats.Action.PARRY); }
@@ -1029,7 +1038,9 @@ public class InputSmokeTest {
             click(game,ex+830,ey+162);click(game,ex+830,ey+214);click(game,ex+830,ey+266);
             check(equipment.maxHealth()==120 && equipment.damage()==30 && equipment.maxStamina()==115,"Training cards did not independently upgrade HP, damage and stamina");
             click(game,ex+110,ey+202);click(game,ex+820,ey+335);click(game,ex+820,ey+477);
-            check(equipment.weaponUnlocked()==3 && equipment.armorUnlocked()==3,"Forge purchase failed");capture("expansion-forge");
+            check(equipment.weaponUnlocked()==3 && equipment.armorUnlocked()==3,"Forge purchase failed");
+            check(!equipment.ownsArmor(1) && !equipment.ownsArmor(2) && !equipment.ownsWeapon(1) && !equipment.ownsWeapon(2),"Forge granted unpurchased lower tiers");
+            click(game,ex+350,ey+477);check(equipment.ownsArmor(1) && !equipment.ownsArmor(2),"Separate lower-tier forge purchase failed");capture("expansion-forge");
             click(game,ex+110,ey+282);int beforeRestock=equipment.potions();click(game,ex+520,ey+390);
             check(equipment.potions()==beforeRestock+1,"Supplies sidebar or potion purchase failed");capture("polish-supplies");
             key(game,KEY_ESCAPE);key(game,KEY_TAB);

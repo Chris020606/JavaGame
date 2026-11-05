@@ -12,6 +12,9 @@ public class CameraController {
     private float pitch = 24.0f;
     private float distance = 17.0f;
     private float mouseSensitivity = 0.15f;
+    private float followX,followY,followZ,impact,impactClock;
+    private boolean following;
+    public void impact(float strength) { impact=Math.max(impact,Math.min(.15f,Math.max(0,strength)));impactClock=0; }
 
     public CameraController(Entity entity) {
         this.target = entity;
@@ -66,20 +69,25 @@ public class CameraController {
         float horizontalDistance = distance * (float) Math.cos(pitchRadians);
         float verticalDistance = distance * (float) Math.sin(pitchRadians);
 
-        float cameraX = playerPosition.x() + horizontalDistance * (float) Math.sin(yawRadians);
-        float cameraZ = playerPosition.z() + horizontalDistance * (float) Math.cos(yawRadians);
-        float cameraY =  playerPosition.y() + verticalDistance + 1.0f;
+        if(!following || dt<=0 || Math.hypot(playerPosition.x()-followX,playerPosition.z()-followZ)>8) { followX=playerPosition.x();followY=playerPosition.y();followZ=playerPosition.z();following=true; }
+        float blend=1-(float)Math.exp(-Math.max(0,dt)*22);
+        followX+=(playerPosition.x()-followX)*blend;followY+=(playerPosition.y()-followY)*blend;followZ+=(playerPosition.z()-followZ)*blend;
+        impactClock+=Math.max(0,dt);impact*=Math.exp(-Math.max(0,dt)*23);
+        float recoil=(float)Math.sin(impactClock*75)*impact;
+        float cameraX = followX + horizontalDistance * (float) Math.sin(yawRadians);
+        float cameraZ = followZ + horizontalDistance * (float) Math.cos(yawRadians);
+        float cameraY = followY + verticalDistance + 1.0f;
 
         camera._position( new Vector3()
-                .x(cameraX)
-                .y(cameraY)
+                .x(cameraX+recoil)
+                .y(cameraY+recoil*.3f)
                 .z(cameraZ)
         );
 
         camera.target( new Vector3()
-                .x(playerPosition.x())
-                .y(playerPosition.y() + 1.0f)
-                .z(playerPosition.z())
+                .x(followX)
+                .y(followY + 1.0f)
+                .z(followZ)
 
         );
     }

@@ -57,7 +57,7 @@ class ExpeditionTest {
         assertFalse(p.equipArmor(ArmorSlot.CHEST,3));assertTrue(p.buyArmor(3));
         for(ArmorSlot slot:ArmorSlot.values()) assertTrue(p.equipArmor(slot,3));assertEquals(21,p.defense());
         assertTrue(p.equipArmor(ArmorSlot.CHEST,0));assertEquals(12,p.defense());
-        assertTrue(p.buyWeapon(3));assertTrue(p.equipWeapon(2));assertEquals(damage+21,p.damage());
+        assertTrue(p.buyWeapon(3));assertFalse(p.equipWeapon(2));assertTrue(p.buyWeapon(2));assertTrue(p.equipWeapon(2));assertEquals(damage+21,p.damage());
         for(Progression.Upgrade upgrade:Progression.TRAINING) {
             while(p.level(upgrade)<p.maxLevel(upgrade)) assertTrue(p.purchase(upgrade));
             int crystals=p.crystals();assertFalse(p.purchase(upgrade));assertEquals(crystals,p.crystals());

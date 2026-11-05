@@ -63,6 +63,7 @@ public class Game {
         audio.play("upgrade");
     }
     private void connected(Enemy enemy,boolean heavy,boolean charged) {
+        if(heavy || progress.heroClass()==HeroClass.WARRIOR)sceneManager.getOpenScene().getCameraController().impact(heavy?.10f:.035f);
         if(tutorial==null && charged)progress.chapterFeats().record(chapterIndex(),ChapterFeats.Action.CHARGED_HIT);
         hitMarker=.16f;if(progress.heroClass()==HeroClass.WARRIOR)hitPause=Math.max(hitPause,heavy?.045f:.025f);
         if(!heavy)mastery.lightHit(progress.heroClass());
@@ -413,7 +414,7 @@ public class Game {
                 if(fallen.size()>=48)fallen.remove(0);fallen.add(enemy);
                 vfx.impact(enemy.x,enemy.z,enemy.boss()?Menu.GOLD:Menu.TEAL,enemy.boss());
                 feedback.add(enemy.x,enemy.z,"+"+enemy.reward()+" crystals",Menu.TEAL);
-                if (enemy.boss()) notifyPlayer(chapter().title()+" DEFEATED / "+progress.weaponName(progress.weaponUnlocked())+" unlocked / +120 crystals / Armor is forged");
+                if (enemy.boss()) notifyPlayer(chapter().title()+" DEFEATED / "+(progress.lastBossWeapon()<0?"All weapons already owned":progress.weaponName(progress.lastBossWeapon())+" unlocked")+" / +120 crystals / Armor is forged");
                 continue;
             }
             if(tutorial!=null) { enemy.health=9999;if(tutorial.step()!=Tutorial.Step.PARRY) { enemy.stun=.2f;enemy.attackTime=0;enemy.impactPending=false; } }

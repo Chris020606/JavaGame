@@ -12,6 +12,7 @@ import static com.raylib.Colors.WHITE;
 /** Complete host/join front end and snapshot presentation for the two-player campaign. */
 public final class CoopGame implements AutoCloseable {
     private final Settings settings=new Settings();
+    private final Color allyGreen=Menu.color(75,210,95);
     private final WorldAssets assets=new WorldAssets();private final ModernRenderer renderer=new ModernRenderer();
     private final GameAudio audio=new GameAudio();private final CombatVfx effects=new CombatVfx();private final CombatVfx[] blades={new CombatVfx(),new CombatVfx()};
     private final Player[] avatars=new Player[2];private final HeroClass[] avatarTypes=new HeroClass[2];private final Progression[] loadouts=new Progression[2];private final int[] tiers={-1,-1};
@@ -96,7 +97,7 @@ public final class CoopGame implements AutoCloseable {
                 else { float blend=1-(float)Math.exp(-dt*(h.slot()==client.slot()?24:16));p.getPosition().x(p.getPosition().x()+(tx-p.getPosition().x())*blend).z(p.getPosition().z()+(tz-p.getPosition().z())*blend); }
                 float delta=(float)Math.IEEEremainder(h.facing()-p.getRotation().y(),360);p.getRotation().y(p.getRotation().y()+delta*Math.min(1,dt*25));
                 downAge[h.slot()]=h.health()<=0?downAge[h.slot()]+dt:0;
-                p.presentCoop(dt,Math.max(0,h.attack()-age),h.duration(),h.impact(),h.heavy(),h.combo(),h.charge(),Math.max(0,h.dodge()-age),Math.max(0,h.parry()-age),(float)Math.hypot(h.vx(),h.vz()),h.health(),downAge[h.slot()],state.phase()==CoopState.Phase.VICTORY);
+                p.presentCoop(dt,Math.max(0,h.attack()-age),h.duration(),h.impact(),h.heavy(),h.combo(),h.charge(),Math.max(0,h.dodge()-age),Math.max(0,h.parry()-age),h.vx(),h.vz(),h.health(),downAge[h.slot()],state.phase()==CoopState.Phase.VICTORY);
                 blades[h.slot()].update(dt);
                 float elapsed=h.duration()-h.attack();if(h.hero()==HeroClass.WARRIOR.ordinal() && h.attack()>0 && elapsed>h.impact()*.65f && elapsed<h.impact()+.13f)assets.sampleBlade(p,state.chapter(),blades[h.slot()].blade());
             }
@@ -250,7 +251,7 @@ public final class CoopGame implements AutoCloseable {
     }
     private void hud() {
         int w=GetScreenWidth(),h=GetScreenHeight();CoopState.Hero me=own(),other=partner();if(me==null)return;
-        heroPanel(me,16,18,280);if(other!=null)heroPanel(other,w-296,18,280);
+        heroPanel(me,16,18,280);
         int center=w/2;Menu.panel(center-170,18,340,95);Menu.center("CO-OP / "+Campaign.CHAPTERS[state.chapter()].title(),center,30,15,Menu.GOLD);
         Menu.center("WAVE "+Math.max(0,state.wave()-Campaign.CHAPTERS[state.chapter()].first()+1)+" / "+Campaign.CHAPTERS[state.chapter()].waves()+" / "+Difficulty.values()[state.difficulty()].label,center,57,14,Menu.TEXT);
         long alive=state.enemies().stream().filter(e->e.health()>0).count();Menu.center(alive+" ENEMIES / "+state.queued()+" INCOMING",center,83,12,Menu.MUTED);
@@ -261,13 +262,15 @@ public final class CoopGame implements AutoCloseable {
         else if(Math.hypot(me.x(),me.z())<6 && state.baseHealth()<state.baseMax())Menu.center("HOLD G FOR 3s / REPAIR +100 / COST: 1 POTION",center,h-137,12,Menu.TEAL);
         Camera3D camera=cameraControl.getCamera();
         for(var p:state.heroes()) {
-            Vector2 s=GetWorldToScreen(v(avatars[p.slot()].getPosition().x(),p.health()<=0?1:2.5f,avatars[p.slot()].getPosition().z()),camera);
+            Vector2 s=GetWorldToScreen(v(avatars[p.slot()].getPosition().x(),p.health()<=0?1:p.hero()==HeroClass.MAGE.ordinal()?3.5f:3.1f,avatars[p.slot()].getPosition().z()),camera);
             if(p.slot()!=client.slot()) {
-                float px=Math.max(50,Math.min(w-180,s.x())),py=Math.max(150,Math.min(h-145,s.y()));
+                float px=Math.max(55,Math.min(w-55,s.x())),py=Math.max(150,Math.min(h-145,s.y()));
                 String tag=p.name()+(p.health()<=0?" / HOLD G":" / "+Math.round(Math.hypot(me.x()-p.x(),me.z()-p.z()))+"m");
-                DrawRectangle((int)px-36,(int)py-4,Menu.measure(tag,14)+12,24,Fade(Menu.INK,.88f));
-                Menu.text(tag,(int)px-30,(int)py,14,p.health()<=0?Menu.RED:Menu.TEAL);
+                int tagWidth=Menu.measure(tag,14),tagX=Math.max(8,Math.min(w-tagWidth-8,(int)px-tagWidth/2));
+                DrawRectangle(tagX-6,(int)py-4,tagWidth+12,24,Fade(Menu.INK,.88f));
+                Menu.text(tag,tagX,(int)py,14,p.health()<=0?Menu.RED:allyGreen);
                 if(p.health()<=0)Menu.bar((int)px-30,(int)py+24,140,p.revive(),3,Menu.TEAL);
+                else { int barX=(int)px-48,barY=(int)py+23;DrawRectangle(barX-1,barY-1,98,10,Menu.INK);DrawRectangle(barX,barY,96,8,Menu.PANEL);DrawRectangle(barX,barY,Math.round(96*p.health()/p.maxHealth()),8,allyGreen); }
             }
         }
         for(var e:state.enemies())if(e.health()>0) {

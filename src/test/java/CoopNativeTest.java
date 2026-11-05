@@ -16,7 +16,7 @@ public final class CoopNativeTest {
         Path root=Files.createTempDirectory(Path.of("build"),"coop-native-").toAbsolutePath();
         HeroClass[][] pairs={{HeroClass.WARRIOR,HeroClass.MAGE},{HeroClass.ARCHER,HeroClass.WARRIOR},{HeroClass.MAGE,HeroClass.MAGE}};
         int[] chapters={0,1,3};
-        for(int round=0;round<pairs.length;round++) {
+        for(int round=0;round<(Arrays.asList(args).contains("--quick")?1:pairs.length);round++) {
             Path folder=root.resolve("round-"+round);Files.createDirectories(folder);int port;try(ServerSocket socket=new ServerSocket(0)) { port=socket.getLocalPort(); }
             for(String role:List.of("host","guest")) { Path profile=folder.resolve(role+"-profile");Files.createDirectories(profile);Settings settings=new Settings();settings.highQuality=false;settings.save(profile.resolve("settings.properties"));
                 if(role.equals("host")) { Properties p=new CoopWorld(Entities.Difficulty.NORMAL,42).checkpoint();p.setProperty("chapter",chapters[round]+"");AppData.write(profile.resolve("coop-checkpoint.properties"),p); }

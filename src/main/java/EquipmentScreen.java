@@ -41,7 +41,7 @@ public final class EquipmentScreen implements AutoCloseable {
     private static boolean inside(Vector2 m,int x,int y,int w,int h) { return m.x()>=x && m.x()<x+w && m.y()>=y && m.y()<y+h; }
     private static int tier(int item) { return item<4?item:1+(item-4)/4; }
     private static ArmorSlot slot(int item) { return ArmorSlot.values()[(item-4)%4]; }
-    private static boolean owned(Progression p,int item) { return item<4?item<=p.weaponUnlocked():item<16?tier(item)<=p.armorUnlocked():p.potions()>0; }
+    private static boolean owned(Progression p,int item) { return item<4?p.ownsWeapon(item):item<16?p.ownsArmor(tier(item)):p.potions()>0; }
     private static boolean equipped(Progression p,int item) { return item<4?p.weaponTier()==item:item<16 && p.armorTier(slot(item))==tier(item); }
     private static String name(Progression p,int item) { return item<4?p.weaponName(item):item<16?p.armorName(slot(item),tier(item)):"Healing potions"; }
     private static void equip(Progression p,int item) { if(item<4)p.equipWeapon(item);else if(item<16)p.equipArmor(slot(item),tier(item));else p.usePotion(); }

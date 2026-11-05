@@ -55,7 +55,7 @@ def soundtrack(folder,shots,ffmpeg):
         f.setnchannels(2);f.setsampwidth(2);f.setframerate(rate);f.writeframes(output.tobytes())
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--folder',default='build/marketing');parser.add_argument('--resume',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--folder',default='build/marketing');parser.add_argument('--resume',action='store_true');parser.add_argument('--fps',type=int,choices=[24,30,60],default=24);args=parser.parse_args()
     folder=(ROOT/args.folder).resolve();ffmpeg=shutil.which('ffmpeg');ffprobe=shutil.which('ffprobe')
     if not ffmpeg or not ffprobe:raise SystemExit('Install FFmpeg and ffprobe first.')
     with (folder/'shots.tsv').open() as f:shots=list(csv.DictReader(f,delimiter='\t'))
@@ -66,7 +66,7 @@ def main():
         hashes.append(hashlib.sha256(source.read_bytes()).hexdigest())
         if not args.resume or not target.exists():
             filters=f'[1:v]format=rgba,fade=t=in:st=0.35:d=0.65:alpha=1,fade=t=out:st={max(1,duration-1.2)}:d=0.7:alpha=1[title];[0:v][title]overlay=0:0:shortest=1,fade=t=in:st=0:d=0.35,fade=t=out:st={duration-.35}:d=0.35,format=yuv420p[v]'
-            run([ffmpeg,'-v','error','-y','-i',source,'-loop','1','-framerate','24','-i',overlay,'-filter_complex',filters,'-map','[v]','-an','-t',duration,'-r','24','-c:v','libx264','-preset','veryfast','-crf','19','-movflags','+faststart',target])
+            run([ffmpeg,'-v','error','-y','-i',source,'-loop','1','-framerate',str(args.fps),'-i',overlay,'-filter_complex',filters,'-map','[v]','-an','-t',duration,'-r',str(args.fps),'-c:v','libx264','-preset','veryfast','-crf','19','-movflags','+faststart',target])
         concat.append("file '"+target.as_posix().replace("'","'\\''")+"'")
         captions.append(f'{index+1}\n{stamp(elapsed+.5)} --> {stamp(elapsed+duration-.5)}\n{shot["title"]}\n{shot["subtitle"]}\n')
         elapsed+=duration;print('EDITED',shot['id'],flush=True)

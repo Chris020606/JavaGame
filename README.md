@@ -8,7 +8,7 @@ The valley's fires have gone cold. One ember still burns beneath a forgotten san
 
 ## Play together — two-player co-op
 
-Choose **Play Together** on the main menu. Both computers must install the same v4.0 release.
+Choose **Play Together** on the main menu. Both computers must install the same v4.1 release.
 
 1. On one computer, choose your name/class and difficulty, then **Host New Game**.
 2. Copy the invite from the lobby and send it to your partner.
@@ -18,6 +18,8 @@ Choose **Play Together** on the main menu. Both computers must install the same 
 Use the same Wi-Fi/LAN or a private VPN. Allow the host game through your firewall on TCP port **27878**. If the host has several network addresses, **Next Address** selects the address reachable by your partner. Public internet matchmaking/relay is not included.
 
 Both wardens defend one sanctuary through four chapters. Enemies are scaled for two players. Hold **G** beside a downed partner for three seconds to revive them; damage interrupts reviving. The sanctuary heals nearby players. Hold **G** there to spend one potion repairing 100 sanctuary health. Mage heavy bolts can heal an injured partner or repair the sanctuary. There is no friendly fire.
+
+Your ally has a green health bar above their head; your own health and stamina stay in the top-left frame.
 
 Each chapter grants an upgrade point and improved visible equipment. Each player has independent health, stamina and potions. Either player can pause; both must unpause to continue. A disconnect freezes combat, and reconnecting with the original class restores that player. The host's **Resume Co-op** restarts the saved chapter with its upgrades. Co-op uses a separate checkpoint and preserves solo saves.
 
@@ -137,7 +139,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**[Download Outpost v4.0.0](https://github.com/Chris020606/JavaGame/releases/tag/v4.0.0)** for Windows, Linux, or Mac. [Watch the 30-second gameplay video](https://github.com/Chris020606/JavaGame/releases/download/v3.5.0/Outpost-v3.5-Gameplay-30s.mp4). Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**[Download Outpost v4.1.0](https://github.com/Chris020606/JavaGame/releases/tag/v4.1.0)** for Windows, Linux, or Mac. [Watch the 30-second gameplay video](https://github.com/Chris020606/JavaGame/releases/download/v4.1.0/Outpost-v4.1-Gameplay-30s.mp4). Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -146,6 +148,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **4.1:** independent weapon and armor purchases, green ally health above their head, directional co-op movement animations, smoother camera follow and restrained melee impact feedback. Existing inventories are preserved.
 - **4.0:** two-player host/join co-op campaign, balanced encounters, shared sanctuary, revives, support magic, upgrades, reconnects and separate chapter checkpoints.
 - **3.5:** optional Chapter Feats reward charged hits, parries, objectives and boss dodges; the Chronicle tracks progress and earned rewards across all chapters.
 - **3.4.1:** more forgiving Archer/Mage hits, faster projectiles, and gentle launch aim assistance toward nearby visible targets.
@@ -184,4 +187,6 @@ Versions 3.5.0 and 4.0.0 are published desktop releases; versions 1.3–3.4.1 we
 
 Characters and animation are by KayKit; scenery is by Kenney. Music and sound were created for Outpost. Full credits are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Boss victories award **120 crystals and a class weapon unlock**. Armor comes from the forge. Defeating the Hollow King now reveals an eight-second dawn celebration before the final results.
+Crafting a weapon or armor tier grants only that tier. Lower tiers remain separate purchases. Existing saves retain their previous inventory.
+
+Boss victories award **120 crystals and one missing class weapon**. Armor comes from the forge. Defeating the Hollow King now reveals an eight-second dawn celebration before the final results.

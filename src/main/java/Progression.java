@@ -6,7 +6,7 @@ public class Progression {
         expedition.store(p);fieldEvent.store(p);recoveryWisps.store(p);chapterFeats.store(p);
         p.setProperty("difficulty",difficulty.name());
         p.setProperty("vitality",vitality+"");p.setProperty("power",power+"");p.setProperty("endurance",endurance+"");p.setProperty("recovery",recovery+"");p.setProperty("agility",agility+"");
-        p.setProperty("armorUnlocked",armorUnlocked+"");
+        p.setProperty("armorUnlocked",armorUnlocked+"");p.setProperty("ownedArmor",ownedArmor+"");p.setProperty("ownedWeapons",ownedWeapons+"");
         for(ArmorSlot slot:ArmorSlot.values()) p.setProperty("equipped."+slot,armor[slot.ordinal()]+"");
         p.setProperty("weaponUnlocked",weaponUnlocked+""); p.setProperty("weaponTier",weaponTier+"");
         p.setProperty("heroClass",heroClass.name()); p.setProperty("potions",potions+"");
@@ -27,6 +27,11 @@ public class Progression {
         result.endurance=optional(p,"endurance",1,10,1);result.recovery=optional(p,"recovery",1,10,1);result.agility=optional(p,"agility",1,10,1);
         result.armorUnlocked=optional(p,"armorUnlocked",0,3,0);
         for(ArmorSlot slot:ArmorSlot.values()) result.armor[slot.ordinal()]=optional(p,"equipped."+slot,0,result.armorUnlocked,0);
+        int legacyArmor=(1<<(result.armorUnlocked+1))-1;
+        result.ownedArmor=p.containsKey("armorUnlocked")?optional(p,"ownedArmor",1,15,legacyArmor):legacyArmor;
+        result.ownedWeapons=p.containsKey("weaponUnlocked")?optional(p,"ownedWeapons",1,15,(1<<(result.weaponUnlocked+1))-1):1;
+        if((result.ownedArmor&1)==0 || (result.ownedWeapons&1)==0 || !result.ownsWeapon(result.weaponTier) || result.weaponUnlocked!=highest(result.ownedWeapons) || result.armorUnlocked!=highest(result.ownedArmor))throw new IllegalArgumentException("Invalid equipment ownership");
+        for(int tier:result.armor)if(!result.ownsArmor(tier))throw new IllegalArgumentException("Equipped armor is not owned");
         result.health=SaveGame.number(p,"health",.001f,result.maxHealth()); result.baseHealth=SaveGame.number(p,"baseHealth",.001f,result.maxBaseHealth());
         return result;
     }
@@ -35,6 +40,11 @@ public class Progression {
     public static final Upgrade[] TRAINING={Upgrade.VITALITY,Upgrade.POWER,Upgrade.ENDURANCE,Upgrade.RECOVERY,Upgrade.AGILITY,Upgrade.ARMOR,Upgrade.BASE};
     private int vitality=1,power=1,endurance=1,recovery=1,agility=1,armorUnlocked;
     private final int[] armor=new int[4];
+    private int ownedWeapons=1,ownedArmor=1,lastBossWeapon=-1;
+    private static int highest(int mask) { return 31-Integer.numberOfLeadingZeros(mask); }
+    public boolean ownsWeapon(int tier) { return tier>=0 && tier<=3 && (ownedWeapons&(1<<tier))!=0; }
+    public boolean ownsArmor(int tier) { return tier>=0 && tier<=3 && (ownedArmor&(1<<tier))!=0; }
+    public int lastBossWeapon() { return lastBossWeapon; }
     private Expedition expedition=new Expedition();
     private FieldEvent fieldEvent=new FieldEvent();
     private RecoveryWisps recoveryWisps=new RecoveryWisps();
@@ -57,7 +67,7 @@ public class Progression {
     /** Separate sandbox loadout; grants equipment without fabricated kills or boss rewards. */
     public static Progression playtest(HeroClass hero,Difficulty difficulty,boolean maxTraining) {
         Progression p=new Progression(hero,difficulty);p.crystals=100000;p.potions=5;
-        p.weaponUnlocked=p.weaponTier=p.armorUnlocked=3;
+        p.weaponUnlocked=p.weaponTier=p.armorUnlocked=3;p.ownedWeapons=p.ownedArmor=15;
         java.util.Arrays.fill(p.armor,3);
         if(maxTraining) { p.vitality=p.power=p.endurance=p.recovery=p.agility=p.baseLevel=p.armorLevel=10; }
         p.health=p.maxHealth();p.baseHealth=p.maxBaseHealth();return p;
@@ -67,16 +77,16 @@ public class Progression {
     public int armorTier(ArmorSlot slot) { return armor[slot.ordinal()]; }
     public int armorBonus(ArmorSlot slot,int tier) { return slot.protection*tier; }
     public String armorName(ArmorSlot slot,int tier) { return (tier==0?"Traveler":tier==1?"Iron":tier==2?"Runic":"Dawnsteel")+" "+slot.label; }
-    public boolean equipArmor(ArmorSlot slot,int tier) { if(tier<0 || tier>armorUnlocked || defeated()) return false;armor[slot.ordinal()]=tier;return true; }
+    public boolean equipArmor(ArmorSlot slot,int tier) { if(!ownsArmor(tier) || defeated()) return false;armor[slot.ordinal()]=tier;return true; }
     public int weaponPrice(int tier) { return switch(tier) { case 1 -> 100;case 2 -> 240;case 3 -> 450;default -> 0; }; }
     public int armorPrice(int tier) { return switch(tier) { case 1 -> 100;case 2 -> 220;case 3 -> 380;default -> 0; }; }
     public boolean buyWeapon(int tier) {
-        if(tier<1 || tier>3 || tier<=weaponUnlocked || crystals<weaponPrice(tier) || defeated()) return false;
-        crystals-=weaponPrice(tier);weaponUnlocked=tier;return true;
+        if(tier<1 || tier>3 || ownsWeapon(tier) || crystals<weaponPrice(tier) || defeated()) return false;
+        crystals-=weaponPrice(tier);ownedWeapons|=1<<tier;weaponUnlocked=Math.max(weaponUnlocked,tier);return true;
     }
     public boolean buyArmor(int tier) {
-        if(tier<1 || tier>3 || tier<=armorUnlocked || crystals<armorPrice(tier) || defeated()) return false;
-        crystals-=armorPrice(tier);armorUnlocked=tier;return true;
+        if(tier<1 || tier>3 || ownsArmor(tier) || crystals<armorPrice(tier) || defeated()) return false;
+        crystals-=armorPrice(tier);ownedArmor|=1<<tier;armorUnlocked=Math.max(armorUnlocked,tier);return true;
     }
     public int maxStamina() { return 100+(endurance-1)*15; }
     public int staminaRecovery() { return 22+(recovery-1)*3; }
@@ -99,13 +109,13 @@ public class Progression {
         return quality+" "+switch(heroClass) { case WARRIOR -> tier==1?"Longsword":tier==2?"Waraxe":tier==3?"Dawnblade":"Sword"; case ARCHER -> tier>=2?"Crossbow":"Bow"; case MAGE -> tier==3?"Dawnweaver":tier==1?"Wand":"Staff"; };
     }
     public boolean equipWeapon(int tier) {
-        if (tier<0 || tier>weaponUnlocked || defeated()) return false;
+        if (!ownsWeapon(tier) || defeated()) return false;
         weaponTier=tier; return true;
     }
     public void rewardEnemy(boolean boss) {
         kills++; crystals+=boss?120:15;
         restoreHealth(expedition.rank(Expedition.Blessing.BLOODROOT)*3);
-        if (boss) weaponUnlocked=Math.min(3,weaponUnlocked+1);
+        if (boss) { lastBossWeapon=-1;for(int tier=1;tier<=3;tier++)if(!ownsWeapon(tier)) { ownedWeapons|=1<<tier;weaponUnlocked=Math.max(weaponUnlocked,tier);lastBossWeapon=tier;break; } }
     }
     public void rewardElite() { if(!defeated())crystals+=25; }
     public int crystals() { return crystals; }

@@ -62,11 +62,11 @@ public final class WorkshopScreen {
             Menu.text("+"+p.weaponBonus(tier)+" damage",left+16,y+284,15,Menu.MUTED);
             boolean wardenStaff=p.heroClass()==HeroClass.MAGE && tier==3;
             if(wardenStaff)Menu.text("CHARGED SHOT / HEAL ALLIES",left+16,y+307,11,Menu.TEAL);
-            if(Menu.button(tier<=p.weaponUnlocked()?"OWNED":"FORGE / "+p.weaponPrice(tier),left+12,y+(wardenStaff?327:313),190,tier>p.weaponUnlocked() && p.crystals()>=p.weaponPrice(tier)) && p.buyWeapon(tier))audio.play("upgrade");
+            if(Menu.button(p.ownsWeapon(tier)?"OWNED":"FORGE / "+p.weaponPrice(tier),left+12,y+(wardenStaff?327:313),190,!p.ownsWeapon(tier) && p.crystals()>=p.weaponPrice(tier)) && p.buyWeapon(tier))audio.play("upgrade");
             DrawLine(left+16,y+372,left+198,y+372,Menu.LINE);
             Menu.text(tier==1?"IRON ARMOR":tier==2?"RUNIC ARMOR":"DAWNSTEEL ARMOR",left+16,y+387,17,color);
             Menu.text("4 pieces / +"+(tier*7)+" defense",left+16,y+421,14,Menu.MUTED);
-            if(Menu.button(tier<=p.armorUnlocked()?"OWNED":"FORGE / "+p.armorPrice(tier),left+12,y+455,190,tier>p.armorUnlocked() && p.crystals()>=p.armorPrice(tier)) && p.buyArmor(tier))audio.play("upgrade");
+            if(Menu.button(p.ownsArmor(tier)?"OWNED":"FORGE / "+p.armorPrice(tier),left+12,y+455,190,!p.ownsArmor(tier) && p.crystals()>=p.armorPrice(tier)) && p.buyArmor(tier))audio.play("upgrade");
         }
     }
     private void drawSupplies(Progression p,GameAudio audio,int x,int y) {

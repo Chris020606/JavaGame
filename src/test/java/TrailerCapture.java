@@ -8,11 +8,15 @@ import static com.raylib.Raylib.*;
 
 /** Films actual game simulation directly from its framebuffer, never the user's desktop. */
 public final class TrailerCapture {
-    private static final int WIDTH=1600,HEIGHT=900,FPS=24;
+    private static final int WIDTH=1600,HEIGHT=900;
+    private static int FPS=24;
+    private static boolean shortTake;
     private static final Set<Integer> held=new HashSet<>(),taps=new HashSet<>();
     private static final AtomicBoolean attack=new AtomicBoolean();
     private static Path profile;
     private static int activeFrame;
+    private static Enemy lockedTarget;
+    private static boolean recovering;
     private static PrintWriter cues;
     record Shot(String id,int seconds,HeroClass hero,int wave,String mode,String title,String subtitle,String music) { }
     private static final Shot[] SHOTS={
@@ -48,7 +52,7 @@ public final class TrailerCapture {
         hold(KEY_D,d>.8f && right>.55f);hold(KEY_A,d>.8f && right<-.55f);hold(KEY_LEFT_SHIFT,sprint && d>6);
     }
     private static void setup(Game game,Shot shot) throws Exception {
-        release();game.photoMode(false);
+        release();lockedTarget=null;recovering=false;game.photoMode(false);
         Progression p=Progression.playtest(shot.hero,Difficulty.NORMAL,false);
         // All equipment/training shown is obtainable in the shipped all-gear sandbox.
         for(int i=0;i<5;i++)p.purchase(Progression.Upgrade.VITALITY);
@@ -68,6 +72,7 @@ public final class TrailerCapture {
                 for(int i=0;i<count;i++) {
                     double a=i*Math.PI*2/count;
                     float x=(float)Math.sin(a)*(shot.mode.equals("combat")?11:15),z=(float)Math.cos(a)*11;
+                    if(shot.mode.equals("combat")) { x=(i%2==0?-1:1)*(1.5f+i*.45f);z=(shot.hero==HeroClass.WARRIOR?8:12)+i*.85f; }
                     enemies.add(new Enemy(x,z,shot.wave,WaveFormation.variant(shot.wave,i),.2f+(i%6)*.12f));
                 }
             }
@@ -78,7 +83,8 @@ public final class TrailerCapture {
             for(int i=0;i<enemies.size();i++) { enemies.get(i).x=p.fieldEvent().x()-7+i*3;enemies.get(i).z=p.fieldEvent().z()-10; }
         }
         if(shot.mode.equals("blessings")) { p.expedition().waveCleared(1);p.expedition().waveCleared(2); }
-        int total=enemies.size();WaveDirector.State waves=new WaveDirector.State(shot.wave,0,total,8,0,21,0);
+        int queued=shortTake && shot.mode.equals("combat")?4:0;
+        int total=enemies.size()+queued;WaveDirector.State waves=new WaveDirector.State(shot.wave,queued,total,8,queued>0?.8f:0,-8,15);
         SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Ember",px,pz,0,p,waves,enemies,Arena.HIGHLANDS,100,DayNightCycle.initial(Campaign.index(shot.wave))));
         if(!game.loadCurrent())throw new IllegalStateException("Trailer setup did not load: "+shot.id);
         game.setState(GameState.PLAYING);game.audio().configure(0,false);
@@ -131,11 +137,18 @@ public final class TrailerCapture {
             float score=objective && shot.mode.equals("beacon")?e.distance(field.x(),field.z())-(e.variant==2?2:0):e.distance(px,pz);
             if(score<bestScore) { nearest=e;distance=e.distance(px,pz);bestScore=score; }
         }
+        if(shot.mode.equals("combat")) {
+            if(lockedTarget!=null && lockedTarget.health>0 && lockedTarget.distance(px,pz)<18)nearest=lockedTarget;
+            else lockedTarget=nearest;
+            if(nearest!=null)distance=nearest.distance(px,pz);
+        }
         if(nearest==null) { if(!objective)steer(game,0,4,false);return; }
         float desired=shot.hero==HeroClass.WARRIOR?1.7f:shot.hero==HeroClass.ARCHER?5:5.5f;
         if(!objective || shot.mode.equals("beacon")) {
             float dx=nearest.x-px,dz=nearest.z-pz,len=Math.max(.1f,distance);
-            float tx=distance>desired?nearest.x-dx/len*desired:px-dx/len*(desired-distance),tz=distance>desired?nearest.z-dz/len*desired:pz-dz/len*(desired-distance);
+            float tx=px,tz=pz;
+            if(shot.hero==HeroClass.WARRIOR && distance>2.7f || shot.hero!=HeroClass.WARRIOR && distance>8) { tx=nearest.x-dx/len*desired;tz=nearest.z-dz/len*desired; }
+            else if(shot.hero!=HeroClass.WARRIOR && distance<4) { tx=px-dx/len*3;tz=pz-dz/len*3; }
             if(objective && shot.mode.equals("beacon") && Math.hypot(tx-field.x(),tz-field.z())>4) { tx=field.x();tz=field.z(); }
             steer(game,tx,tz,distance>9);
         }
@@ -154,9 +167,14 @@ public final class TrailerCapture {
             else if(frame%8==0)tap(KEY_LEFT_CONTROL);
         }
         if(shot.mode.equals("counter")) { if(!danger && frame%38==0)attack.set(true);return; }
+        if(shortTake) {
+            if(player.discipline().stamina()<28)recovering=true;
+            if(player.discipline().stamina()>=62)recovering=false;
+            if(recovering) { hold(KEY_Q,false);attack.set(false);if(distance<4) { float dx=px-nearest.x,dz=pz-nearest.z,len=Math.max(.1f,distance);steer(game,px+dx/len*3,pz+dz/len*3,false); }return; }
+        }
         if(distance<(shot.hero==HeroClass.WARRIOR?2.8f:9)) {
             int cycle=frame%(FPS*4);
-            boolean heavy=cycle<FPS*.8f && !player.isAttacking();hold(KEY_Q,heavy);
+            boolean heavy=cycle<FPS*.8f && !player.isAttacking() && player.discipline().stamina()>=55;hold(KEY_Q,heavy);
             if(!heavy && frame%14==0)attack.set(true);
             if(shot.hero==HeroClass.WARRIOR && distance>2.4f && frame%(FPS*5)==0)tap(KEY_R);
         } else hold(KEY_Q,false);
@@ -170,19 +188,19 @@ public final class TrailerCapture {
             c.target().x(0).y(1.6f).z(0);
         } else {
             boolean duel=shot.mode.equals("boss") || shot.mode.equals("counter") || shot.mode.equals("victory");
-            float px=game.getPlayer().getPosition().x(),pz=game.getPlayer().getPosition().z(),angle=(duel?-2.65f:.38f)+(float)Math.sin(t*.15f)*.10f;
-            c._position().x(px+(float)Math.sin(angle)*12).y(8.2f).z(pz+(float)Math.cos(angle)*12);c.target().x(px*.65f).y(.8f).z(pz*.65f);
+            float px=game.getPlayer().getPosition().x(),pz=game.getPlayer().getPosition().z(),angle=-2.65f;
+            c._position().x(px+(float)Math.sin(angle)*12).y(8.2f).z(pz+(float)Math.cos(angle)*12);c.target().x(px).y(1.4f).z(pz+1.5f);
         }
     }
     public static void main(String[] args) throws Exception {
-        boolean shortVideo=Arrays.asList(args).contains("--short");
+        boolean shortVideo=Arrays.asList(args).contains("--short");shortTake=shortVideo;if(shortVideo)FPS=60;
         Shot[] shots=shortVideo?new Shot[]{
-            new Shot("01-ember",3,HeroClass.WARRIOR,0,"scenic","OUTPOST","Guard the last light.","title"),
-            new Shot("03-warrior",6,HeroClass.WARRIOR,3,"combat","STRIKE. PARRY. EVADE.","Commit to your attacks. Protect the sanctuary.","battle"),
+            new Shot("01-ember",2,HeroClass.WARRIOR,0,"scenic","OUTPOST","Guard the last light.","title"),
+            new Shot("03-warrior",7,HeroClass.WARRIOR,3,"combat","STRIKE. PARRY. EVADE.","Commit to your attacks. Protect the sanctuary.","battle"),
             new Shot("05-archer",6,HeroClass.ARCHER,6,"combat","FIND YOUR OPENING","Reposition and fire through the enemy ranks.","battle"),
             new Shot("06-mage",6,HeroClass.MAGE,8,"combat","CHANNEL THE EMBER","Piercing spells and powerful charged attacks.","battle"),
-            new Shot("13-warden",6,HeroClass.WARRIOR,5,"boss","FACE THE ASH WARDEN","Read the warning. Survive the rush.","boss"),
-            new Shot("16-return",3,HeroClass.WARRIOR,0,"ending","OUTPOST","Choose your warden. Bring back the dawn.","title")
+            new Shot("13-warden",7,HeroClass.WARRIOR,5,"boss","FACE THE ASH WARDEN","Read the warning. Survive the rush.","boss"),
+            new Shot("16-return",2,HeroClass.WARRIOR,0,"ending","OUTPOST","Choose your warden. Bring back the dawn.","title")
         }:SHOTS;
         boolean preview=Arrays.asList(args).contains("--preview");int from=0;Set<Integer> only=new HashSet<>();
         for(String arg:args) {
