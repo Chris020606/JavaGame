@@ -307,6 +307,24 @@ public class Player extends Entity {
         updateAnimation(0);
     }
 
+    /** Present a host snapshot without reading the local keyboard or running combat twice. */
+    public void presentCoop(float dt,float remaining,float duration,float impact,boolean heavy,int combo,float charge,float dodge,float parry,float speed,float health,float downAge,boolean victory) {
+        visualLift=0;charging=charge>0;chargePoseTime=charge;dodgeTime=dodge;attackTime=remaining;attackDuration=Math.max(.1f,duration);attackImpact=impact;attackStartPose=0;
+        activeCoopAttack(heavy,combo);locomotionClock+=dt;
+        if(health<=0) { poseForOutcome(false,downAge);return; }
+        fallenPose=false;lastOutcomeTime=0;
+        if(victory) { setAnimation(PlayerAnimation.CHEER);updateAnimation(dt);return; }
+        if(dodge>0) { setAnimation(PlayerAnimation.DODGE_FORWARD);advancePose(dt);playAnimationProgress(1-dodge/.34f); }
+        else if(remaining>0)poseAttack(dt,speed>.2f?(weaponStyle==1?PlayerAnimation.BOW_RUN:PlayerAnimation.RUN):null);
+        else if(charge>0) { setAnimation(weaponStyle==1?(crossbow?PlayerAnimation.CROSSBOW_IDLE:PlayerAnimation.BOW_DRAW):weaponStyle==2?PlayerAnimation.MAGIC_RAISE:twoHanded?PlayerAnimation.TWO_HANDED_CHOP:PlayerAnimation.ATTACK_CHOP);advancePose(dt);playAnimationProgress(weaponStyle==0?.28f*Math.min(1,charge/.7f):Math.min(1,charge/.7f)); }
+        else if(parry>0) { setAnimation(PlayerAnimation.BLOCK_IDLE);advancePose(dt);playAnimationProgress(0); }
+        else if(speed>.2f) { setAnimation(weaponStyle==1?PlayerAnimation.BOW_RUN:PlayerAnimation.RUN);updateAnimation(dt*Math.min(1.4f,speed/5)); }
+        else { setAnimation(weaponStyle==1?rangedIdle():weaponStyle==2?PlayerAnimation.MAGIC_RAISE:PlayerAnimation.MELEE_IDLE);updateAnimation(dt); }
+    }
+    private void activeCoopAttack(boolean heavy,int combo) {
+        attackClip=twoHanded?(heavy||combo==2?PlayerAnimation.TWO_HANDED_CHOP:combo==3?PlayerAnimation.TWO_HANDED_FINISHER:PlayerAnimation.TWO_HANDED_SLICE):heavy?PlayerAnimation.ATTACK_CHOP:combo==3?PlayerAnimation.ATTACK_STAB:combo==2?PlayerAnimation.ATTACK_DIAGONAL:PlayerAnimation.ATTACK_HORIZONTAL;
+        lungeAttack=false;
+    }
     public void movement(float dt) {
 
     }

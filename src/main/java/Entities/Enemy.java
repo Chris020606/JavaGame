@@ -45,9 +45,12 @@ public class Enemy {
     public Enemy(float x, float z, int wave) { this(x,z,wave,0,.5f); }
     public Enemy(float x,float z,int wave,int variant,float personality) { this(x,z,wave,variant,personality,Difficulty.NORMAL); }
     public Enemy(float x,float z,int wave,int variant,float personality,Difficulty difficulty) {
+        this(x,z,wave,variant,personality,difficulty,1);
+    }
+    public Enemy(float x,float z,int wave,int variant,float personality,Difficulty difficulty,float partyHealthScale) {
         this.x=x; this.z=z; king=wave>=10;undead=wave>=5;this.difficulty=difficulty; this.variant=variant; this.personality=personality;
         elite=variant!=5 && wave>=3 && personality>=.88f;
-        maxHealth=(elite?1.5f:1)*(40+wave*10)*(variant==5?5:variant==2?1.4f:variant==1||variant==3?.8f:variant==4?1.1f:1)*difficulty.health;
+        maxHealth=partyHealthScale*(elite?1.5f:1)*(40+wave*10)*(variant==5?5:variant==2?1.4f:variant==1||variant==3?.8f:variant==4?1.1f:1)*difficulty.health;
         health=maxHealth;
         speed=Math.min(3.5f,1.4f+wave*.12f)*(variant==5?.7f:variant==1?1.35f:variant==2?.8f:1)*(.9f+personality*.2f)*difficulty.speed;
         healCooldown=3+personality*3;cooldown=personality*.6f; animationTime=personality*3;
@@ -125,6 +128,8 @@ public class Enemy {
         return switch(bossMove) { case CLEAVE -> "ROYAL REAP";case SLAM -> "GRAVE FAULT";case CHARGE -> "PHANTOM RUSH";case SIGILS -> "SOUL SIGILS"; };
     }
     public boolean boss() { return variant==5; }
+    /** Snapshot replicas retain the host's windup when a boss crosses the enrage threshold. */
+    public void presentationDuration(float duration) { startedAttackDuration=duration; }
     public float attackDuration() { return attackTime>0 && startedAttackDuration>0?startedAttackDuration:nextAttackDuration(); }
     private float nextAttackDuration() { return Math.max(.42f,(boss()?bossMove.duration*(enraged()?.82f:1):.7f)*difficulty.cadence); }
     public float meleeRange() { return boss()?3.8f:2.2f; }

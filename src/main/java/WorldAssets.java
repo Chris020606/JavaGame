@@ -357,8 +357,12 @@ public final class WorldAssets implements AutoCloseable {
     private void drawFrozen(float time) { drawAuthoredLayout(2,time); }
     private void drawAuthoredLayout(int chapter,float time) {
         TerrainTiles tiles=terrainLayers.get(chapter);
-        surface(.82f,.02f);drawStatic(tiles.ground());
-        surface(.26f,.1f);drawStatic(shadowPass?tiles.shadowOuter():tiles.outer());drawStatic(tiles.water());surface(.82f,.02f);
+        // Flat terrain receives shadows but does not cast them. Including it in the
+        // shadow atlas caused grazing-angle self-shadow stripes on Balanced quality.
+        if(!shadowPass) {
+            surface(.82f,.02f);drawStatic(tiles.ground());
+            surface(.26f,.1f);drawStatic(tiles.outer());drawStatic(tiles.water());surface(.82f,.02f);
+        }
         if(!shadowPass)drawRoad(chapter);
         if(chapter==0 || chapter==2)scenery("platform_stone",0,0,0,5.2f);
         else grave("altar-stone",0,0,0,4);
@@ -555,7 +559,7 @@ public final class WorldAssets implements AutoCloseable {
         for(int i=0;i<model.materialCount();i++) new Material(model.materials()).position(i).shader().put(silhouette);
         rlDisableDepthTest();rlDisableDepthMask();
         DrawModelEx(model,player.renderPosition(),axisUp,player.getRotation().y(),unitScale,WHITE);
-        rlEnableDepthMask();rlEnableDepthTest();lightModel(model);
+        rlEnableDepthMask();rlEnableDepthTest();modelBindings.remove(model);lightModel(model);
     }
     public void preparePlayer(Player player) { lightModel(player.getModel());surface(.48f,.15f); }
     public void drawPlayerBody(Player player,Progression progress,Color tint) {

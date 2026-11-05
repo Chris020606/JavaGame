@@ -11,21 +11,39 @@ public class Main {
         SetWindowMinSize(1000, 680);
         SetExitKey(KEY_NULL);
         SetTargetFPS(60);
-        Game game = null;
+        Game game = null;CoopGame coop=null;
         try {
-            game = new Game();
-            if(java.util.Arrays.asList(args).contains("--playtest"))game.startPlaytest();
+            boolean coopLaunch=java.util.Arrays.stream(args).anyMatch(a->a.equals("--coop") || a.startsWith("--coop-host=") || a.startsWith("--coop-join=") || a.startsWith("--coop-resume="));
+            if(coopLaunch) {
+                coop=new CoopGame();coop.configure(args);
+            } else {
+                game = new Game();
+                if (java.util.Arrays.asList(args).contains("--playtest"))
+                    game.startPlaytest();
+            }
             int frames = 0;
-            while (!WindowShouldClose() && !game.shouldQuit()) {
-                game.update(GetFrameTime());
+            while (!WindowShouldClose() && (game==null || !game.shouldQuit())) {
+                if(game!=null && game.consumeCoopRequest()) { game.dispose();game=null;coop=new CoopGame(); }
+                if(coop!=null) {
+                    coop.update(GetFrameTime());if(coop.finished()) { coop.close();coop=null;game=new Game(); }
+                } else game.update(GetFrameTime());
                 BeginDrawing();
                 ClearBackground(Menu.INK);
-                game.render();
+                if(coop!=null) {
+                    coop.render();
+                } else {
+                    game.render();
+                }
+
                 EndDrawing();
-                if (smokeTest && ++frames >= 120) break;
+                if (smokeTest && ++frames >= 120)
+                    break;
             }
         } finally {
-            if (game != null) game.dispose();
+            if (game != null)
+                game.dispose();
+            if(coop!=null)
+                coop.close();
             CloseWindow();
         }
     }

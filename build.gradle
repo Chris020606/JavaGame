@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'outpost'
-version = '3.5.0'
+version = '4.0.0'
 repositories { mavenCentral() }
 
 dependencies {
@@ -99,5 +99,13 @@ tasks.register('trailerTitles', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'TrailerTitles'
     systemProperty 'java.awt.headless', 'true'
+    workingDir = projectDir
+}
+
+tasks.register('coopNativeTest', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'CoopNativeTest'
+    jvmArgs = application.applicationDefaultJvmArgs
     workingDir = projectDir
 }

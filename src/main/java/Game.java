@@ -20,6 +20,8 @@ import static com.raylib.Colors.WHITE;
 public class Game {
     private final java.util.function.BooleanSupplier mouseAttack;
     private boolean pointerAim;
+    private boolean coopRequested;
+    boolean consumeCoopRequest() { boolean value=coopRequested;coopRequested=false;return value; }
     void pointerAim(boolean enabled) { pointerAim=enabled; }
     private final Settings settings=new Settings();
     private final PlayerSaves playerSaves=new PlayerSaves(AppData.directory());
@@ -882,8 +884,8 @@ public class Game {
         Menu.text("THE LAST EMBER", x, y, 18, Menu.TEAL);
         Menu.text("OUTPOST", x, y+42, 72, Menu.TEXT);
         Menu.text("Guard the light. Bring back the dawn.", x, y+132, 24, Menu.GOLD);
-        Menu.text("A WARDEN'S CHRONICLE / FOUR CHAPTERS", x, y+193, 15, Menu.MUTED);
-        Menu.text("Welcome, "+settings.playerName+". Your next defense awaits.", x, y+224, 18, Menu.TEXT);
+        if(Menu.button("PLAY TOGETHER / TWO-PLAYER CO-OP",x,y+184,620,true))coopRequested=true;
+        Menu.text("Welcome, "+settings.playerName+". Your next defense awaits.", x, y+244, 16, Menu.TEXT);
         if (Menu.primaryButton("NEW GAME", x, y+285, 300)) requestNewGame();
         if (Menu.button("LOAD GAME",x+320,y+285,300,Files.exists(savePath))) loadCurrent();
         if (Menu.button("QUIT", x+320, y+402, 300, true)) quitRequested = true;
