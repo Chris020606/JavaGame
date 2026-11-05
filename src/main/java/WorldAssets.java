@@ -514,7 +514,7 @@ public final class WorldAssets implements AutoCloseable {
         ModelAnimation clips=bone?bossAnimations:enemy.variant==3?archerAnimations:enemy.variant==4?shamanAnimations:animations;
         String clipName;
         if(enemy.attackTime>0) clipName=enemy.variant==3?(bone?"2H_Ranged_Shoot":enemy.attackTime>.25f?"Ranged_Bow_Draw":"Ranged_Bow_Release"):enemy.variant==4?(bone?"Spellcasting":"Ranged_Magic_Spellcasting"):(bone?"1H_Melee_Attack_Chop":"Melee_1H_Attack_Chop");
-        else if(!bone && enemy.variant==3) clipName=enemy.locomotion<.1f?"Ranged_Bow_Idle":enemy.action.equals("RETREAT")?"Walking_Backwards":"Running_HoldingBow";
+        else if(!bone && enemy.variant==3) clipName=enemy.locomotion<.1f?"Ranged_Bow_Idle":enemy.action.equals("RETREAT")?"Bow_Backward":enemy.action.equals("STRAFE")?(enemy.personality>.5f?"Bow_Left":"Bow_Right"):"Bow_Forward";
         else if(enemy.locomotion<.1f) clipName=bone?"Idle_Combat":"Melee_2H_Idle";
         else if(enemy.action.equals("STRAFE")) clipName="Running_Strafe_Left";
         else clipName=enemy.variant==1?"Running_A":bone?"Walking_D_Skeletons":"Walking_A.001";

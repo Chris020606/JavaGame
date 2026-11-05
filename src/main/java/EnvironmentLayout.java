@@ -21,6 +21,14 @@ public final class EnvironmentLayout {
             n(p,"fence_simple",-17,-8,17,2.4f);n(p,"fence_simple",-17,-11,7,2.2f);
             n(p,"statue_columnDamaged",9,14,11,3.4f);n(p,"statue_columnDamaged",13,16,82,2.5f);
             n(p,"statue_obelisk",11,19,-9,3.1f);
+            // Visible from the starting camera: paired ruined gardens beside the approach.
+            for(int side:new int[]{-1,1}) {
+                n(p,"platform_stone",side*9,5,0,3.5f);
+                n(p,"statue_columnDamaged",side*10,3,side*15,3.2f);
+                n(p,"statue_ring",side*9,6,90,2.8f);
+                n(p,"plant_bushDetailed",side*11,7,0,2.2f);
+                n(p,"flower_purpleC",side*8,7,0,2.2f);
+            }
             // A ruined lookout and stone stair terrace frame the eastern approach.
             n(p,"platform_stone",24,7,0,5.5f);n(p,"platform_stone",27,7,0,5.5f);
             n(p,"statue_columnDamaged",23,4,0,5);n(p,"statue_columnDamaged",28,4,180,4);

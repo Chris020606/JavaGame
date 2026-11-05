@@ -7,7 +7,8 @@ public class Main {
             System.setProperty("outpost.dataDir",java.nio.file.Files.createTempDirectory("outpost-smoke-").toString());
         boolean hidden=java.util.Arrays.asList(args).contains("--hidden");
         SetConfigFlags((hidden?FLAG_WINDOW_HIDDEN:0) | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT);
-        InitWindow(1280, 800, "Outpost | Fight. Gather. Fortify.");
+        InitWindow(1280, 800, "Outpost v"+BuildInfo.VERSION+" | Fight. Gather. Fortify.");
+        System.out.println("Outpost v"+BuildInfo.VERSION+" assets: "+assets.AssetPaths.path("resources/outpost/hero_archer.glb"));
         SetWindowMinSize(1000, 680);
         SetExitKey(KEY_NULL);
         SetTargetFPS(60);

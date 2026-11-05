@@ -884,6 +884,7 @@ public class Game {
         DrawLine(x,y+268,x+620,y+268,Menu.GOLD);
         Menu.text("THE LAST EMBER", x, y, 18, Menu.TEAL);
         Menu.text("OUTPOST", x, y+42, 72, Menu.TEXT);
+        Menu.text("v"+BuildInfo.VERSION+" / RANGED GRIP UPDATE",x+325,y+96,12,Menu.GOLD);
         Menu.text("Guard the light. Bring back the dawn.", x, y+132, 24, Menu.GOLD);
         if(Menu.button("PLAY TOGETHER / TWO-PLAYER CO-OP",x,y+184,620,true))coopRequested=true;
         Menu.text("Welcome, "+settings.playerName+". Your next defense awaits.", x, y+244, 16, Menu.TEXT);

@@ -230,6 +230,7 @@ public class Player extends Entity {
 
     private PlayerAnimation locomotion(float dx,float dz,boolean sprint) {
         double angle=Math.toRadians(getRotation().y());float forward=dx*(float)Math.sin(angle)+dz*(float)Math.cos(angle),side=dx*(float)Math.cos(angle)-dz*(float)Math.sin(angle);
+        if(weaponStyle==1) { String grip=!crossbow?"BOW":weaponTier==2?"HANDBOW":"SIEGEBOW";String direction=forward<-.55f?"BACKWARD":Math.abs(side)>.7f?(side>0?"RIGHT":"LEFT"):"FORWARD";return PlayerAnimation.valueOf(grip+"_"+direction); }
         if(forward<-.55f)return PlayerAnimation.WALK_BACKWARD;
         if(Math.abs(side)>.7f)return side>0?PlayerAnimation.RUN_STRAFE_RIGHT:PlayerAnimation.RUN_STRAFE_LEFT;
         return weaponStyle==1&&!crossbow?PlayerAnimation.BOW_RUN:PlayerAnimation.RUN;

@@ -7,7 +7,7 @@ public final class GameAudio implements AutoCloseable {
     private final Music[] music=new Music[8];
     private final float[] gains=new float[8];
     private boolean ready,muted;
-    private float volume=.6f,duck;
+    private float volume=.6f,duck,enrageIntensity;
     private int variation,theme=4;
     private java.util.function.Consumer<String> cueObserver;
     void observeCues(java.util.function.Consumer<String> observer) { cueObserver=observer; }
@@ -20,18 +20,20 @@ public final class GameAudio implements AutoCloseable {
         }
         String[] themes={"meadow","cemetery","frost","necropolis","title","battle","boss","enrage"};
         for(int i=0;i<themes.length;i++) {
-            Music stream=LoadMusicStream(assets.AssetPaths.path("resources/audio/music-"+themes[i]+".wav"));
+            Music stream=LoadMusicStream(assets.AssetPaths.path("resources/audio/music-"+themes[i]+(i==0 || i==5 || i==6?".ogg":".wav")));
             if(stream.frameCount()>0) { music[i]=stream;stream.looping(true);SetMusicVolume(stream,0);PlayMusicStream(stream); }
         }
     }
     public void update(float dt,int chapter,boolean title,boolean battle,boolean boss,boolean enraged) {
         theme=title?4:boss?6:Math.max(0,Math.min(3,chapter));duck=Math.max(0,duck-dt);
         float blend=1-(float)Math.exp(-Math.max(0,dt)*2.4f);
+        enrageIntensity+=((boss && enraged && !title?1:0)-enrageIntensity)*blend;
         for(int i=0;i<music.length;i++)if(music[i]!=null) {
+            if(i==6)SetMusicPitch(music[i],1+enrageIntensity*.035f);
             UpdateMusicStream(music[i]);
-            float target=i==theme?(battle && !boss && !title?.55f:1):i==7 && boss && enraged && !title?1:i==5 && battle && !boss && !title?.85f:0;
+            float target=i==theme?(battle && !boss && !title?0:1):i==7 && boss && enraged && !title?0:i==5 && battle && !boss && !title?1:0;
             gains[i]+=(target-gains[i])*blend;
-            SetMusicVolume(music[i],muted?0:volume*(i==7?.34f:i==5?.5f:.48f)*gains[i]*(duck>0?.78f:1));
+            SetMusicVolume(music[i],muted?0:volume*(i==7?.34f:i==5?.72f:.65f)*gains[i]*(duck>0?.78f:1));
         }
     }
     public void play(String name) {
@@ -44,14 +46,14 @@ public final class GameAudio implements AutoCloseable {
         this.volume=volume;muted=mute;
         for(Sound sound:sounds.values()) { SetSoundVolume(sound,volume*.65f);if(muted)StopSound(sound); }
         // Apply immediately, including while a menu or paused overlay is open.
-        for(int i=0;i<music.length;i++)if(music[i]!=null)SetMusicVolume(music[i],muted?0:volume*(i==7?.34f:i==5?.5f:.48f)*gains[i]);
+        for(int i=0;i<music.length;i++)if(music[i]!=null)SetMusicVolume(music[i],muted?0:volume*(i==7?.34f:i==5?.72f:.65f)*gains[i]);
     }
     public void toggle() { configure(volume,!muted); }
     public boolean muted() { return muted; }
     public boolean ready() { return ready; }
     int loadedMusic() { int count=0;for(Music track:music)if(track!=null)count++;return count; }
     int theme() { return theme; }
-    float enrageGain() { return gains[7]; }
+    float enrageGain() { return enrageIntensity; }
     boolean musicStreaming() { for(Music track:music)if(track!=null && !IsMusicStreamPlaying(track))return false;return loadedMusic()==music.length; }
     @Override public void close() {
         if(ready) { for(Music track:music)if(track!=null)UnloadMusicStream(track);for(Sound s:sounds.values())UnloadSound(s);CloseAudioDevice();ready=false; }

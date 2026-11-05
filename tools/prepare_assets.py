@@ -28,6 +28,29 @@ def append_animations(d,b,source,selected):
         for c in anim['channels']: c['target']['node']=names[a['nodes'][c['target']['node']]['name']]
         d['animations'].append(anim)
     return b+ab
+def ranged_locomotion(d,b,player=False):
+    # Keep the legs and root motion, replace only arm/hand channels with a stable weapon grip.
+    animations={a['name']:a for a in d['animations']}
+    arms={'upperarm.l','lowerarm.l','hand.l','handslot.l','upperarm.r','lowerarm.r','hand.r','handslot.r'}
+    def values(accessor):
+        a=d['accessors'][accessor];v=d['bufferViews'][a['bufferView']];width={'VEC3':3,'VEC4':4}[a['type']]
+        return struct.unpack_from('<'+'f'*width,b,v.get('byteOffset',0)+a.get('byteOffset',0))
+    for prefix,grip in [('Bow','Ranged_Bow_Idle')]+([('Handbow','Ranged_1H_Aiming'),('Siegebow','Ranged_2H_Aiming')] if player else []):
+        pose=animations[grip]
+        for suffix,source in [('Forward','Running_HoldingBow'),('Backward','Walking_Backwards'),('Left','Running_Strafe_Left'),('Right','Running_Strafe_Right')]:
+            if source not in animations:continue
+            anim=copy.deepcopy(animations[source]);anim['name']=prefix+'_'+suffix
+            anim['channels']=[c for c in anim['channels'] if d['nodes'][c['target']['node']]['name'] not in arms]
+            timing=anim['samplers'][0]['input'];count=d['accessors'][timing]['count']
+            for channel in pose['channels']:
+                if d['nodes'][channel['target']['node']]['name'] not in arms:continue
+                source_sampler=pose['samplers'][channel['sampler']];a=d['accessors'][source_sampler['output']];value=values(source_sampler['output'])
+                b+=b'\0'*(-len(b)%4);offset=len(b);data=struct.pack('<'+'f'*len(value),*value)*count;b+=data
+                view=len(d['bufferViews']);d['bufferViews'].append({'buffer':0,'byteOffset':offset,'byteLength':len(data)})
+                out=len(d['accessors']);d['accessors'].append({'bufferView':view,'componentType':5126,'count':count,'type':a['type']})
+                c=copy.deepcopy(channel);c['sampler']=len(anim['samplers']);anim['samplers'].append({'input':timing,'output':out,'interpolation':'LINEAR'});anim['channels'].append(c)
+            d['animations'].append(anim)
+    return b
 for character,output in [('Rogue_Hooded','raider'),('Ranger','archer'),('Mage','shaman')]:
     d,b=read_glb(ROOT/('resources/KayKit_Adventurers_2.0_FREE/Characters/gltf/'+character+'.glb'))
     d['animations']=[]
@@ -39,6 +62,7 @@ for character,output in [('Rogue_Hooded','raider'),('Ranger','archer'),('Mage','
         b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_CombatRanged.glb',clips)
     for img in d.get('images',[]):
         if 'uri' in img: img['uri']='../KayKit_Adventurers_2.0_FREE/Characters/gltf/'+img['uri']
+    if output=='archer' or output=='hero_archer':b=ranged_locomotion(d,b,output=='hero_archer')
     write_glb(OUT/(output+'.glb'),d,b)
 # Player variants retain the full shared locomotion/combat set plus ranged clips.
 for character, output, clips in [
@@ -54,6 +78,7 @@ for character, output, clips in [
     b=append_animations(d,b,ROOT/'resources/source/Rig_Medium_Simulation.glb',('Cheering','Lie_Idle'))
     for img in d.get('images',[]):
         if 'uri' in img: img['uri']='../KayKit_Adventurers_2.0_FREE/Characters/gltf/'+img['uri']
+    if output=='archer' or output=='hero_archer':b=ranged_locomotion(d,b,output=='hero_archer')
     write_glb(OUT/(output+'.glb'),d,b)
 # Original flat-shaded scenery, exported as reusable model assets.
 colors={'stone':(.36,.43,.46),'roof':(.15,.43,.43),'wood':(.36,.23,.14),'leaf':(.20,.38,.27),'leaflight':(.29,.48,.32),'iron':(.2,.25,.27)}

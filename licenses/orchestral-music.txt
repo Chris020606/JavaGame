@@ -1,0 +1,7 @@
+## Orchestral recordings (CC0 1.0)
+
+- **Hope (Orchestral battle music)** — Mintodog, https://opengameart.org/content/hopeorchestral-battle-music — `resources/audio/music-battle.ogg`.
+- **The Final Battle** — Skrjablin, https://opengameart.org/content/the-final-battle — `resources/audio/music-boss.ogg`.
+- **Heartfelt Battle (loopable, fantasy, strings/piano/horn)** — Request, https://opengameart.org/content/heartfelt-battle-loopable-fantasy-stringspianohorn — loop version, `resources/audio/music-meadow.ogg`.
+
+All three source pages mark these recordings CC0. Public-domain dedication: https://creativecommons.org/publicdomain/zero/1.0/. Files are redistributed as provided by their creators; existing original synthesized WAVs remain available for asset generation.

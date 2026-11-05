@@ -8,7 +8,7 @@ The valley's fires have gone cold. One ember still burns beneath a forgotten san
 
 ## Play together — two-player co-op
 
-Choose **Play Together** on the main menu. Both computers must install the same v4.2 release.
+Choose **Play Together** on the main menu. Both computers must install the same v4.2.1 release.
 
 1. On one computer, choose your name/class and difficulty, then **Host New Game**.
 2. Copy the invite from the lobby and send it to your partner.
@@ -147,7 +147,7 @@ Keyboard controls can be changed in Settings. Your adventure saves your chapter,
 
 Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel, or Linux. Extract it, keep its folders together, and launch Outpost. Java is included.
 
-**[Download Outpost v4.2.0](https://github.com/Chris020606/JavaGame/releases/tag/v4.2.0)** for Windows, Linux, or Mac. [Watch the 30-second gameplay video](https://github.com/Chris020606/JavaGame/releases/download/v4.1.0/Outpost-v4.1-Gameplay-30s.mp4). Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
+**[Download Outpost v4.2.1](https://github.com/Chris020606/JavaGame/releases/tag/v4.2.1)** for Windows, Linux, or Mac. [Watch the 30-second gameplay video](https://github.com/Chris020606/JavaGame/releases/download/v4.1.0/Outpost-v4.1-Gameplay-30s.mp4). Get current packages from successful [development builds](https://github.com/Chris020606/JavaGame/actions/workflows/build.yml), or run from source with JDK 24 or newer:
 
 ```sh
 ./gradlew run
@@ -156,6 +156,7 @@ Choose the archive for your computer: Windows, macOS Apple Silicon, macOS Intel,
 <details>
 <summary>What's changed?</summary>
 
+- **4.2.1:** composed bow/crossbow grip locomotion, orchestral recordings for meadow/battle/bosses, foreground meadow ruins and a visible build version.
 - **4.2:** distinct hand/siege crossbows and matching attack/reload clips, bow-holding enemy locomotion, blue Mage mana with free sprinting, new chapter score arrangements and an eastern meadow ruin landmark.
 - **4.1:** independent weapon and armor purchases, green ally health above their head, directional co-op movement animations, smoother camera follow and restrained melee impact feedback. Existing inventories are preserved.
 - **4.0:** two-player host/join co-op campaign, balanced encounters, shared sanctuary, revives, support magic, upgrades, reconnects and separate chapter checkpoints.
@@ -194,7 +195,7 @@ Versions 3.5.0 and 4.0.0 are published desktop releases; versions 1.3–3.4.1 we
 
 </details>
 
-Characters and animation are by KayKit; scenery is by Kenney. Music and sound were created for Outpost. Full credits are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Characters and animation are by KayKit; scenery is by Kenney. Music combines original Outpost tracks with CC0 orchestral recordings by Mintodog, Skrjablin, and Request. Sound effects were created for Outpost. Full credits are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Crafting a weapon or armor tier grants only that tier. Lower tiers remain separate purchases. Existing saves retain their previous inventory.
 
