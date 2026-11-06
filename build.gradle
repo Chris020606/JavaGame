@@ -109,3 +109,18 @@ tasks.register('coopNativeTest', JavaExec) {
     jvmArgs = application.applicationDefaultJvmArgs
     workingDir = projectDir
 }
+
+// Development tooling stays outside the runtime classpath and packaged game.
+def pythonCommand = DefaultNativePlatform.currentOperatingSystem.isWindows() ? 'python' : 'python3'
+tasks.register('formatJava', Exec) {
+    group = 'formatting'
+    description = 'Format Java source with the pinned AOSP formatter.'
+    workingDir = projectDir
+    commandLine pythonCommand, 'tools/format_java.py'
+}
+tasks.register('checkJavaFormat', Exec) {
+    group = 'verification'
+    description = 'Check Java formatting without changing source.'
+    workingDir = projectDir
+    commandLine pythonCommand, 'tools/format_java.py', '--check'
+}

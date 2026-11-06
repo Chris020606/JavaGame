@@ -200,3 +200,7 @@ Characters and animation are by KayKit; scenery is by Kenney. Music combines ori
 Crafting a weapon or armor tier grants only that tier. Lower tiers remain separate purchases. Existing saves retain their previous inventory.
 
 Boss victories award **120 crystals and one missing class weapon**. Armor comes from the forge. Defeating the Hollow King now reveals an eight-second dawn celebration before the final results.
+
+## Continuing development
+
+See the [maintenance handbook](docs/development/README.md), [source index](docs/development/SOURCE_INDEX.md) and [contribution guide](CONTRIBUTING.md) for readable-code conventions, architecture, saves, animation assets, tests and the archived unfinished roadmap branch.

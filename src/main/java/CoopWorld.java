@@ -17,10 +17,10 @@ public final class CoopWorld {
                 x,
                 z,
                 facing,
-                hp,
+                health,
                 stamina,
-                vx,
-                vz,
+                velocityX,
+                velocityZ,
                 attack,
                 duration,
                 impact,
@@ -48,12 +48,12 @@ public final class CoopWorld {
 
     private static final class Mob {
         int id, wave, target = -1, chargeMask;
-        Enemy e;
+        Enemy enemy;
 
         Mob(int id, int wave, Enemy enemy) {
             this.id = id;
             this.wave = wave;
-            e = enemy;
+            this.enemy = enemy;
         }
     }
 
@@ -115,7 +115,7 @@ public final class CoopWorld {
             p.power = savedBuild[slot][1];
             p.endurance = savedBuild[slot][2];
             p.credits = savedBuild[slot][3];
-            p.hp = p.maxHealth();
+            p.health = p.maxHealth();
             p.stamina = p.maxStamina();
             heroes[slot] = p;
         }
@@ -185,7 +185,7 @@ public final class CoopWorld {
                         if ((pressed & CoopInput.VITALITY) != 0) {
                             p.vitality++;
                             p.credits--;
-                            p.hp = p.maxHealth();
+                            p.health = p.maxHealth();
                         } else if ((pressed & CoopInput.POWER) != 0) {
                             p.power++;
                             p.credits--;
@@ -215,7 +215,7 @@ public final class CoopWorld {
         if (paused()) {
             for (Hero p : heroes)
                 if (p != null) {
-                    p.vx = p.vz = 0;
+                    p.velocityX = p.velocityZ = 0;
                     p.charge = 0;
                     p.heavyReleased = false;
                 }
@@ -226,7 +226,7 @@ public final class CoopWorld {
         updateEnemies(dt);
         updateShots(dt);
         updateDangers(dt);
-        if (baseHealth <= 0 || heroes[0].hp <= 0 && heroes[1].hp <= 0) {
+        if (baseHealth <= 0 || heroes[0].health <= 0 && heroes[1].health <= 0) {
             finish(CoopState.Phase.DEFEAT);
             return;
         }
@@ -237,7 +237,7 @@ public final class CoopWorld {
                 queued--;
                 spawnClock = 1.05f * difficulty.cadence;
             }
-        } else if (enemies.stream().noneMatch(m -> m.e.health > 0)) {
+        } else if (enemies.stream().noneMatch(m -> m.enemy.health > 0)) {
             if (wave >= Campaign.CHAPTERS[chapter].last()) {
                 finish(chapter == 3 ? CoopState.Phase.VICTORY : CoopState.Phase.INTERMISSION);
                 if (phase == CoopState.Phase.INTERMISSION) for (Hero p : heroes) p.credits++;
@@ -248,7 +248,7 @@ public final class CoopWorld {
         }
         wardClock -= dt;
         if (wardClock <= 0) {
-            Enemy target = SanctuaryWard.target(enemies.stream().map(m -> m.e).toList());
+            Enemy target = SanctuaryWard.target(enemies.stream().map(m -> m.enemy).toList());
             if (target != null)
                 target.hit(SanctuaryWard.damage(2 + chapter, target.health), 0, 0, 0);
             wardClock = 4;
@@ -280,7 +280,7 @@ public final class CoopWorld {
         if (phase == CoopState.Phase.DEFEAT || phase == CoopState.Phase.LOBBY)
             baseHealth = CoopBalance.BASE_HEALTH;
         for (Hero p : heroes) {
-            p.hp = p.maxHealth();
+            p.health = p.maxHealth();
             p.stamina = p.maxStamina();
             p.x = p.slot == 0 ? -2 : 2;
             p.z = 4;
@@ -329,8 +329,8 @@ public final class CoopWorld {
         p.parryCooldown = Math.max(0, p.parryCooldown - dt);
         p.parry = Math.max(0, p.parry - dt);
         p.regenDelay = Math.max(0, p.regenDelay - dt);
-        if (p.hp <= 0) {
-            p.vx = p.vz = 0;
+        if (p.health <= 0) {
+            p.velocityX = p.velocityZ = 0;
             p.charge = p.repair = 0;
             return;
         }
@@ -338,7 +338,7 @@ public final class CoopWorld {
         boolean repairing =
                 (p.input.buttons() & CoopInput.INTERACT) != 0
                         && Math.hypot(p.x, p.z) < 6
-                        && partner.hp > 0
+                        && partner.health > 0
                         && p.hurt <= 0
                         && p.potions > 0
                         && baseHealth < CoopBalance.BASE_HEALTH
@@ -359,8 +359,8 @@ public final class CoopWorld {
             impact(p);
         }
         boolean canAct = p.attack <= 0 && p.dodge <= 0 && p.recovery <= 0;
-        if ((pressed & CoopInput.POTION) != 0 && p.potions > 0 && p.hp < p.maxHealth()) {
-            p.hp = Math.min(p.maxHealth(), p.hp + 60);
+        if ((pressed & CoopInput.POTION) != 0 && p.potions > 0 && p.health < p.maxHealth()) {
+            p.health = Math.min(p.maxHealth(), p.health + 60);
             p.potions--;
         }
         if ((pressed & CoopInput.DODGE) != 0
@@ -374,11 +374,11 @@ public final class CoopWorld {
             p.charge = 0;
             spend(p, 22);
             float len = (float) Math.hypot(p.input.moveX(), p.input.moveZ());
-            p.vx =
+            p.velocityX =
                     len > .01
                             ? p.input.moveX() / len * 10
                             : (float) Math.sin(Math.toRadians(p.facing)) * 10;
-            p.vz =
+            p.velocityZ =
                     len > .01
                             ? p.input.moveZ() / len * 10
                             : (float) Math.cos(Math.toRadians(p.facing)) * 10;
@@ -415,15 +415,16 @@ public final class CoopWorld {
                     if (p.type != HeroClass.MAGE) spend(p, Math.min(p.stamina, 12 * dt));
                 } else p.sprintExhausted = true;
             }
-            p.vx = p.input.moveX() / len * speed;
-            p.vz = p.input.moveZ() / len * speed;
+            p.velocityX = p.input.moveX() / len * speed;
+            p.velocityZ = p.input.moveZ() / len * speed;
         }
         ArenaNavigation.Position moved =
-                ArenaNavigation.move(chapter, p.x, p.z, p.x + p.vx * dt, p.z + p.vz * dt, .42f);
+                ArenaNavigation.move(
+                        chapter, p.x, p.z, p.x + p.velocityX * dt, p.z + p.velocityZ * dt, .42f);
         p.x = moved.x();
         p.z = moved.z();
         if (p.regenDelay <= 0) p.stamina = Math.min(p.maxStamina(), p.stamina + 24 * dt);
-        if (Math.hypot(p.x, p.z) < 6) p.hp = Math.min(p.maxHealth(), p.hp + 12 * dt);
+        if (Math.hypot(p.x, p.z) < 6) p.health = Math.min(p.maxHealth(), p.health + 12 * dt);
     }
 
     private void spend(Hero p, float amount) {
@@ -457,9 +458,11 @@ public final class CoopWorld {
         if (p.perfect) a = Combat.scale(a, 1.35f, a.label());
         if (p.type == HeroClass.WARRIOR) {
             for (Mob m : enemies)
-                if (m.e.health > 0
-                        && Combat.inArc(p.x, p.z, p.facing, m.e.x, m.e.z, a.range(), a.halfAngle()))
-                    m.e.hit(Math.round(damage(p) * a.multiplier()), p.x, p.z, p.heavy ? .7f : .3f);
+                if (m.enemy.health > 0
+                        && Combat.inArc(
+                                p.x, p.z, p.facing, m.enemy.x, m.enemy.z, a.range(), a.halfAngle()))
+                    m.enemy.hit(
+                            Math.round(damage(p) * a.multiplier()), p.x, p.z, p.heavy ? .7f : .3f);
         } else {
             float x = p.x + (float) Math.sin(Math.toRadians(p.facing)) * .6f,
                     z = p.z + (float) Math.cos(Math.toRadians(p.facing)) * .6f,
@@ -468,8 +471,8 @@ public final class CoopWorld {
             boolean support = p.type == HeroClass.MAGE && p.heavy;
             boolean aimsSupport =
                     support
-                            && (partner.hp > 0
-                                            && partner.hp < partner.maxHealth()
+                            && (partner.health > 0
+                                            && partner.health < partner.maxHealth()
                                             && Combat.inArc(
                                                     p.x, p.z, p.facing, partner.x, partner.z,
                                                     a.range(), 12)
@@ -484,7 +487,7 @@ public final class CoopWorld {
                                     p.z,
                                     p.facing,
                                     a.range(),
-                                    enemies.stream().map(m -> m.e).toList(),
+                                    enemies.stream().map(m -> m.enemy).toList(),
                                     e ->
                                             ArenaNavigation.projectileFraction(
                                                             chapter, x, z, e.x, e.z)
@@ -500,16 +503,16 @@ public final class CoopWorld {
 
     private void revive(float dt) {
         for (Hero p : heroes)
-            if (p.hp <= 0) {
+            if (p.health <= 0) {
                 Hero partner = heroes[1 - p.slot];
                 boolean helping =
-                        partner.hp > 0
+                        partner.health > 0
                                 && partner.hurt <= 0
                                 && (partner.input.buttons() & CoopInput.INTERACT) != 0
                                 && Math.hypot(partner.x - p.x, partner.z - p.z) < 2.8f;
                 p.revive = helping ? p.revive + dt : 0;
                 if (p.revive >= 3) {
-                    p.hp = p.maxHealth() * .5f;
+                    p.health = p.maxHealth() * .5f;
                     p.stamina = p.maxStamina() * .5f;
                     p.revive = 0;
                     p.hurt = 1;
@@ -520,7 +523,7 @@ public final class CoopWorld {
 
     /** Returns true for a parry, allowing a boss rush to be stopped. */
     private boolean hurt(Hero p, float damage, float x, float z, boolean parryable, Enemy enemy) {
-        if (p.hp <= 0 || p.hurt > 0 || p.dodge > .10f && p.dodge < .31f) return false;
+        if (p.health <= 0 || p.hurt > 0 || p.dodge > .10f && p.dodge < .31f) return false;
         if (parryable && p.parry > 0 && Combat.inArc(p.x, p.z, p.facing, x, z, 100, 75)) {
             p.parry = 0;
             p.stamina = Math.min(p.maxStamina(), p.stamina + 15);
@@ -532,10 +535,14 @@ public final class CoopWorld {
             }
             return true;
         }
-        p.hp = Math.max(0, p.hp - damage * CoopBalance.PLAYER_DAMAGE_FACTOR * (1 - .04f * chapter));
+        p.health =
+                Math.max(
+                        0,
+                        p.health
+                                - damage * CoopBalance.PLAYER_DAMAGE_FACTOR * (1 - .04f * chapter));
         p.hurt = CoopBalance.HIT_GRACE;
         p.revive = p.repair = 0;
-        if (p.hp == 0) {
+        if (p.health == 0) {
             p.attack = p.charge = p.dodge = 0;
             p.pending = false;
         }
@@ -547,17 +554,17 @@ public final class CoopWorld {
     }
 
     private void updateEnemies(float dt) {
-        List<Enemy> squad = enemies.stream().map(m -> m.e).toList();
+        List<Enemy> squad = enemies.stream().map(m -> m.enemy).toList();
         for (Iterator<Mob> it = enemies.iterator(); it.hasNext(); ) {
             Mob m = it.next();
-            Enemy e = m.e;
+            Enemy e = m.enemy;
             if (e.health <= 0) {
                 if (e.deathTime == 0) {
                     e.attackTime = e.chargeTime = 0;
                     e.impactPending = false;
                     kills++;
                     for (Hero p : heroes)
-                        if (p.hp > 0) p.stamina = Math.min(p.maxStamina(), p.stamina + 5);
+                        if (p.health > 0) p.stamina = Math.min(p.maxStamina(), p.stamina + 5);
                 }
                 e.deathTime += dt;
                 if (e.deathTime > 4) it.remove();
@@ -565,7 +572,7 @@ public final class CoopWorld {
             }
             Hero target = null;
             for (Hero p : heroes)
-                if (p.hp > 0
+                if (p.health > 0
                         && (target == null
                                 || e.distance(p.x, p.z) < e.distance(target.x, target.z)))
                     target = p;
@@ -573,9 +580,9 @@ public final class CoopWorld {
             float tx = player ? target.x : 0, tz = player ? target.z : 0;
             float sx = 0, sz = 0;
             for (Mob other : enemies)
-                if (other != m && other.e.health > 0) {
-                    float dx = e.x - other.e.x,
-                            dz = e.z - other.e.z,
+                if (other != m && other.enemy.health > 0) {
+                    float dx = e.x - other.enemy.x,
+                            dz = e.z - other.enemy.z,
                             d = (float) Math.hypot(dx, dz);
                     if (d > .01f && d < 1.4f) {
                         sx += dx / d * (1.4f - d);
@@ -646,8 +653,8 @@ public final class CoopWorld {
                 int attacking = 0;
                 for (Mob other : enemies)
                     if (other.target == (player ? targetSlot(target) : -1)
-                            && other.e.health > 0
-                            && other.e.attackTime > .25f) attacking++;
+                            && other.enemy.health > 0
+                            && other.enemy.attackTime > .25f) attacking++;
                 if (!e.boss() && attacking >= difficulty.attackers + (e.ranged() ? 1 : 0)) continue;
                 m.target = player ? target.slot : -1;
                 e.beginAttack(tx, tz, player);
@@ -656,7 +663,7 @@ public final class CoopWorld {
                             CoopBalance.VOLLEY_INTERVAL * difficulty.cadence;
                 if (e.boss() && e.bossMove == BossMove.SIGILS)
                     for (Hero p : heroes)
-                        if (p.hp > 0)
+                        if (p.health > 0)
                             for (int i = 0; i < (e.enraged() ? 5 : 3); i++) {
                                 double a = i * 2.4;
                                 float r = i == 0 ? 0 : 2.5f;
@@ -692,10 +699,10 @@ public final class CoopWorld {
             boolean stop = false;
             Hero partner = heroes[1 - entry.owner()];
             if (s.restorative
-                    && partner.hp > 0
-                    && partner.hp < partner.maxHealth()
+                    && partner.health > 0
+                    && partner.health < partner.maxHealth()
                     && s.intersects(partner.x, partner.z, .9f)) {
-                partner.hp = Math.min(partner.maxHealth(), partner.hp + 18);
+                partner.health = Math.min(partner.maxHealth(), partner.health + 18);
                 stop = true;
             } else if (s.restorative
                     && baseHealth < CoopBalance.BASE_HEALTH
@@ -705,14 +712,14 @@ public final class CoopWorld {
             }
             var sorted =
                     enemies.stream()
-                            .filter(m -> m.e.health > 0)
+                            .filter(m -> m.enemy.health > 0)
                             .sorted(
                                     Comparator.comparingDouble(
-                                            m -> m.e.distance(s.previousX, s.previousZ)))
+                                            m -> m.enemy.distance(s.previousX, s.previousZ)))
                             .toList();
             for (Mob m : sorted)
-                if (!stop && s.hit(m.e)) {
-                    m.e.hit(Math.min(m.e.health, s.damage), s.previousX, s.previousZ, .25f);
+                if (!stop && s.hit(m.enemy)) {
+                    m.enemy.hit(Math.min(m.enemy.health, s.damage), s.previousX, s.previousZ, .25f);
                     if (!s.magic) {
                         stop = true;
                         break;
@@ -731,7 +738,7 @@ public final class CoopWorld {
             }
             boolean stop = false;
             for (Hero p : heroes)
-                if (p.hp > 0 && s.hits(p.x, p.z, .55f)) {
+                if (p.health > 0 && s.hits(p.x, p.z, .55f)) {
                     hurt(p, s.damage, s.previousX, s.previousZ, true, null);
                     stop = true;
                     break;
@@ -780,12 +787,12 @@ public final class CoopWorld {
                                 p.x,
                                 p.z,
                                 p.facing,
-                                p.hp,
+                                p.health,
                                 p.maxHealth(),
                                 p.stamina,
                                 p.maxStamina(),
-                                p.vx,
-                                p.vz,
+                                p.velocityX,
+                                p.velocityZ,
                                 p.attack,
                                 p.duration,
                                 p.impact,
@@ -805,7 +812,7 @@ public final class CoopWorld {
         List<CoopState.Mob> mobs =
                 enemies.stream()
                         .map(m -> {
-                            Enemy e = m.e;
+                            Enemy e = m.enemy;
                             return new CoopState.Mob(
                                     m.id,
                                     m.wave,

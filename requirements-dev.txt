@@ -1,0 +1,2 @@
+# Development formatting only; not included in the Java game runtime.
+black==25.1.0

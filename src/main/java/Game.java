@@ -23,6 +23,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
 
+/**
+ * Coordinates the single-player session: input, simulation, screens and persistence.
+ *
+ * <p>Main owns this object's native-resource lifetime. Call update before render on the window
+ * thread, and dispose before closing Raylib. Gameplay advances only in PLAYING; inventory and
+ * workshop overlays pause combat. Draw-time buttons can change state, so inventory textures are
+ * prepared before the UI pass rather than lazily from a button callback.
+ */
 public class Game {
     private final java.util.function.BooleanSupplier mouseAttack;
     private boolean pointerAim;
@@ -2096,7 +2104,7 @@ public class Game {
                     Menu.TEXT);
             Menu.wrapped(
                     "Their adventure and chapter checkpoint will be removed. This cannot be"
-                        + " undone.",
+                            + " undone.",
                     dx + 24,
                     dy + 105,
                     490,
@@ -2184,55 +2192,42 @@ public class Game {
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(Menu.INK, .92f));
     }
 
+    private final MainMenuScreen mainMenuScreen = new MainMenuScreen();
+
     private void drawMainMenu() {
         dim();
-        int x = (GetScreenWidth() - 640) / 2, y = (GetScreenHeight() - 420) / 2;
-        Menu.panel(x - 30, y - 22, 700, 530);
-        DrawLine(x, y + 268, x + 620, y + 268, Menu.GOLD);
-        Menu.text("THE LAST EMBER", x, y, 18, Menu.TEAL);
-        Menu.text("OUTPOST", x, y + 42, 72, Menu.TEXT);
-        Menu.text(
-                "v" + BuildInfo.VERSION + " / RANGED GRIP UPDATE", x + 325, y + 96, 12, Menu.GOLD);
-        Menu.text("Guard the light. Bring back the dawn.", x, y + 132, 24, Menu.GOLD);
-        if (Menu.button("PLAY TOGETHER / TWO-PLAYER CO-OP", x, y + 184, 620, true))
-            coopRequested = true;
-        Menu.text(
-                "Welcome, " + settings.playerName + ". Your next defense awaits.",
-                x,
-                y + 244,
-                16,
-                Menu.TEXT);
-        if (Menu.primaryButton("NEW GAME", x, y + 285, 300)) requestNewGame();
-        if (Menu.button("LOAD GAME", x + 320, y + 285, 300, Files.exists(savePath))) loadCurrent();
-        if (Menu.button("QUIT", x + 320, y + 402, 300, true)) quitRequested = true;
-        if (Menu.button("SETTINGS", x + 320, y + 344, 300, true)) openSettings();
-        if (Menu.button("CHRONICLE", x, y + 402, 300, true)) {
-            journalReturn = state;
-            state = GameState.JOURNAL;
-        }
-        if (Menu.button("PLAYERS & SAVES", x, y + 344, 300, true)) {
-            try {
-                if (Files.exists(savePath))
-                    try {
-                        playerSaves.save(SaveGame.read(savePath), checkpointPath);
-                    } catch (IOException damaged) {
-                        menuMessage = "Current save could not be imported.";
-                    }
-                playerHistory = playerSaves.entries();
-                historyPage = 0;
-                pendingDelete = null;
-                historyMessage = "";
-                state = GameState.PLAYER_HISTORY;
-            } catch (IOException e) {
-                menuMessage = "Could not open player saves.";
+        switch (mainMenuScreen.draw(settings.playerName, Files.exists(savePath), menuMessage)) {
+            case PLAY_TOGETHER -> coopRequested = true;
+            case NEW_GAME -> requestNewGame();
+            case LOAD_GAME -> loadCurrent();
+            case QUIT -> quitRequested = true;
+            case SETTINGS -> openSettings();
+            case CHRONICLE -> {
+                journalReturn = state;
+                state = GameState.JOURNAL;
             }
+            case PLAYER_HISTORY -> openPlayerHistory();
+            case NONE -> {}
         }
-        Menu.text(
-                menuMessage.isEmpty() ? "Hold right mouse to orbit. ESC pauses." : menuMessage,
-                x,
-                y + 462,
-                15,
-                Menu.MUTED);
+    }
+
+    private void openPlayerHistory() {
+        try {
+            if (Files.exists(savePath)) {
+                try {
+                    playerSaves.save(SaveGame.read(savePath), checkpointPath);
+                } catch (IOException damaged) {
+                    menuMessage = "Current save could not be imported.";
+                }
+            }
+            playerHistory = playerSaves.entries();
+            historyPage = 0;
+            pendingDelete = null;
+            historyMessage = "";
+            state = GameState.PLAYER_HISTORY;
+        } catch (IOException failure) {
+            menuMessage = "Could not open player saves.";
+        }
     }
 
     private void drawInventory() {
@@ -2706,7 +2701,7 @@ public class Game {
             loadFrom(playtestSavePath, true);
         Menu.text(
                 "Tab changes equipment. Pause > Playtest Tools switches class/chapter or resets the"
-                    + " kit.",
+                        + " kit.",
                 x + 24,
                 y + 556,
                 15,

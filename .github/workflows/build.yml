@@ -28,6 +28,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
+      - name: Check source formatting
+        if: runner.os == 'Linux'
+        run: |
+          python3 tools/format_java.py --check
+          python3 -m pip install -r requirements-dev.txt
+          python3 -m black --check tools
       - name: Build, test, and bundle Java runtime
         shell: bash
         run: bash ./gradlew test packageGame
