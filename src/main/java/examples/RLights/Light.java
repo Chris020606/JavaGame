@@ -1,14 +1,13 @@
 package examples.RLights;
 
+import static com.raylib.Raylib.*;
+
 import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.IntPointer;
 
-import static com.raylib.Raylib.*;
-
 public class Light {
-    public final static int LIGHT_DIRECTIONAL = 0,
-            LIGHT_POINT = 1;
-    public final static int MAX_LIGHTS = 4;
+    public static final int LIGHT_DIRECTIONAL = 0, LIGHT_POINT = 1;
+    public static final int MAX_LIGHTS = 4;
 
     private static int lightsCount = 0;
 
@@ -32,11 +31,7 @@ public class Light {
         else return b;
     }
 
-    public Light(int type,
-                 Vector3 position,
-                 Vector3 target,
-                 Color color,
-                 Shader shader) {
+    public Light(int type, Vector3 position, Vector3 target, Color color, Shader shader) {
 
         this.enabledP = new IntPointer(1);
         setEnabled(true);
@@ -46,11 +41,12 @@ public class Light {
         this.positionP = new FloatPointer(position.x(), position.y(), position.z());
         this.targetP = new FloatPointer(target.x(), target.y(), target.z());
         this.color = color;
-        this.colorP = new FloatPointer(
-                ((float) unsignedByteToInt(color.r())) / 255f,
-                ((float) unsignedByteToInt(color.g())) / 255f,
-                ((float) unsignedByteToInt(color.b())) / 255f,
-                ((float) unsignedByteToInt(color.a())) / 255f);
+        this.colorP =
+                new FloatPointer(
+                        ((float) unsignedByteToInt(color.r())) / 255f,
+                        ((float) unsignedByteToInt(color.g())) / 255f,
+                        ((float) unsignedByteToInt(color.b())) / 255f,
+                        ((float) unsignedByteToInt(color.a())) / 255f);
         this.enabledLoc = GetShaderLocation(shader, "lights[" + lightsCount + "].enabled");
         this.typeLoc = GetShaderLocation(shader, "lights[" + lightsCount + "].type");
         this.positionLoc = GetShaderLocation(shader, "lights[" + lightsCount + "].position");
@@ -70,7 +66,6 @@ public class Light {
         return this.enabledP.get() == 1;
     }
 
-
     public void UpdateLightValues(Shader shader) {
         // Send to shader light enabled state and type
         SetShaderValue(shader, enabledLoc, enabledP, SHADER_UNIFORM_INT);
@@ -85,7 +80,6 @@ public class Light {
 
         // Send to shader light color values
         SetShaderValue(shader, colorLoc, colorP, SHADER_UNIFORM_VEC4);
-
     }
 
     public Vector3 getPosition() {

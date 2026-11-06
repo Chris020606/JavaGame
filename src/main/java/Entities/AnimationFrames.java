@@ -2,18 +2,21 @@ package Entities;
 
 /** Frame indices passed to raylib must stay inside the clip's keyframe array. */
 public final class AnimationFrames {
-    private AnimationFrames() { }
-    public static float sample(float progress,int count) {
-        if(count<=0)throw new IllegalArgumentException("Animation has no keyframes");
+    private AnimationFrames() {}
+
+    public static float sample(float progress, int count) {
+        if (count <= 0) throw new IllegalArgumentException("Animation has no keyframes");
         // The bundled GLTF importer adds a terminal sample that wraps to the rest pose.
         // Hold the last real pose instead, especially for deaths and fully drawn bows.
-        return Math.max(0,Math.min(1,Float.isNaN(progress)?0:progress))*Math.max(0,count-2);
+        return Math.max(0, Math.min(1, Float.isNaN(progress) ? 0 : progress))
+                * Math.max(0, count - 2);
     }
-    public static float looping(float frames,int count) {
-        if(count<=0)throw new IllegalArgumentException("Animation has no keyframes");
-        if(!Float.isFinite(frames))return 0;
-        int period=Math.max(1,count-1);
-        return Math.min(Math.max(0,count-2),(frames%period+period)%period);
+
+    public static float looping(float frames, int count) {
+        if (count <= 0) throw new IllegalArgumentException("Animation has no keyframes");
+        if (!Float.isFinite(frames)) return 0;
+        int period = Math.max(1, count - 1);
+        return Math.min(Math.max(0, count - 2), (frames % period + period) % period);
     }
 
     public static int clamp(int frame, int count) {
@@ -23,12 +26,12 @@ public final class AnimationFrames {
 
     public static int progress(float progress, int count) {
         float safe = Float.isNaN(progress) ? 0 : Math.max(0, Math.min(1, progress));
-        return clamp((int)(safe * count), count);
+        return clamp((int) (safe * count), count);
     }
 
     public static int loop(float frames, int count) {
         if (count <= 0) throw new IllegalArgumentException("Animation has no keyframes");
         if (!Float.isFinite(frames)) return 0;
-        return Math.floorMod((long)Math.floor(frames), count);
+        return Math.floorMod((long) Math.floor(frames), count);
     }
 }

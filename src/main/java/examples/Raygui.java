@@ -1,8 +1,6 @@
 package examples;
 
-
 import static com.raylib.Colors.RAYWHITE;
-import static com.raylib.Helpers.newRectangle;
 import static com.raylib.Raylib.*;
 
 public class Raygui {

@@ -1,13 +1,12 @@
 package Scene;
 
-import Entities.Entity;
-
-import java.util.ArrayList;
-
 import static com.raylib.Colors.BLACK;
 import static com.raylib.Colors.WHITE;
 import static com.raylib.Raylib.*;
 
+import Entities.Entity;
+
+import java.util.ArrayList;
 
 public class Scene {
 
@@ -69,21 +68,14 @@ public class Scene {
         }
 
         BeginMode3D(cameraController.getCamera());
-        for (Entity entity : entities ) {
-            DrawModelEx(entity.getModel(),
-                entity.getPosition(),
-                new Vector3()
-                    .x(0)
-                    .y(1)
-                    .z(0)
-                ,entity.getRotation().y(),
-                new Vector3()
-                    .x(entity.getScale())
-                    .y(entity.getScale())
-                    .z(entity.getScale()),
-                WHITE);
-
-
+        for (Entity entity : entities) {
+            DrawModelEx(
+                    entity.getModel(),
+                    entity.getPosition(),
+                    new Vector3().x(0).y(1).z(0),
+                    entity.getRotation().y(),
+                    new Vector3().x(entity.getScale()).y(entity.getScale()).z(entity.getScale()),
+                    WHITE);
         }
 
         DrawGrid(50, 1.0f);
@@ -94,7 +86,7 @@ public class Scene {
 
     public void updatesEntities(float dt) {
 
-        for (Entity entity : entities ) {
+        for (Entity entity : entities) {
             entity.update(dt);
         }
         if (cameraController != null) {

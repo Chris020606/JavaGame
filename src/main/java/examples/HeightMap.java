@@ -1,20 +1,19 @@
 package examples;
 
-
-
 import static com.raylib.Colors.*;
 import static com.raylib.Raylib.*;
-
 
 public class HeightMap {
     public static void main(String args[]) {
         InitWindow(800, 450, "Raylib static texture test");
         SetTargetFPS(60);
-        Camera3D camera = new Camera3D()
-                ._position(new Vector3().x(18).y(16).z(18))
-                .target(new Vector3())
-                .up(new Vector3().x(0).y(1).z(0))
-                .fovy(45).projection(CAMERA_PERSPECTIVE);
+        Camera3D camera =
+                new Camera3D()
+                        ._position(new Vector3().x(18).y(16).z(18))
+                        .target(new Vector3())
+                        .up(new Vector3().x(0).y(1).z(0))
+                        .fovy(45)
+                        .projection(CAMERA_PERSPECTIVE);
 
         String appHomeDir = System.getenv("APP_HOME");
         System.out.println(appHomeDir);
@@ -24,10 +23,9 @@ public class HeightMap {
         Model model = LoadModelFromMesh(mesh);
         model.materials().maps().position(0).texture(texture);
 
-
         UnloadImage(image);
 
-        while(!WindowShouldClose()){
+        while (!WindowShouldClose()) {
             UpdateCamera(camera, CAMERA_ORBITAL);
             BeginDrawing();
             ClearBackground(RAYWHITE);
