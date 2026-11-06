@@ -26,10 +26,10 @@ class BossEquipmentTest {
     }
     @Test void bossIsMeleeAndCannotBeStunLockedDuringItsLongTelegraph() {
         Enemy boss=new Enemy(0,2,5,5,.5f),raider=new Enemy(0,2,5);
-        assertTrue(boss.boss());assertFalse(boss.ranged());assertEquals(450,boss.maxHealth);
+        assertTrue(boss.boss());assertFalse(boss.ranged());assertEquals(517.5f,boss.maxHealth);
         assertTrue(boss.speed<raider.speed);assertTrue(boss.meleeDamage(5)>raider.meleeDamage(5));
         boss.beginAttack(0,0,true);boss.hit(25,0,0,1);
-        assertEquals(425,boss.health);assertTrue(boss.impactPending);assertEquals(1.2f,boss.attackTime);
+        assertEquals(boss.maxHealth-25,boss.health);assertTrue(boss.impactPending);assertEquals(1.2f,boss.attackTime);
         assertEquals(0,boss.stun);assertEquals(2.15f,boss.z,.001f);
         boss.approach(8,8,.2f);assertEquals(0,boss.x);assertEquals(180,boss.facing);assertEquals(1,boss.attackTime,.001f);
     }
@@ -37,10 +37,10 @@ class BossEquipmentTest {
         Progression p=new Progression(HeroClass.ARCHER);
         assertFalse(p.equipWeapon(1));assertFalse(p.equipWeapon(-1));
         p.rewardEnemy(true);assertEquals(120,p.crystals());assertEquals(1,p.kills());assertEquals(1,p.weaponUnlocked());assertEquals(25,p.damage());
-        assertTrue(p.equipWeapon(1));assertEquals(33,p.damage());assertEquals("Forged Bow",p.weaponName(1));
+        assertTrue(p.equipWeapon(1));assertEquals(25+p.weaponBonus(1),p.damage());assertEquals("Forged Bow",p.weaponName(1));
         for(int i=0;i<5;i++)p.rewardEnemy(true);
-        assertEquals(3,p.weaponUnlocked());assertTrue(p.equipWeapon(3));assertEquals(49,p.damage());
-        assertTrue(p.purchase(Progression.Upgrade.CHARACTER));assertEquals(59,p.damage());
+        assertEquals(3,p.weaponUnlocked());assertTrue(p.equipWeapon(3));assertEquals(25+p.weaponBonus(3),p.damage());
+        assertTrue(p.purchase(Progression.Upgrade.CHARACTER));assertEquals(35+p.weaponBonus(3),p.damage());
         assertTrue(p.equipWeapon(0));assertEquals(35,p.damage());assertFalse(p.equipWeapon(4));
     }
     @Test void bossAndEquipmentRoundTripAndVersionOneMigrates() throws Exception {
@@ -50,7 +50,7 @@ class BossEquipmentTest {
         SaveGame.write(file,new SaveGame.Snapshot("Mage",0,8,0,p,new WaveDirector.State(5,0,1,8,0,21,0),List.of(boss)));
         SaveGame.Snapshot loaded=SaveGame.read(file);
         assertTrue(loaded.enemies().get(0).boss());assertEquals(320,loaded.enemies().get(0).health);
-        assertEquals(1,loaded.progression().weaponTier());assertEquals(33,loaded.progression().damage());
+        assertEquals(1,loaded.progression().weaponTier());assertEquals(p.damage(),loaded.progression().damage());
         Properties props=AppData.read(file);props.setProperty("weaponTier","2");AppData.write(file,props);
         assertThrows(java.io.IOException.class,()->SaveGame.read(file));
         props.setProperty("version","1");props.remove("weaponTier");props.remove("weaponUnlocked");props.setProperty("enemy.0.variant","0");props.setProperty("enemy.0.health","50");AppData.write(file,props);

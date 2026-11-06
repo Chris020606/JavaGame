@@ -22,7 +22,9 @@ public final class HeroShot {
     public void update(float dt) {
         float step=Math.min(dt,Math.max(0,remaining));age+=step;previousX=x;previousZ=z;x+=vx*step;z+=vz*step;remaining-=dt;
     }
+    public boolean continues() { return magic || heavy && struck.size()<3; }
     public boolean hit(Enemy enemy) {
+        if(!magic && struck.size()>=(heavy?3:1))return false;
         if (enemy.health<=0 || struck.contains(enemy)) return false;
         float dx=x-previousX,dz=z-previousZ,length=dx*dx+dz*dz;
         float t=length==0?0:Math.max(0,Math.min(1,((enemy.x-previousX)*dx+(enemy.z-previousZ)*dz)/length));

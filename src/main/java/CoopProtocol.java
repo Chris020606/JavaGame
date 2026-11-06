@@ -40,7 +40,7 @@ public final class CoopProtocol {
         for(int i=0;i<n;i++) { int slot=ordinal(d,2);String name=d.readUTF();if(name.length()>24)throw new IOException("Invalid hero name");int hero=ordinal(d,3);boolean online=d.readBoolean(),ready=d.readBoolean(),pause=d.readBoolean();
             heroes.add(new CoopState.Hero(slot,name,hero,online,ready,pause,f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),d.readBoolean(),d.readInt(),f(d),f(d),f(d),f(d),f(d),f(d),d.readInt(),d.readInt(),d.readInt(),d.readInt(),d.readInt()));
         }
-        List<CoopState.Mob> enemies=new ArrayList<>();n=count(d,128);for(int i=0;i<n;i++)enemies.add(new CoopState.Mob(d.readInt(),d.readInt(),ordinal(d,6),f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),ordinal(d,4),f(d),f(d),f(d),f(d)));
+        List<CoopState.Mob> enemies=new ArrayList<>();n=count(d,128);for(int i=0;i<n;i++)enemies.add(new CoopState.Mob(d.readInt(),d.readInt(),ordinal(d,7),f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),f(d),ordinal(d,4),f(d),f(d),f(d),f(d)));
         List<CoopState.Bolt> bolts=new ArrayList<>();n=count(d,256);for(int i=0;i<n;i++)bolts.add(new CoopState.Bolt(d.readInt(),f(d),f(d),f(d),f(d),d.readBoolean(),d.readBoolean()));
         List<CoopState.Danger> dangers=new ArrayList<>();n=count(d,64);for(int i=0;i<n;i++)dangers.add(new CoopState.Danger(d.readInt(),ordinal(d,2),f(d),f(d),f(d),f(d),f(d)));
         if(d.available()!=0)throw new IOException("Extra snapshot data");return new CoopState(tick,phase,chapter,wave,queued,rest,hp,max,kills,difficulty,paused,List.copyOf(heroes),List.copyOf(enemies),List.copyOf(bolts),List.copyOf(dangers));

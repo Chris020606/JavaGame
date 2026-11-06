@@ -104,7 +104,7 @@ public final class CoopGame implements AutoCloseable {
             if(avatars[client.slot()]!=null && cameraControl.getTarget()!=avatars[client.slot()]) { cameraControl=new CameraController(avatars[client.slot()]);cameraControl.setSensitivity(settings.sensitivity); }
             cameraControl.update(dt);observe();
             HashSet<Integer> ids=new HashSet<>();for(var m:state.enemies()) {
-                ids.add(m.id());Enemy e=enemyViews.computeIfAbsent(m.id(),id->new Enemy(m.x(),m.z(),m.wave(),m.variant(),m.personality(),Difficulty.values()[state.difficulty()],CoopBalance.healthScale(m.variant()==5)));
+                ids.add(m.id());Enemy e=enemyViews.computeIfAbsent(m.id(),id->new Enemy(m.x(),m.z(),m.wave(),m.variant(),m.personality(),Difficulty.values()[state.difficulty()],CoopBalance.healthScale(m.variant()>=5)));
                 float blend=Math.min(1,dt*20);e.x+=(m.x()-e.x)*blend;e.z+=(m.z()-e.z)*blend;e.facing=m.facing();e.health=m.health();e.attackTime=m.attack();e.presentationDuration(m.duration());e.attackX=m.attackX();e.attackZ=m.attackZ();e.bossMove=BossMove.values()[m.move()];e.chargeTime=m.charge();e.stun=m.stun();e.animationTime=m.clock();e.deathTime=m.death();
             }enemyViews.keySet().removeIf(id->!ids.contains(id));
         } else { ensureAvatar(0,selected,0);avatars[0].getPosition().z(4);if(cameraControl.getTarget()!=avatars[0]) { cameraControl=new CameraController(avatars[0]);cameraControl.setSensitivity(settings.sensitivity); }avatars[0].updateAnimation(dt);cameraControl.update(dt); }
@@ -149,7 +149,7 @@ public final class CoopGame implements AutoCloseable {
             }
             for(var m:state.enemies()) {
                 var old=previous.enemies().stream().filter(e->e.id()==m.id()).findFirst().orElse(null);if(old==null)continue;
-                if(m.health()<old.health()) { effects.impact(m.x(),m.z(),Menu.GOLD,m.health()<=0);audio.play(m.health()<=0?(m.variant()==5?"boss-fall":"kill"):"hit"); }
+                if(m.health()<old.health()) { effects.impact(m.x(),m.z(),Menu.GOLD,m.health()<=0);audio.play(m.health()<=0?(m.variant()>=5?"boss-fall":"kill"):"hit"); }
             }
         }
         previous=state;
@@ -171,7 +171,7 @@ public final class CoopGame implements AutoCloseable {
         assets.litPass(renderer,camera,time,boss,light);assets.drawEnvironment(chapter,time);actors();
         if(state!=null) {
             for(var h:state.heroes())if(h.health()<=0)DrawCylinderWires(v(h.x(),.1f,h.z()),2.8f,2.8f,.05f,32,Menu.TEAL);
-            for(var m:state.enemies())if(m.health()>0 && m.attack()>0 && m.variant()==5) {
+            for(var m:state.enemies())if(m.health()>0 && m.attack()>0 && m.variant()>=5) {
                 Color warning=BossMove.values()[m.move()].parryable?Menu.GOLD:Menu.RED;
                 if(m.move()==BossMove.SLAM.ordinal())DrawCylinderWires(v(m.attackX(),.08f,m.attackZ()),3.5f,3.5f,.08f,40,warning);
                 else if(m.move()==BossMove.CHARGE.ordinal())DrawLine3D(v(m.x(),.1f,m.z()),v(m.attackX(),.1f,m.attackZ()),warning);
@@ -274,9 +274,9 @@ public final class CoopGame implements AutoCloseable {
             }
         }
         for(var e:state.enemies())if(e.health()>0) {
-            Vector2 s=GetWorldToScreen(v(e.x(),e.variant()==5?6:2.3f,e.z()),camera);int ex=(int)s.x(),ey=(int)s.y();
-            Menu.bar(ex-26,ey,52,e.health(),e.maxHealth(),e.variant()==5?Menu.GOLD:Menu.RED);
-            if(e.attack()>0) { String label=e.variant()==5?BossMove.values()[e.move()].name():"ATTACK";DrawRectangle(ex-44,ey-19,88,17,Menu.INK);Menu.center(label,ex,ey-17,10,e.variant()==5 && !BossMove.values()[e.move()].parryable?Menu.RED:Menu.GOLD); }
+            Vector2 s=GetWorldToScreen(v(e.x(),e.variant()>=5?6:2.3f,e.z()),camera);int ex=(int)s.x(),ey=(int)s.y();
+            Menu.bar(ex-26,ey,52,e.health(),e.maxHealth(),e.variant()>=5?Menu.GOLD:Menu.RED);
+            if(e.attack()>0) { String label=e.variant()>=5?BossMove.values()[e.move()].name():"ATTACK";DrawRectangle(ex-44,ey-19,88,17,Menu.INK);Menu.center(label,ex,ey-17,10,e.variant()>=5 && !BossMove.values()[e.move()].parryable?Menu.RED:Menu.GOLD); }
         }
         if(me.health()<=0) { Menu.panel(center-230,h/2-40,460,80);Menu.center("DOWNED / YOUR PARTNER CAN REVIVE YOU",center,h/2-23,18,Menu.RED);Menu.center("They must hold G nearby for 3 seconds without taking damage.",center,h/2+7,13,Menu.TEXT); }
         if(server!=null && !server.warning().isEmpty())Menu.center(server.warning(),center,138,13,Menu.RED);

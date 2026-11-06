@@ -8,7 +8,7 @@ public final class EnvironmentLayout {
     private static final List<List<Point>> PATHS=List.of(
         List.of(new Point(-5,-32),new Point(-4,-23),new Point(-2,-13),new Point(0,0),new Point(2,10),new Point(7,20),new Point(10,32)),
         List.of(new Point(2,-30),new Point(2,-21),new Point(0,-10),new Point(0,0),new Point(3,12),new Point(4,23),new Point(4,31)),
-        List.of(new Point(-5,-32),new Point(-3,-22),new Point(0,-12),new Point(0,0),new Point(3,12),new Point(5,23),new Point(6,32)),
+        List.of(new Point(-16,-32),new Point(-14,-22),new Point(-7,-13),new Point(0,0),new Point(9,10),new Point(13,21),new Point(16,32)),
         List.of(new Point(0,-32),new Point(0,-23),new Point(-2,-12),new Point(0,0),new Point(4,13),new Point(4,24),new Point(4,32)));
     static { for(int chapter=0;chapter<4;chapter++) CHAPTERS.add(build(chapter)); }
     private static void n(List<Prop> p,String name,float x,float z,float yaw,float scale) { p.add(new Prop(false,name,x,0,z,yaw,scale)); }
@@ -73,6 +73,9 @@ public final class EnvironmentLayout {
                 n(p,"cliff_half_stone",x,z,side*90+random.nextFloat()*32-16,5+random.nextFloat()*4);
                 n(p,"stone_tallB",x-side*4,z+2,random.nextFloat()*360,2.8f+random.nextFloat()*2);
             }
+            // Rock shoulders define distinct east/west bends while leaving the sanctuary open.
+            n(p,"stone_tallB",-11,-8,18,4);n(p,"stone_largeA",-14,-6,70,3.8f);
+            n(p,"stone_tallB",11,5,210,4.4f);n(p,"stone_largeA",14,8,35,3.5f);
             cluster(p,random,-16,-14,6);cluster(p,random,17,13,6);
             n(p,"tent_detailedOpen",-12,6,85,3.2f);n(p,"log_stack",-15,9,112,2.3f);
             n(p,"campfire_stones",-9,8,0,2);n(p,"bridge_stone",0,-12,0,3.5f);

@@ -111,6 +111,7 @@ public final class EquipmentScreen implements AutoCloseable {
         int delta=selected<4?p.weaponBonus(selected)-p.weaponBonus(p.weaponTier()):selected<16?p.armorBonus(slot(selected),tier(selected))-p.armorBonus(slot(selected),p.armorTier(slot(selected))):0;
         String compare=selected<4?"DAMAGE  "+p.damage()+"  >  "+(p.damage()+delta):selected<16?"DEFENSE  "+p.defense()+"  >  "+(p.defense()+delta):"Restores up to 60 HP / "+p.potions()+" stored";
         Menu.text(compare+(selected<16?String.format("  (%+d)",delta):""),x+416,y+377,17,delta<0?Menu.RED:delta>0?Menu.TEAL:Menu.TEXT);
+        if(selected<4)Menu.text(p.weaponEnchantment(selected),x+416,y+397,10,Menu.GOLD);
         boolean wearing=equipped(p,selected);String action=!owned(p,selected)?"LOCKED / VISIT FORGE":selected==16?(p.health()<p.maxHealth()?"USE POTION":"HEALTH FULL"):wearing&&selected==0?"STARTER EQUIPPED":wearing?"UNEQUIP":"EQUIP [ENTER]";
         if(Menu.button(action,x+416,y+408,245,owned(p,selected) && !(wearing && selected==0) && (selected!=16 || p.health()<p.maxHealth()))) { if(wearing)remove(p,selected);else equip(p,selected); }
         Menu.text(wearing?"EQUIPPED":owned(p,selected)?"OWNED":"NOT OWNED",x+708,y+421,15,wearing?Menu.TEAL:Menu.MUTED);

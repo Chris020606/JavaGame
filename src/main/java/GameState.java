@@ -1,4 +1,5 @@
 public enum GameState {
+    CHAPTER_SELECT,
     LOGIN,
     PLAYER_HISTORY,
     PLAYTEST_SETUP,

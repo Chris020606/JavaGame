@@ -94,11 +94,11 @@ public final class CoopWorld {
         for(Hero p:heroes) { p.hp=p.maxHealth();p.stamina=p.maxStamina();p.x=p.slot==0?-2:2;p.z=4;p.ready=p.paused=false;p.potions=3;p.attack=p.dodge=p.charge=p.revive=0;p.pending=false;p.input=CoopInput.NONE;p.previousButtons=0; }
         phase=CoopState.Phase.PLAYING;startWave(Campaign.CHAPTERS[chapter].first());spawnClock=3;
     }
-    private void startWave(int next) { wave=next;total=queued=CoopBalance.count(wave,difficulty);rest=8;spawnClock=1.5f; }
+    private void startWave(int next) { if(next>Campaign.CHAPTERS[chapter].first())for(Hero p:heroes)p.potions=Math.min(5,p.potions+1);wave=next;total=queued=CoopBalance.count(wave,difficulty);rest=8;spawnClock=1.5f; }
     private void spawn() {
         int gate=chapter==2?(random.nextBoolean()?0:2):random.nextInt(4);double a=gate*Math.PI/2+(random.nextFloat()-.5f)*.5;
         int variant=Campaign.CHAPTERS[chapter].bossOnly()?5:WaveFormation.variant(wave,total-queued);
-        Enemy e=new Enemy((float)Math.sin(a)*21,(float)Math.cos(a)*21,wave,variant,random.nextFloat(),difficulty,CoopBalance.healthScale(variant==5));
+        Enemy e=new Enemy(chapter==2?(gate==0?13:-14):(float)Math.sin(a)*21,(float)Math.cos(a)*21,wave,variant,random.nextFloat(),difficulty,CoopBalance.healthScale(variant>=5));
         enemies.add(new Mob(nextId++,wave,e));
     }
     private void updateHero(Hero p,int pressed,float dt) {
@@ -140,7 +140,7 @@ public final class CoopWorld {
         float cost=heavy?32:14;if(p.stamina<cost || p.attack>0 || p.dodge>0 || p.recovery>0)return;spend(p,cost);p.heavy=heavy;p.perfect=heavy && p.charge>=.75f && p.charge<=1.05f;p.combo=p.combo%3+1;
         Combat.Attack a=p.type.attack(p.combo,heavy);p.duration=a.duration();p.impact=a.impact();p.attack=p.duration;p.pending=true;
     }
-    private int damage(Hero p) { return Math.round((p.type==HeroClass.ARCHER?23:25)*(1+.15f*p.power)*(1+chapter*.2f)); }
+    private int damage(Hero p) { return Math.round(25*(1+.15f*p.power)*(1+chapter*.2f)); }
     private void impact(Hero p) {
         Combat.Attack a=p.type.attack(p.combo,p.heavy);
         if(p.perfect)a=Combat.scale(a,1.35f,a.label());
@@ -179,7 +179,7 @@ public final class CoopWorld {
         List<Enemy> squad=enemies.stream().map(m->m.e).toList();
         for(Iterator<Mob> it=enemies.iterator();it.hasNext();) {
             Mob m=it.next();Enemy e=m.e;
-            if(e.health<=0) { if(e.deathTime==0) { e.attackTime=e.chargeTime=0;e.impactPending=false;kills++;for(Hero p:heroes)if(p.hp>0)p.stamina=Math.min(p.maxStamina(),p.stamina+5); }e.deathTime+=dt;if(e.deathTime>4)it.remove();continue; }
+            if(e.health<=0) { if(e.deathTime==0) { e.attackTime=e.chargeTime=0;e.impactPending=false;kills++;if(e.variant==6)for(Hero p:heroes) { if(p.hp>0)p.hp=Math.min(p.maxHealth(),p.hp+25);p.potions=Math.min(5,p.potions+1); }for(Hero p:heroes)if(p.hp>0)p.stamina=Math.min(p.maxStamina(),p.stamina+5); }e.deathTime+=dt;if(e.deathTime>4)it.remove();continue; }
             Hero target=null;for(Hero p:heroes)if(p.hp>0 && (target==null || e.distance(p.x,p.z)<e.distance(target.x,target.z)))target=p;
             boolean player=target!=null && (e.boss() || e.chooseHero(target.x,target.z,dt));
             float tx=player?target.x:0,tz=player?target.z:0;
@@ -222,7 +222,7 @@ public final class CoopWorld {
             if(s.restorative && partner.hp>0 && partner.hp<partner.maxHealth() && s.intersects(partner.x,partner.z,.9f)) { partner.hp=Math.min(partner.maxHealth(),partner.hp+18);stop=true; }
             else if(s.restorative && baseHealth<CoopBalance.BASE_HEALTH && s.intersects(0,0,2)) { baseHealth=Math.min(CoopBalance.BASE_HEALTH,baseHealth+12);stop=true; }
             var sorted=enemies.stream().filter(m->m.e.health>0).sorted(Comparator.comparingDouble(m->m.e.distance(s.previousX,s.previousZ))).toList();
-            for(Mob m:sorted)if(!stop && s.hit(m.e)) { m.e.hit(Math.min(m.e.health,s.damage),s.previousX,s.previousZ,.25f);if(!s.magic) { stop=true;break; } }
+            for(Mob m:sorted)if(!stop && s.hit(m.e)) { m.e.hit(Math.min(m.e.health,s.damage),s.previousX,s.previousZ,.25f);if(!s.continues()) { stop=true;break; } }
             if(stop || f<1 || s.remaining<=0)it.remove();
         }
         for(Iterator<Hostile> it=hostile.iterator();it.hasNext();) {

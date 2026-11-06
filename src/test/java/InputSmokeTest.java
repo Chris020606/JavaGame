@@ -461,6 +461,22 @@ public class InputSmokeTest {
                 game.tutorial().hit(true);for(int f=0;f<3;f++)frame(game);capture("onboarding-parry");
                 System.out.println("PASS: central onboarding panel and contextual charge/parry cues render");return;
             }
+            if(java.util.Arrays.asList(args).contains("--roadmap-review")) {
+                Progression kit=Progression.playtest(HeroClass.MAGE,Entities.Difficulty.NORMAL,false);kit.unlockChapter(3);kit.rewardEnemy(true);
+                SaveGame.write(profile.resolve("save.properties"),new SaveGame.Snapshot("Runekeeper",0,8,180,kit,new WaveDirector.State(5,0,0,5,0,21,0),java.util.List.of(),Arena.HIGHLANDS));
+                check(game.loadCurrent(),"Roadmap profile failed");game.setState(GameState.CHAPTER_SELECT);for(int f=0;f<3;f++)frame(game);capture("roadmap-chapter-select");
+                int x=(GetScreenWidth()-740)/2,y=(GetScreenHeight()-570)/2;click(game,x+620,y+130+2*86+18);
+                check(game.getState()==GameState.PLAYING && game.chapterIndex()==2,"Travel did not select highland");
+                for(int f=0;f<4;f++)frame(game);capture("roadmap-highland");
+                key(game,KEY_TAB);for(int f=0;f<3;f++)frame(game);capture("roadmap-enchantment");key(game,KEY_ESCAPE);
+                check(game.saveCurrent() && game.loadCurrent(),"Travel save/load failed");check(game.getProgression().highestChapter()==3,"Travel unlock lost");
+                for(int wave:new int[]{4,9}) {
+                    Entities.Enemy enemy=encounter(game,profile,wave,6,10);enemy.beginAttack(0,4,true);
+                    for(int f=0;f<8;f++)frame(game);capture("roadmap-champion-"+wave);
+                    check(enemy.boss(),"Champion not presented as boss");
+                }
+                System.out.println("PASS: unlocked travel, enchanted pack, highland topology and both champion renders/save-load");return;
+            }
             if(java.util.Arrays.asList(args).contains("--class-review")) {
                 for(HeroClass hero:new HeroClass[]{HeroClass.ARCHER,HeroClass.MAGE}) {
                     Progression kit=Progression.playtest(hero,Entities.Difficulty.NORMAL,false);

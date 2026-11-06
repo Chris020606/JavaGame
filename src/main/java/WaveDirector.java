@@ -40,6 +40,7 @@ public final class WaveDirector {
         double angle=gate*Math.PI/2+(random.nextFloat()-.5)*.55;
         float radius=20+random.nextFloat()*2;
         x=(float)Math.sin(angle)*radius; z=(float)Math.cos(angle)*radius;
+        if(Campaign.index(wave)==2) { boolean north=gate==0;x=north?13:-14;z=north?21:-21; }
         arrival=(.9f+random.nextFloat()*1.4f)*difficulty.cadence;
         if (remaining%3==0) arrival+=1.2f;
     }

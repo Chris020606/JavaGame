@@ -58,7 +58,7 @@ class LivingExpeditionTest {
     @Test void formationsHaveDifferentPrioritiesAndNeverExceedTheEnemyRoster() {
         Set<List<Integer>> compositions=new HashSet<>();
         for(int wave:new int[]{1,2,3,4,6,7,8,9}) {
-            List<Integer> roster=new ArrayList<>();for(int i=0;i<12;i++) { int v=WaveFormation.variant(wave,i);assertTrue(v>=0&&v<5);roster.add(v); }
+            List<Integer> roster=new ArrayList<>();for(int i=0;i<12;i++) { int v=WaveFormation.variant(wave,i);assertTrue(v>=0&&v<=6);roster.add(v); }
             compositions.add(roster);
         }
         assertTrue(compositions.size()>=4);assertEquals(5,WaveFormation.variant(5,0));assertEquals(5,WaveFormation.variant(10,0));

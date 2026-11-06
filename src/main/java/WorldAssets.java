@@ -376,7 +376,12 @@ public final class WorldAssets implements AutoCloseable {
             Model model=prop.graveyard()?graveyard.get(prop.model()):nature.get(prop.model());
             boolean foliage=prop.model().startsWith("tree") || prop.model().startsWith("grass") || prop.model().startsWith("flower");
             float wind=foliage?(float)Math.sin(time*.85f+prop.x()*.19f+prop.z()*.13f)*.8f:0;
-            DrawModelEx(model,transform.position(),transform.axis(),prop.yaw()+wind,transform.scale(),transform.tint());
+            Color tint=transform.tint();
+            if(!shadowPass && prop.model().startsWith("tree_")) {
+                float dx=viewerX-heroX,dz=viewerZ-heroZ,t=((prop.x()-heroX)*dx+(prop.z()-heroZ)*dz)/Math.max(.001f,dx*dx+dz*dz);
+                if(t>0 && t<1 && Combat.segmentDistance(prop.x(),prop.z(),heroX,heroZ,viewerX,viewerZ)<prop.scale()*.65f)tint=Fade(tint,.18f);
+            }
+            DrawModelEx(model,transform.position(),transform.axis(),prop.yaw()+wind,transform.scale(),tint);
         }
         if(shadowPass)return;
         if(chapter==0 || chapter==2) {
@@ -433,7 +438,7 @@ public final class WorldAssets implements AutoCloseable {
         DrawModelEx(model,v(x,y,z),axisUp,angle,v(scale,scale,scale),WHITE);
     }
     private void drawBoss(Enemy enemy) {
-        Model model=enemy.king?bossKing:bossWarrior;
+        Model model=enemy.variant==6?(enemy.undead?skeletonMage:skeletonRogue):enemy.king?bossKing:bossWarrior;
         ModelAnimation animations=enemy.king?kingAnimations:bossAnimations;
         String name=enemy.health<=0?"Death_A":enemy.stun>0?"Hit_A":enemy.chargeTime>0?"Running_A":enemy.attackTime>0?
             switch(enemy.bossMove) { case CLEAVE -> "2H_Melee_Attack_Slice";case SLAM -> "2H_Melee_Attack_Chop";case CHARGE -> "Taunt";case SIGILS -> "Spellcast_Raise"; }:"Walking_D_Skeletons";
@@ -443,8 +448,8 @@ public final class WorldAssets implements AutoCloseable {
         if(enemy.health<=0)poseCorpse(model,animations,clip,frame,bossClips.get("Lie_Pose"),enemy.deathTime,true);
         else UpdateModelAnimation(model,clip,frame);
         lightModel(model);surface(.38f,.25f);
-        float scale=enemy.king?2.45f:2.1f;
-        Color tint=enemy.hitFlash>0?Menu.TEXT:enemy.king?Menu.color(190,190,215):Menu.color(210,184,151);
+        float scale=enemy.variant==6?1.7f:enemy.king?2.45f:2.1f;
+        Color tint=enemy.hitFlash>0?Menu.TEXT:enemy.variant==6?Menu.color(125,194,230):enemy.king?Menu.color(190,190,215):Menu.color(210,184,151);
         float opacity=1;
         if(!shadowPass && enemy.health>0) {
             float dx=viewerX-heroX,dz=viewerZ-heroZ,t=((enemy.x-heroX)*dx+(enemy.z-heroZ)*dz)/Math.max(.001f,dx*dx+dz*dz);
@@ -454,7 +459,7 @@ public final class WorldAssets implements AutoCloseable {
         if(enemy.health<=0)tint=Fade(tint,CorpsePresentation.opacity(enemy.deathTime,true));
         float modelY=enemy.health<=0?corpseSupport(enemy,model,scale):0;
         DrawModelEx(model,v(enemy.x,modelY,enemy.z),axisUp,enemy.facing,v(scale,scale,scale),tint);
-        if(enemy.health>0)drawWeapon(model,v(enemy.x,0,enemy.z),enemy.facing,enemy.king?bossStaff:bossAxe,Fade(WHITE,opacity),scale);
+        if(enemy.health>0)drawWeapon(model,v(enemy.x,0,enemy.z),enemy.facing,enemy.king || enemy.variant==6 && enemy.undead?bossStaff:bossAxe,Fade(WHITE,opacity),scale);
         if(shadowPass || enemy.health<=0) return;
         Color energy=enemy.enraged()?Menu.RED:enemy.king?Menu.color(185,105,255):Menu.GOLD;
         DrawCylinderWires(v(enemy.x,.08f,enemy.z),1.35f,1.35f,.1f,32,energy);

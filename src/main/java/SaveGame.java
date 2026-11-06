@@ -58,12 +58,14 @@ public final class SaveGame {
         Progression progress=Progression.restore(p);
         int wave=integer(p,"wave",0,10000),total=integer(p,"total",0,36),remaining=integer(p,"remaining",0,total);
         int count=integer(p,"enemies",0,36);
+        progress.unlockChapter(Campaign.index(total==0?wave+1:wave));
+        if(count==0 && remaining==0 && total>0 && Campaign.boundary(wave))progress.unlockChapter(Campaign.index(wave)+1);
         if (count+remaining>total || wave==0&&(count>0||total>0)) throw new IllegalArgumentException("Inconsistent wave");
         WaveDirector.State director=new WaveDirector.State(wave,remaining,total,number(p,"rest",0,8),number(p,"arrival",-.1f,4),number(p,"spawn.x",-23,23),number(p,"spawn.z",-23,23));
         List<Enemy> enemies=new ArrayList<>();
         for (int i=0;i<count;i++) {
             String k="enemy."+i+".";
-            Enemy e=new Enemy(number(p,k+"x",-30,30),number(p,k+"z",-30,30),wave,integer(p,k+"variant",0,legacy?4:5),number(p,k+"personality",0,1),progress.difficulty());
+            Enemy e=new Enemy(number(p,k+"x",-30,30),number(p,k+"z",-30,30),wave,integer(p,k+"variant",0,legacy?4:6),number(p,k+"personality",0,1),progress.difficulty());
             e.health=number(p,k+"health",.001f,e.maxHealth); e.facing=number(p,k+"facing",-360,360);
             // Resume with a short grace period; interrupted windups/projectiles are cancelled.
             e.cooldown=Math.max(.6f,number(p,k+"cooldown",0,5)); enemies.add(e);

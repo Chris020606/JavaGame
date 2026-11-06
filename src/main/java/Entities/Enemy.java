@@ -49,10 +49,10 @@ public class Enemy {
     }
     public Enemy(float x,float z,int wave,int variant,float personality,Difficulty difficulty,float partyHealthScale) {
         this.x=x; this.z=z; king=wave>=10;undead=wave>=5;this.difficulty=difficulty; this.variant=variant; this.personality=personality;
-        elite=variant!=5 && wave>=3 && personality>=.88f;
-        maxHealth=partyHealthScale*(elite?1.5f:1)*(40+wave*10)*(variant==5?5:variant==2?1.4f:variant==1||variant==3?.8f:variant==4?1.1f:1)*difficulty.health;
+        elite=variant<5 && wave>=3 && personality>=.88f;
+        maxHealth=partyHealthScale*(elite?1.5f:1)*(40+wave*10)*(variant==6?2.0f:variant==5?5.75f:variant==2?1.4f:variant==1||variant==3?.8f:variant==4?1.1f:1)*difficulty.health;
         health=maxHealth;
-        speed=Math.min(3.5f,1.4f+wave*.12f)*(variant==5?.7f:variant==1?1.35f:variant==2?.8f:1)*(.9f+personality*.2f)*difficulty.speed;
+        speed=Math.min(3.5f,1.4f+wave*.12f)*(variant>=5?.7f:variant==1?1.35f:variant==2?.8f:1)*(.9f+personality*.2f)*difficulty.speed;
         healCooldown=3+personality*3;cooldown=personality*.6f; animationTime=personality*3;
     }
     public float distance(float px,float pz) { return (float)Math.hypot(x-px,z-pz); }
@@ -106,7 +106,7 @@ public class Enemy {
     public void beginAttack(float px,float pz,boolean player) {
         attackX=px; attackZ=pz; targetsPlayer=player;
         if(boss()) {
-            bossMove=BossMove.choose(attackCycle++,distance(px,pz),king);
+            bossMove=variant==6?(attackCycle++%2==0?(undead?BossMove.SIGILS:BossMove.CHARGE):(undead?BossMove.SLAM:BossMove.CLEAVE)):BossMove.choose(attackCycle++,distance(px,pz),king);
             float dx=px-x,dz=pz-z,d=(float)Math.hypot(dx,dz),length=Math.min(12,d+1.5f);
             chargeEndX=Math.max(-22,Math.min(22,x+(d>.01f?dx/d*length:0)));
             chargeEndZ=Math.max(-22,Math.min(22,z+(d>.01f?dz/d*length:0)));
@@ -114,7 +114,7 @@ public class Enemy {
         facing=(float)Math.toDegrees(Math.atan2(px-x,pz-z));
         // Enrage speeds up the next attack, never the animation already in flight.
         startedAttackDuration=nextAttackDuration();
-        attackTime=startedAttackDuration; cooldown=(boss()?startedAttackDuration+(enraged()?.65f:1.1f):variant==2?1.5f:1.3f)*difficulty.cadence+personality*.35f; impactPending=true;
+        attackTime=startedAttackDuration; cooldown=(variant==6?startedAttackDuration+1.7f:boss()?startedAttackDuration+(enraged()?.65f:1.1f):variant==2?1.5f:1.3f)*difficulty.cadence+personality*.35f; impactPending=true;
     }
     public void hit(float damage,float px,float pz,float push) {
         health=Math.max(0,health-damage); hitFlash=.16f;
@@ -127,17 +127,17 @@ public class Enemy {
         if(!king) return bossMove==BossMove.SIGILS?"EMBER SIGILS":bossMove.label;
         return switch(bossMove) { case CLEAVE -> "ROYAL REAP";case SLAM -> "GRAVE FAULT";case CHARGE -> "PHANTOM RUSH";case SIGILS -> "SOUL SIGILS"; };
     }
-    public boolean boss() { return variant==5; }
+    public boolean boss() { return variant>=5; }
     /** Snapshot replicas retain the host's windup when a boss crosses the enrage threshold. */
     public void presentationDuration(float duration) { startedAttackDuration=duration; }
     public float attackDuration() { return attackTime>0 && startedAttackDuration>0?startedAttackDuration:nextAttackDuration(); }
     private float nextAttackDuration() { return Math.max(.42f,(boss()?bossMove.duration*(enraged()?.82f:1):variant==2?1.05f:variant==1?.6f:.7f)*difficulty.cadence); }
     public float meleeRange() { return boss()?3.8f:2.2f; }
-    public float meleeDamage(int wave) { return (boss()?22+wave*3:8+wave*2+(variant==2?5:0))*difficulty.damage; }
+    public float meleeDamage(int wave) { return (variant==6?16+wave*2:boss()?25+wave*3:8+wave*2+(variant==2?5:0))*difficulty.damage; }
     public float siegeDamage(int wave) { return (boss()?30+wave*3:10+wave*2)*difficulty.damage; }
     public int reward() { return boss()?120:elite?40:15; }
     public boolean ranged() { return variant==3 || variant==4; }
     public float attackRange() { return ranged()?8:boss()?12:1.9f; }
-    public String label() { return (elite?"ELITE ":"")+baseLabel(); }
+    public String label() { if(variant==6)return undead?"FROST HERALD":"EMBER CHAMPION";return (elite?"ELITE ":"")+baseLabel(); }
     private String baseLabel() { if(undead && !boss()) return switch(variant) { case 1 -> "RATTLESCOUT";case 2 -> "FROST REAVER";case 3 -> "BONE ARCHER";case 4 -> "FROST HEXER";default -> "BONEGUARD"; };return switch(variant) { case 1 -> "SCOUT"; case 2 -> "BRUTE"; case 3 -> "ARCHER"; case 4 -> "SHAMAN"; case 5 -> "WARLORD"; default -> "RAIDER"; }; }
 }

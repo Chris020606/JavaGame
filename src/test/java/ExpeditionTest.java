@@ -83,7 +83,7 @@ class ExpeditionTest {
     @Test void frozenPassUsesItsOpenApproachRoutesAndChaptersHaveDistinctLooks() {
         assertEquals(4,Arrays.stream(ChapterLook.values()).map(l->l.label).distinct().count());
         WaveDirector waves=new WaveDirector(new Random(7));waves.restore(new WaveDirector.State(5,0,0,0,0,0,0));waves.update(1,0);
-        while(waves.remaining()>0) { var spawn=waves.update(10,1);assertNotNull(spawn);assertTrue(Math.abs(spawn.x())<6);assertTrue(Math.abs(spawn.z())>18); }
+        while(waves.remaining()>0) { var spawn=waves.update(10,1);assertNotNull(spawn);assertTrue(Math.abs(spawn.x())>=13 && Math.abs(spawn.x())<=14);assertTrue(Math.abs(spawn.z())>18); }
         assertFalse(new Enemy(0,0,1).undead);assertTrue(new Enemy(0,0,6).undead);
     }
 }

@@ -21,6 +21,7 @@ public final class FieldEvent {
         case SURVIVOR -> status==Status.WAITING?"Find the survivor and interact. Lead them to the sanctuary.":"Escort the survivor home. Stay close and protect them.";
         case BEACON -> status==Status.WAITING?"Interact nearby to awaken it. Defend it for 14 seconds.":"Protect the waystone until the ember returns.";
     }; }
+    public void reset() { wave=0;status=Status.NONE;progress=0;time=0;health=100;rewarded=false; }
     public void begin(int wave) {
         if(wave==this.wave)return;
         this.wave=wave;rewarded=false;progress=0;health=100;facing=0;

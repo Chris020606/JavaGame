@@ -3,7 +3,7 @@ import Entities.ArmorSlot;
 /** Rules and economy kept independent of rendering so they can be tested. */
 public class Progression {
     public void store(java.util.Properties p) {
-        expedition.store(p);fieldEvent.store(p);recoveryWisps.store(p);chapterFeats.store(p);
+        loot.store(p);p.setProperty("highestChapter",""+highestChapter);expedition.store(p);fieldEvent.store(p);recoveryWisps.store(p);chapterFeats.store(p);
         p.setProperty("difficulty",difficulty.name());
         p.setProperty("vitality",vitality+"");p.setProperty("power",power+"");p.setProperty("endurance",endurance+"");p.setProperty("recovery",recovery+"");p.setProperty("agility",agility+"");
         p.setProperty("armorUnlocked",armorUnlocked+"");p.setProperty("ownedArmor",ownedArmor+"");p.setProperty("ownedWeapons",ownedWeapons+"");
@@ -16,7 +16,7 @@ public class Progression {
     }
     public static Progression restore(java.util.Properties p) {
         Progression result=new Progression(HeroClass.valueOf(p.getProperty("heroClass","WARRIOR")),Difficulty.valueOf(p.getProperty("difficulty","NORMAL")));
-        result.expedition=Expedition.restore(p);result.fieldEvent=FieldEvent.restore(p);result.recoveryWisps=RecoveryWisps.restore(p);result.chapterFeats=ChapterFeats.restore(p);
+        result.loot=WeaponLoot.restore(p);result.highestChapter=optional(p,"highestChapter",0,3,0);result.expedition=Expedition.restore(p);result.fieldEvent=FieldEvent.restore(p);result.recoveryWisps=RecoveryWisps.restore(p);result.chapterFeats=ChapterFeats.restore(p);
         result.potions=p.containsKey("potions")?SaveGame.integer(p,"potions",0,5):2;
         result.weaponUnlocked=p.containsKey("weaponUnlocked")?SaveGame.integer(p,"weaponUnlocked",0,3):0;
         result.weaponTier=p.containsKey("weaponTier")?SaveGame.integer(p,"weaponTier",0,result.weaponUnlocked):0;
@@ -45,6 +45,11 @@ public class Progression {
     public boolean ownsWeapon(int tier) { return tier>=0 && tier<=3 && (ownedWeapons&(1<<tier))!=0; }
     public boolean ownsArmor(int tier) { return tier>=0 && tier<=3 && (ownedArmor&(1<<tier))!=0; }
     public int lastBossWeapon() { return lastBossWeapon; }
+    private WeaponLoot loot=new WeaponLoot();
+    private int highestChapter;
+    public WeaponLoot loot() { return loot; }
+    public int highestChapter() { return highestChapter; }
+    public void unlockChapter(int chapter) { highestChapter=Math.max(highestChapter,Math.min(3,chapter)); }
     private Expedition expedition=new Expedition();
     private FieldEvent fieldEvent=new FieldEvent();
     private RecoveryWisps recoveryWisps=new RecoveryWisps();
@@ -90,7 +95,7 @@ public class Progression {
     }
     public String resourceLabel() { return heroClass==HeroClass.MAGE?"MANA":"STAMINA"; }
     public int maxStamina() { return 100+(endurance-1)*15; }
-    public int staminaRecovery() { return 22+(recovery-1)*3; }
+    public int staminaRecovery() { return 22+(recovery-1)*3+(loot.get(weaponTier)==null?0:loot.get(weaponTier).recovery()); }
     public float movementSpeed() { return heroClass.speed*(1+(agility-1)*.04f)+armorTier(ArmorSlot.BOOTS)*.12f; }
     public HeroClass heroClass() { return heroClass; }
     public int potions() { return potions; }
@@ -104,7 +109,7 @@ public class Progression {
     }
     public int weaponTier() { return weaponTier; }
     public int weaponUnlocked() { return weaponUnlocked; }
-    public int weaponBonus(int tier) { return tier*8; }
+    public int weaponBonus(int tier) { return tier*8+(loot.get(tier)==null?0:loot.get(tier).damage()); }
     public String weaponName(int tier) {
         String quality=switch(tier) { case 1 -> "Forged"; case 2 -> "Runic"; case 3 -> "Legendary"; default -> "Starter"; };
         return quality+" "+switch(heroClass) { case WARRIOR -> tier==1?"Longsword":tier==2?"Waraxe":tier==3?"Dawnblade":"Sword"; case ARCHER -> tier==2?"Hand Crossbow":tier==3?"Siege Crossbow":"Bow"; case MAGE -> tier==3?"Dawnweaver":tier==1?"Wand":"Staff"; };
@@ -116,8 +121,10 @@ public class Progression {
     public void rewardEnemy(boolean boss) {
         kills++; crystals+=boss?120:15;
         restoreHealth(expedition.rank(Expedition.Blessing.BLOODROOT)*3);
-        if (boss) { lastBossWeapon=-1;for(int tier=1;tier<=3;tier++)if(!ownsWeapon(tier)) { ownedWeapons|=1<<tier;weaponUnlocked=Math.max(weaponUnlocked,tier);lastBossWeapon=tier;break; } }
+        if (boss) { lastBossWeapon=-1;for(int tier=1;tier<=3;tier++)if(!ownsWeapon(tier)) { ownedWeapons|=1<<tier;weaponUnlocked=Math.max(weaponUnlocked,tier);lastBossWeapon=tier;break; } loot.roll(lastBossWeapon<0?weaponUnlocked:lastBossWeapon,java.util.concurrent.ThreadLocalRandom.current()); }
     }
+    public void waveSupplies() { potions=Math.min(5,potions+1); }
+    public void rewardChampion() { restoreHealth(25);potions=Math.min(5,potions+1); }
     public void rewardElite() { if(!defeated())crystals+=25; }
     public int crystals() { return crystals; }
     public int kills() { return kills; }
@@ -126,6 +133,7 @@ public class Progression {
     public int characterLevel() { return characterLevel+vitality+power+endurance+recovery+agility-5; }
     public int maxHealth() { return heroClass.health + (characterLevel - 1) * 25 + (vitality-1)*20; }
     public int maxBaseHealth() { return 400 + (baseLevel - 1) * 100; }
+    public String weaponEnchantment(int tier) { var roll=loot.get(tier);return roll==null?"UNENCHANTED":roll.label()+" / +"+roll.damage()+" DAMAGE / +"+roll.recovery()+" RECOVERY"; }
     public int damage() { return 25 + (characterLevel - 1) * 10 + weaponBonus(weaponTier)+(power-1)*5; }
     public int defense() { int total=(armorLevel-1)*2;for(ArmorSlot slot:ArmorSlot.values()) total+=armorBonus(slot,armorTier(slot));return total; }
     public float health() { return health; }
