@@ -35,7 +35,7 @@ def runtimeAssets = copySpec {
 }
 def guideImages = copySpec {
     from('docs/images') {
-        include 'player-meadow.png', 'player-welcome.png', 'player-warrior.png', 'player-mage.png', 'player-moonlight.png', 'player-victory.png', 'player-inventory.png', 'player-interface.png', 'player-crossbows.png', 'player-mana.png', 'player-target-focus.png', 'player-world-map.png'
+        include 'outpost-cover.png', 'player-meadow.png', 'player-welcome.png', 'player-warrior.png', 'player-mage.png', 'player-moonlight.png', 'player-victory.png', 'player-inventory.png', 'player-interface.png', 'player-crossbows.png', 'player-mana.png', 'player-target-focus.png', 'player-world-map.png'
     }
 }
 distributions {
