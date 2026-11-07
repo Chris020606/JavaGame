@@ -100,5 +100,3 @@ Controls can be changed in Settings. The sanctuary's marked ring restores health
 ---
 
 Characters and animation by **KayKit**. Scenery by **Kenney**. [Full credits](THIRD_PARTY_NOTICES.md).
-
-For source builds and development, see the [maintenance handbook](docs/development/README.md) and [contribution guide](CONTRIBUTING.md).
