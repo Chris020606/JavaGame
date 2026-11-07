@@ -147,7 +147,7 @@ public final class CoopNativeTest {
             if (role.equals("host"))
                 Files.writeString(folder.resolve("invite.txt"), game.hosted().code());
             int played = 0;
-            boolean moved = false, hit = false, done = false;
+            boolean moved = false, hit = false, done = false, focused = false;
             long seq = 1;
             for (int frame = 0; frame < 1800; frame++) {
                 CoopState state = game.snapshot();
@@ -184,6 +184,7 @@ public final class CoopNativeTest {
                         key(KEY_LEFT_CONTROL, (input.buttons() & CoopInput.DODGE) != 0);
                         key(KEY_H, (input.buttons() & CoopInput.POTION) != 0);
                         key(KEY_G, (input.buttons() & CoopInput.INTERACT) != 0);
+                        key(KEY_T, frame % 60 == 0);
                         key(KEY_ENTER, (input.buttons() & CoopInput.READY) != 0 && frame % 15 == 0);
                         Vector2 mouse =
                                 GetWorldToScreen(
@@ -248,7 +249,9 @@ public final class CoopNativeTest {
                 if (frame == 180) capture(folder.resolve(role + "-diagnostic.png"));
                 if (played >= 160 && !Files.exists(folder.resolve(role + ".png")))
                     capture(folder.resolve(role + ".png"));
+                focused |= game.focusedEnemy() != null;
                 if (!done && played >= 300) {
+                    check(focused, "Native focus never selected a shared enemy");
                     check(moved, "Local native player did not move");
                     check(hit, "Native players never damaged a shared enemy");
                     check(game.snapshot().heroes().size() == 2, "Second player missing");

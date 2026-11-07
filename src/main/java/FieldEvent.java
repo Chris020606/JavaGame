@@ -84,6 +84,15 @@ public final class FieldEvent {
         };
     }
 
+    /** Clear encounter-local progress when deliberately restarting or changing a chapter. */
+    public void resetForTravel() {
+        wave = 0;
+        status = Status.NONE;
+        progress = time = facing = 0;
+        health = 100;
+        rewarded = false;
+    }
+
     public void begin(int wave) {
         if (wave == this.wave) return;
         this.wave = wave;

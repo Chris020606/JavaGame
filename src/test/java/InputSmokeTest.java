@@ -1115,6 +1115,98 @@ public class InputSmokeTest {
                         "PASS: central onboarding panel and contextual charge/parry cues render");
                 return;
             }
+            if (java.util.Arrays.asList(args).contains("--adventure-review")) {
+                Progression kit = new Progression(HeroClass.MAGE, Entities.Difficulty.NORMAL);
+                kit.unlockChapter(3);
+                Entities.Enemy enemy = new Entities.Enemy(0, 2, 1, 0, .5f);
+                SaveGame.write(
+                        profile.resolve("save.properties"),
+                        new SaveGame.Snapshot(
+                                "Wayfarer",
+                                0,
+                                8,
+                                180,
+                                kit,
+                                new WaveDirector.State(1, 0, 2, 8, 0, 21, 0),
+                                java.util.List.of(enemy, new Entities.Enemy(4, 0, 1)),
+                                Arena.HIGHLANDS));
+                check(game.loadCurrent(), "Adventure profile failed");
+                key(game, KEY_ENTER);
+                key(game, KEY_T);
+                check(game.focusedEnemy() != null, "Focus key did not select an enemy");
+                game.focusedEnemy().beginAttack(0, 8, true);
+                for (int f = 0; f < 5; f++) frame(game);
+                capture("adventure-target-frame");
+                game.getProgression().fieldEvent().begin(2);
+                game.setState(GameState.PAUSED);
+                frame(game);
+                int px = (GetScreenWidth() - 440) / 2, py = (GetScreenHeight() - 440) / 2;
+                click(game, px + 200, py + 337);
+                check(
+                        game.getState() == GameState.CHAPTER_SELECT,
+                        "World map button did not open chapters");
+                for (int f = 0; f < 3; f++) frame(game);
+                capture("adventure-world-map");
+                int mx = (GetScreenWidth() - 740) / 2, my = (GetScreenHeight() - 570) / 2;
+                click(game, mx + 620, my + 130 + 2 * 86 + 18);
+                check(
+                        game.chapterIndex() == 2 && game.getState() == GameState.PLAYING,
+                        "Travel did not start highlands");
+                check(
+                        game.focusedEnemy() == null
+                                && game.getHeroShots().isEmpty()
+                                && game.getBossHazards().isEmpty(),
+                        "Old encounter followed travel");
+                check(
+                        game.getProgression().fieldEvent().status() == FieldEvent.Status.NONE,
+                        "Old field event followed travel");
+                check(game.saveCurrent() && game.loadCurrent(), "Travel save/load failed");
+                check(game.getProgression().unlockedChapter() == 3, "Travel unlocks were lost");
+                game.travelToChapter(0);
+                check(game.chapterIndex() == 0, "Meadow revisit failed");
+                check(
+                        game.getProgression().unlockedChapter() == 3,
+                        "Revisit locked later chapters");
+                game.photoMode(true);
+                for (int f = 0; f < 4; f++) frame(game);
+                capture("adventure-meadow");
+                game.photoMode(false);
+                // A legacy profile can revisit its reached zone, but cannot skip a locked chapter.
+                Progression legacyKit = new Progression(HeroClass.MAGE, Entities.Difficulty.NORMAL);
+                SaveGame.write(
+                        profile.resolve("save.properties"),
+                        new SaveGame.Snapshot(
+                                "Legacy",
+                                0,
+                                8,
+                                0,
+                                legacyKit,
+                                new WaveDirector.State(6, 0, 1, 8, 0, 21, 0),
+                                java.util.List.of(new Entities.Enemy(0, 18, 6)),
+                                Arena.HIGHLANDS));
+                var legacyValues = AppData.read(profile.resolve("save.properties"));
+                legacyValues.remove("unlockedChapter");
+                AppData.write(profile.resolve("save.properties"), legacyValues);
+                check(game.loadCurrent(), "Legacy chapter profile failed");
+                check(
+                        game.getProgression().unlockedChapter() == 2,
+                        "Legacy reached zone was locked");
+                game.travelToChapter(0);
+                game.travelToChapter(3);
+                check(
+                        game.chapterIndex() == 0 && game.getProgression().unlockedChapter() == 2,
+                        "Locked chapter travel bypassed progression");
+                game.setState(GameState.VICTORY);
+                game.openChapterMap();
+                key(game, KEY_ESCAPE);
+                check(
+                        game.getState() == GameState.VICTORY,
+                        "Closing the map lost the victory screen");
+                System.out.println(
+                        "PASS: focus cast frame, world-map button, travel/reset, save/load and"
+                                + " preserved unlocks");
+                return;
+            }
             if (java.util.Arrays.asList(args).contains("--class-review")) {
                 for (HeroClass hero : new HeroClass[] {HeroClass.ARCHER, HeroClass.MAGE}) {
                     Progression kit = Progression.playtest(hero, Entities.Difficulty.NORMAL, false);

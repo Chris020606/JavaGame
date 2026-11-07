@@ -24,6 +24,7 @@ The full input smoke uses temporary player data and covers menus, tutorials, com
 Focused scenarios are available when iterating:
 
 ```sh
+./gradlew inputSmokeTest --args=--adventure-review
 ./gradlew inputSmokeTest --args=--combat-motion
 ./gradlew inputSmokeTest --args=--class-review
 ./gradlew inputSmokeTest --args=--hud-review
@@ -63,4 +64,4 @@ A source push is not proof that downloads have updated. Verify the tag's workflo
 
 ## Handoff status
 
-The clean baseline is published v4.2.1 with maintenance changes on `master`. The isolated archived roadmap branch contains new gameplay behavior and an unresolved double-Archer Normal balance failure. Its tests and screenshots are not evidence that those features shipped on `master`. Rebase/cherry-pick small portions deliberately if you decide to resume it.
+The clean baseline is published v4.2.1 with the maintenance pass and Warden's Journey additions on `master`. See `WARDENS_JOURNEY.md` for the current feature scope. The isolated archived roadmap branch contains new gameplay behavior and an unresolved double-Archer Normal balance failure. Its tests and screenshots are not evidence that those features shipped on `master`. Rebase/cherry-pick small portions deliberately if you decide to resume it.

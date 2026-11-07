@@ -28,6 +28,8 @@ public final class CoopGame implements AutoCloseable {
     private final int[] tiers = {-1, -1};
     private final float[] downAge = new float[2];
     private final HashMap<Integer, Enemy> enemyViews = new HashMap<>();
+    private final EnemyFocus enemyFocus = new EnemyFocus();
+    private final TargetFrameScreen targetFrameScreen = new TargetFrameScreen();
     private final Camera2D ui = new Camera2D().zoom(1);
     private CameraController cameraControl;
     private CoopServer server;
@@ -116,6 +118,7 @@ public final class CoopGame implements AutoCloseable {
         client = null;
         previous = state = null;
         enemyViews.clear();
+        enemyFocus.clear();
         effects.clear();
         for (CombatVfx blade : blades) blade.clear();
         Arrays.fill(downAge, 0);
@@ -249,6 +252,10 @@ public final class CoopGame implements AutoCloseable {
         return server;
     }
 
+    Enemy focusedEnemy() {
+        return enemyFocus.selected();
+    }
+
     CoopState snapshot() {
         return state;
     }
@@ -360,6 +367,24 @@ public final class CoopGame implements AutoCloseable {
         }
         effects.update(dt);
         boolean playing = state != null && state.phase() == CoopState.Phase.PLAYING;
+        // Focus is presentation-only; no new client authority or protocol fields are needed.
+        var focusCandidates = List.copyOf(enemyViews.values());
+        enemyFocus.update(focusCandidates);
+        if (playing
+                && !confirmLeave
+                && !state.paused()
+                && own() != null
+                && settings.controls.pressed(Config.Controls.Action.FOCUS)) {
+            var me = own();
+            enemyFocus.cycle(
+                    me.x(),
+                    me.z(),
+                    focusCandidates,
+                    enemy ->
+                            ArenaNavigation.projectileFraction(
+                                            state.chapter(), me.x(), me.z(), enemy.x, enemy.z)
+                                    >= 1);
+        }
         Enemy boss =
                 enemyViews.values().stream()
                         .filter(e -> e.boss() && e.health > 0)
@@ -809,6 +834,12 @@ public final class CoopGame implements AutoCloseable {
         int w = GetScreenWidth(), h = GetScreenHeight();
         CoopState.Hero me = own(), other = partner();
         if (me == null) return;
+        Enemy focused = enemyFocus.selected();
+        if (focused != null && state.phase() == CoopState.Phase.PLAYING)
+            targetFrameScreen.draw(
+                    focused,
+                    focused.distance(me.x(), me.z()),
+                    settings.controls.label(Config.Controls.Action.FOCUS));
         heroPanel(me, 16, 18, 280);
         int center = w / 2;
         Menu.panel(center - 170, 18, 340, 95);

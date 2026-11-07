@@ -33,6 +33,15 @@ import java.util.Random;
  */
 public class Game {
     private final java.util.function.BooleanSupplier mouseAttack;
+    private final EnemyFocus enemyFocus = new EnemyFocus();
+
+    Enemy focusedEnemy() {
+        return enemyFocus.selected();
+    }
+
+    private final TargetFrameScreen targetFrameScreen = new TargetFrameScreen();
+    private final ChapterSelectScreen chapterSelectScreen = new ChapterSelectScreen();
+    private GameState chapterMapReturn = GameState.PAUSED;
     private boolean pointerAim;
     private boolean coopRequested;
 
@@ -461,6 +470,10 @@ public class Game {
             state = GameState.RELIC_CHOICE;
             return;
         }
+        if (state == GameState.CHAPTER_SELECT) {
+            if (IsKeyPressed(KEY_ESCAPE)) state = chapterMapReturn;
+            return;
+        }
         if (state == GameState.PLAYER_HISTORY) {
             if (IsKeyPressed(KEY_ESCAPE)) {
                 if (pendingDelete != null) pendingDelete = null;
@@ -599,6 +612,18 @@ public class Game {
         if (workshop) {
             vfx.blade().clear();
             return;
+        }
+        enemyFocus.update(enemies);
+        if (tutorial == null && settings.controls.pressed(FOCUS)) {
+            float focusX = player.getPosition().x(), focusZ = player.getPosition().z();
+            enemyFocus.cycle(
+                    focusX,
+                    focusZ,
+                    enemies,
+                    enemy ->
+                            ArenaNavigation.projectileFraction(
+                                            chapterIndex(), focusX, focusZ, enemy.x, enemy.z)
+                                    >= 1);
         }
         if (tutorial == null) {
             RecoveryWisps wisps = progress.recoveryWisps();
@@ -1201,6 +1226,7 @@ public class Game {
             impactPending = false;
             attackCooldown = 0;
             progress.rewardChapterFeats(chapterIndex());
+            progress.unlockChapter(chapterIndex() + 1);
             state = wave >= 10 ? GameState.VICTORY : GameState.LEVEL_COMPLETE;
             outcomeTime = 0;
             audio.play("victory");
@@ -1258,6 +1284,43 @@ public class Game {
         feedback.add(px, pz, "-" + Math.round(before - progress.health()), Menu.RED);
         hurtFlash = .25f;
         audio.play("hurt");
+    }
+
+    /** Return to the originating pause/results screen when the player closes the map. */
+    void openChapterMap() {
+        if (state != GameState.PAUSED
+                && state != GameState.LEVEL_COMPLETE
+                && state != GameState.VICTORY) return;
+        chapterMapReturn = state;
+        state = GameState.CHAPTER_SELECT;
+    }
+
+    /** Restart an unlocked chapter with current gear; discard encounter-local state only. */
+    void travelToChapter(int chapter) {
+        int unlocked = Math.max(progress.unlockedChapter(), chapterIndex());
+        if (chapter < 0 || chapter > unlocked) return;
+        progress.unlockChapter(unlocked);
+        int firstWave = Campaign.CHAPTERS[chapter].first();
+        director.restore(new WaveDirector.State(firstWave - 1, 0, 0, 5, 0, 21, 0));
+        wave = firstWave - 1;
+        nextWave = 5;
+        // Encounter objects cannot follow the player to a different chapter.
+        enemies.clear();
+        fallen.clear();
+        heroShots.clear();
+        projectiles.clear();
+        bossHazards.clear();
+        enemyFocus.clear();
+        progress.recoveryWisps().clear();
+        progress.fieldEvent().resetForTravel();
+        player.resetCombat();
+        player.getPosition().x(0).y(0).z(4);
+        storyTime = 12;
+        outcomeTime = 0;
+        inventory = workshop = false;
+        state = GameState.PLAYING;
+        writeCheckpoint();
+        saveCurrent();
     }
 
     private void continueCampaign() {
@@ -1472,6 +1535,15 @@ public class Game {
             if ((state == GameState.LEVEL_COMPLETE || state == GameState.VICTORY) && !inventory)
                 drawChapterEnd();
             if (state == GameState.JOURNAL) drawJournal();
+            if (state == GameState.CHAPTER_SELECT) {
+                dim();
+                int selected =
+                        chapterSelectScreen.draw(
+                                Math.max(progress.unlockedChapter(), chapterIndex()),
+                                chapterIndex());
+                if (selected == ChapterSelectScreen.BACK) state = chapterMapReturn;
+                else if (selected >= 0) travelToChapter(selected);
+            }
             if (workshop) drawWorkshop();
             if (inventory && inventoryPrepared) drawInventory();
             if (state == GameState.PAUSED || state == GameState.GAME_OVER) drawOverlay();
@@ -2130,6 +2202,19 @@ public class Game {
     }
 
     private void drawCombatCues() {
+        // Practice partners have artificial health; keep their guided tutorial labels instead.
+        Enemy focused = tutorial == null ? enemyFocus.selected() : null;
+        if (focused != null) {
+            targetFrameScreen.draw(
+                    focused,
+                    focused.distance(player.getPosition().x(), player.getPosition().z()),
+                    settings.controls.label(FOCUS));
+            Vector2 mark =
+                    GetWorldToScreen(
+                            v(focused.x, .15f, focused.z),
+                            sceneManager.getOpenScene().getCameraController().getCamera());
+            DrawCircleLines((int) mark.x(), (int) mark.y(), 16, Menu.GOLD);
+        }
         if (pointerAim && !IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
             Vector2 mouse = GetMousePosition();
             int x = (int) mouse.x(), y = (int) mouse.y();
@@ -2196,7 +2281,11 @@ public class Game {
 
     private void drawMainMenu() {
         dim();
-        switch (mainMenuScreen.draw(settings.playerName, Files.exists(savePath), menuMessage)) {
+        switch (mainMenuScreen.draw(
+                settings.playerName,
+                Files.exists(savePath),
+                menuMessage,
+                settings.controls.label(FOCUS))) {
             case PLAY_TOGETHER -> coopRequested = true;
             case NEW_GAME -> requestNewGame();
             case LOAD_GAME -> loadCurrent();
@@ -2390,15 +2479,8 @@ public class Game {
         }
         if (lost && Menu.button("MAIN MENU", x, y + 262, 440, true)) state = GameState.MAIN_MENU;
 
-        if (!lost)
-            Menu.text(
-                    "CHAPTER FEATS / "
-                            + progress.chapterFeats().completed(chapterIndex())
-                            + " OF 3 COMPLETE / CHRONICLE",
-                    x,
-                    y + 332,
-                    14,
-                    Menu.GOLD);
+        if (!lost && tutorial == null && Menu.button("WORLD MAP / CHAPTERS", x, y + 316, 440, true))
+            openChapterMap();
         Menu.text(
                 lost
                         ? "Retry restores your gear at the start of this chapter."
@@ -2513,9 +2595,10 @@ public class Game {
                         ? "Your playtest has been saved separately."
                         : "Your campaign progress has been saved.",
                 x,
-                y + 424,
-                16,
+                y + 468,
+                12,
                 Menu.MUTED);
+        if (Menu.button("WORLD MAP / CHAPTERS", x, y + 416, 380, true)) openChapterMap();
         if (state != GameState.VICTORY
                 && Menu.button("MAIN MENU [ESC]", x + 440, y + 416, 200, true)) {
             saveCurrent();
@@ -2997,6 +3080,16 @@ public class Game {
     private void restoreSnapshot(SaveGame.Snapshot saved, boolean sandbox) {
         playtest = sandbox;
         progress = saved.progression();
+        enemyFocus.clear();
+        // Older saves predate the travel unlock field; their current chapter remains accessible.
+        int savedChapter =
+                Campaign.index(
+                        saved.wave().total() == 0 ? saved.wave().wave() + 1 : saved.wave().wave());
+        progress.unlockChapter(savedChapter);
+        if (saved.enemies().isEmpty()
+                && saved.wave().remaining() == 0
+                && saved.wave().total() > 0
+                && Campaign.boundary(saved.wave().wave())) progress.unlockChapter(savedChapter + 1);
         selectedDifficulty = progress.difficulty();
         director.difficulty(progress.difficulty());
         director.restore(saved.wave());
@@ -3101,7 +3194,8 @@ public class Game {
 
     public void dispose() {
         persistSettings();
-        if (state == GameState.RELIC_CHOICE
+        if (state == GameState.CHAPTER_SELECT
+                || state == GameState.RELIC_CHOICE
                 || state == GameState.PLAYING
                 || state == GameState.PAUSED
                 || state == GameState.LEVEL_COMPLETE

@@ -13,7 +13,7 @@ public final class MainMenuScreen {
         PLAYER_HISTORY
     }
 
-    public Action draw(String playerName, boolean hasSave, String message) {
+    public Action draw(String playerName, boolean hasSave, String message, String focusKey) {
         int x = (GetScreenWidth() - 640) / 2;
         int y = (GetScreenHeight() - 420) / 2;
         Action action = Action.NONE;
@@ -21,8 +21,7 @@ public final class MainMenuScreen {
         DrawLine(x, y + 268, x + 620, y + 268, Menu.GOLD);
         Menu.text("THE LAST EMBER", x, y, 18, Menu.TEAL);
         Menu.text("OUTPOST", x, y + 42, 72, Menu.TEXT);
-        Menu.text(
-                "v" + BuildInfo.VERSION + " / RANGED GRIP UPDATE", x + 325, y + 96, 12, Menu.GOLD);
+        Menu.text("v" + BuildInfo.VERSION + " / WARDEN'S JOURNEY", x + 325, y + 96, 12, Menu.GOLD);
         Menu.text("Guard the light. Bring back the dawn.", x, y + 132, 24, Menu.GOLD);
         if (Menu.button("PLAY TOGETHER / TWO-PLAYER CO-OP", x, y + 184, 620, true))
             action = Action.PLAY_TOGETHER;
@@ -39,7 +38,9 @@ public final class MainMenuScreen {
         if (Menu.button("CHRONICLE", x, y + 402, 300, true)) action = Action.CHRONICLE;
         if (Menu.button("PLAYERS & SAVES", x, y + 344, 300, true)) action = Action.PLAYER_HISTORY;
         Menu.text(
-                message.isEmpty() ? "Hold right mouse to orbit. ESC pauses." : message,
+                message.isEmpty()
+                        ? "Hold right mouse to orbit. " + focusKey + " focuses enemies. ESC pauses."
+                        : message,
                 x,
                 y + 462,
                 15,

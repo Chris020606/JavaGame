@@ -27,13 +27,13 @@ public final class EnvironmentLayout {
                             new Point(4, 23),
                             new Point(4, 31)),
                     List.of(
-                            new Point(-5, -32),
-                            new Point(-3, -22),
-                            new Point(0, -12),
+                            new Point(-12, -32),
+                            new Point(-10, -22),
+                            new Point(-5, -12),
                             new Point(0, 0),
-                            new Point(3, 12),
-                            new Point(5, 23),
-                            new Point(6, 32)),
+                            new Point(7, 12),
+                            new Point(10, 23),
+                            new Point(12, 32)),
                     List.of(
                             new Point(0, -32),
                             new Point(0, -23),
@@ -68,14 +68,19 @@ public final class EnvironmentLayout {
             n(p, "statue_columnDamaged", 9, 14, 11, 3.4f);
             n(p, "statue_columnDamaged", 13, 16, 82, 2.5f);
             n(p, "statue_obelisk", 11, 19, -9, 3.1f);
-            // Visible from the starting camera: paired ruined gardens beside the approach.
-            for (int side : new int[] {-1, 1}) {
-                n(p, "platform_stone", side * 9, 5, 0, 3.5f);
-                n(p, "statue_columnDamaged", side * 10, 3, side * 15, 3.2f);
-                n(p, "statue_ring", side * 9, 6, 90, 2.8f);
-                n(p, "plant_bushDetailed", side * 11, 7, 0, 2.2f);
-                n(p, "flower_purpleC", side * 8, 7, 0, 2.2f);
-            }
+            // Unequal landmarks help the player orient: ruins west, a wayfarer stop east.
+            // Keep the central eight-metre sanctuary clearing open for fights and healing.
+            n(p, "platform_stone", -10, 5, 0, 3.5f);
+            n(p, "statue_columnDamaged", -12, 3, 18, 3.2f);
+            n(p, "statue_ring", -9, 6, 90, 2.8f);
+            n(p, "stone_largeA", -13, 7, 72, 2.2f);
+            n(p, "flower_purpleC", -8, 7, 0, 2.2f);
+            n(p, "tent_detailedOpen", 13, -3, -75, 2.8f);
+            n(p, "campfire_stones", 11, -1, 0, 1.7f);
+            n(p, "log_stack", 15, 1, 15, 1.8f);
+            n(p, "fence_simple", 16, -4, 5, 2);
+            n(p, "plant_bushDetailed", 16, 2, 40, 2.1f);
+            n(p, "flower_yellowC", 9, -4, 0, 1.8f);
             // A ruined lookout and stone stair terrace frame the eastern approach.
             n(p, "platform_stone", 24, 7, 0, 5.5f);
             n(p, "platform_stone", 27, 7, 0, 5.5f);
@@ -171,6 +176,10 @@ public final class EnvironmentLayout {
             g(p, "pine-crooked", 20, 17, 202, 5.8f);
             g(p, "pine-crooked", -22, 12, 18, 4.1f);
             g(p, "pine-crooked", 18, -3, 227, 4.5f);
+            // Low ritual markers frame the duel without obstructing its central dodge space.
+            g(p, "altar-stone", -11, 4, 20, 2.5f);
+            g(p, "fire-basket", -9, 5, 0, 1.5f);
+            g(p, "coffin", 12, -5, -25, 2.1f);
             cemeteryWall(p);
             g(p, "iron-fence-border-gate", 2, -24, 0, 5);
         } else if (chapter == 2) {
@@ -194,6 +203,9 @@ public final class EnvironmentLayout {
                             random.nextFloat() * 360,
                             2.8f + random.nextFloat() * 2);
                 }
+            // Distant shoulders mark the pass bends; these stay outside the active arena.
+            n(p, "statue_columnDamaged", -23, -10, 35, 4);
+            n(p, "statue_obelisk", 23, 15, -15, 4.2f);
             cluster(p, random, -16, -14, 6);
             cluster(p, random, 17, 13, 6);
             n(p, "tent_detailedOpen", -12, 6, 85, 3.2f);

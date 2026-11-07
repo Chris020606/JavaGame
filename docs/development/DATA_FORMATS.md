@@ -20,6 +20,8 @@ The active solo save is `save.properties`; chapter retry uses `chapter-checkpoin
 
 `SaveGame.Snapshot` contains identity, ground position, facing, progression, wave director state, enemies, arena, resource amount and day phase. `Progression.store/restore` handles its own nested systems: expedition blessings, field encounter, recovery wisps and chapter feats, as well as gear, training, currency, health and sanctuary integrity.
 
+`unlockedChapter` is an optional chapter index (0–3) used by solo travel. Old saves default it to zero; loading an adventure also infers access from its current wave and completed chapter. Replaying an earlier chapter preserves the highest unlock.
+
 Optional keys provide migration defaults. For example, old saves without ownership masks retain their previously available tiers; new masks can represent ownership gaps. Equipped gear must actually be owned. Floats must be finite and numeric bounds must be checked before native presentation receives the data.
 
 Version 1 migration is retained. Do not remove it or reinterpret numeric enemy variants without a deliberate migration. A chapter checkpoint represents entry state, not an exact mid-fight rewind. Save/load tests cover valid round trips and corrupt input.

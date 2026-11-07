@@ -7,6 +7,8 @@
 | Co-op combat or economy | `CoopWorld`, `CoopBalance` | co-op unit/campaign tests, two-client native check |
 | Gear prices, ownership and bonuses | `Progression`, `Entities/ArmorSlot` | ownership/save tests, inventory regression |
 | Inventory layout and item previews | `EquipmentScreen`, `WorldAssets` | native class/ownership/inventory review |
+| Target focus / cast frame | `EnemyFocus`, `TargetFrameScreen`, solo/co-op coordinators | selection unit tests, adventure review, co-op native |
+| Solo chapter travel | `ChapterSelectScreen`, `Game.travelToChapter`, `Progression` | unlock migration, adventure review, save/load |
 | Title menu | `MainMenuScreen`, action handling in `Game` | full input smoke; keep button hit boxes in sync |
 | HUD and action belt | `HudScreen`, `HudLayout`, `Menu` | native HUD review at multiple sizes |
 | Keys/settings | `Config/Controls`, `Settings`, settings UI in `Game` | settings and input tests; preserve old defaults |

@@ -4,6 +4,7 @@ import Entities.Difficulty;
 /** Rules and economy kept independent of rendering so they can be tested. */
 public class Progression {
     public void store(java.util.Properties p) {
+        p.setProperty("unlockedChapter", Integer.toString(unlockedChapter));
         expedition.store(p);
         fieldEvent.store(p);
         recoveryWisps.store(p);
@@ -37,6 +38,7 @@ public class Progression {
                 new Progression(
                         HeroClass.valueOf(p.getProperty("heroClass", "WARRIOR")),
                         Difficulty.valueOf(p.getProperty("difficulty", "NORMAL")));
+        result.unlockedChapter = optional(p, "unlockedChapter", 0, 3, 0);
         result.expedition = Expedition.restore(p);
         result.fieldEvent = FieldEvent.restore(p);
         result.recoveryWisps = RecoveryWisps.restore(p);
@@ -128,6 +130,17 @@ public class Progression {
 
     public int lastBossWeapon() {
         return lastBossWeapon;
+    }
+
+    // This is a chapter index (0..3), not a wave number. Older saves infer it on load.
+    private int unlockedChapter;
+
+    public int unlockedChapter() {
+        return unlockedChapter;
+    }
+
+    public void unlockChapter(int chapter) {
+        unlockedChapter = Math.max(unlockedChapter, Math.min(3, Math.max(0, chapter)));
     }
 
     private Expedition expedition = new Expedition();

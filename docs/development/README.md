@@ -1,8 +1,8 @@
 # Maintaining Outpost
 
-Start here if you are taking over the game. The current `master` maintenance work is based on published **v4.2.1**. It changes code organization, names, formatting and documentation, rather than combat balance or the save/network formats.
+Start here to work on the game. The current feature pass builds on the published v4.2.1 maintenance baseline and adds the documented **Warden's Journey** features: target focus/cast frames, solo chapter travel, authored map landmarks and camera-friendly foliage. See [the design and implementation notes](WARDENS_JOURNEY.md).
 
-The unfinished feature experiment is preserved at **`archive/roadmap-before-readability`**, commit `2120842`. It includes chapter travel, enchantment rolls, champion encounters and ranged balance experiments. Its double-Archer Normal campaign check was failing. It has **not** been merged into this maintainable baseline. Do not mistake the old development wishlist for a description of the shipped game.
+The unfinished larger experiment remains at **`archive/roadmap-before-readability`**, commit `2120842`. Its randomized loot, champions and combat rebalance have not been merged. Its chapter-selection view was adapted into the current, separately verified travel system. Do not merge the entire experiment to obtain this feature.
 
 ## Read in this order
 

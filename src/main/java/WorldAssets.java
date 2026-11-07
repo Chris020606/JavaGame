@@ -600,7 +600,7 @@ public final class WorldAssets implements AutoCloseable {
             case 1 -> drawCemetery(false, time);
             case 2 -> drawFrozen(time);
             case 3 -> drawCemetery(true, time);
-            default -> drawHighlands(0, time);
+            default -> drawMeadow(time);
         }
         if (shadowPass) return;
         // This radius matches Game.nearBase exactly. Pulsing motes point toward recovery.
@@ -790,7 +790,7 @@ public final class WorldAssets implements AutoCloseable {
         surface(.82f, .02f);
     }
 
-    private void drawHighlands(int chapter, float time) {
+    private void drawMeadow(float time) {
         drawAuthoredLayout(0, time);
     }
 
@@ -833,28 +833,42 @@ public final class WorldAssets implements AutoCloseable {
                             ? (float) Math.sin(time * .85f + prop.x() * .19f + prop.z() * .13f)
                                     * .8f
                             : 0;
+            // The shadow remains opaque; only the visible pass fades a canopy hiding the hero.
+            float opacity =
+                    !shadowPass && prop.model().startsWith("tree_")
+                            ? SceneryVisibility.treeOpacity(
+                                    prop.x(),
+                                    prop.z(),
+                                    prop.scale(),
+                                    heroX,
+                                    heroZ,
+                                    viewerX,
+                                    viewerZ)
+                            : 1;
             DrawModelEx(
                     model,
                     transform.position(),
                     transform.axis(),
                     prop.yaw() + wind,
                     transform.scale(),
-                    transform.tint());
+                    opacity < 1 ? Fade(transform.tint(), opacity) : transform.tint());
         }
         if (shadowPass) return;
-        if (chapter == 0 || chapter == 2) {
-            float fx = -9, fz = chapter == 0 ? -8 : 8;
-            for (int i = 0; i < 12; i++) {
-                float rise = (time * .8f + i * .17f) % 1.7f;
-                DrawSphere(
-                        v(
-                                fx + (float) Math.sin(time * 3 + i) * .12f,
-                                .35f + rise,
-                                fz + (float) Math.cos(time * 2 + i) * .1f),
-                        .10f * (1 - rise / 2),
-                        Fade(Menu.GOLD, 1 - rise / 1.7f));
+        // Derive embers from actual campfire props so moving a campsite cannot leave effects
+        // behind.
+        for (var camp : props)
+            if (camp.model().equals("campfire_stones")) {
+                for (int i = 0; i < 8; i++) {
+                    float rise = (time * .8f + i * .21f) % 1.7f;
+                    DrawSphere(
+                            v(
+                                    camp.x() + (float) Math.sin(time * 3 + i) * .12f,
+                                    .35f + rise,
+                                    camp.z() + (float) Math.cos(time * 2 + i) * .1f),
+                            .10f * (1 - rise / 2),
+                            Fade(Menu.GOLD, 1 - rise / 1.7f));
+                }
             }
-        }
         if (chapter == 0)
             for (int seed = 0; seed < 18; seed++) {
                 float drift = (time * .35f + seed * .71f) % 8;

@@ -22,7 +22,8 @@ public final class Controls {
         DODGE("Dodge", KEY_LEFT_CONTROL),
         PARRY("Parry", KEY_F),
         LUNGE("Lunge strike", KEY_R),
-        INTERACT("Interact / Blessing", KEY_G);
+        INTERACT("Interact / Blessing", KEY_G),
+        FOCUS("Focus target", KEY_T);
         public final String label;
         public final int defaultKey;
 

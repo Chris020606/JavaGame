@@ -21,6 +21,8 @@ flowchart TD
 
 `Game` owns a solo session: player, progression, wave director, actors, projectiles, temporary effects, screens and save paths. The `GameState` enum governs input and simulation. Inventory and workshop are additional overlay flags, not enum states. When they are open, combat pauses.
 
+`EnemyFocus` keeps client-side focus selection, while `TargetFrameScreen` draws enemy identity, health and cast timing. It does not alter hit rules. `ChapterSelectScreen` returns a chapter index; `Game.travelToChapter` validates unlocks, clears encounter-local objects and writes a new checkpoint.
+
 `MainMenuScreen` draws buttons and returns an `Action`. `Game` interprets that action and performs state transitions or disk access. Keep view layout out of persistence code and native draw calls out of pure combat rules. Other legacy screens still perform some button handling during `Game.render`; changing that ordering requires care.
 
 ## Solo frame
