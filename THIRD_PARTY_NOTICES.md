@@ -22,3 +22,7 @@ The outpost, crates, paths, lanterns and Dawn weapons are original project geome
 - **Heartfelt Battle (loopable, fantasy, strings/piano/horn)** — Request, https://opengameart.org/content/heartfelt-battle-loopable-fantasy-stringspianohorn — loop version, `resources/audio/music-meadow.ogg`.
 
 All three source pages mark these recordings CC0. Public-domain dedication: https://creativecommons.org/publicdomain/zero/1.0/. Files are redistributed as provided by their creators; existing original synthesized WAVs remain available for asset generation.
+
+## Repository cover artwork
+
+`docs/images/outpost-cover.png` is illustrated title artwork created for Outpost with OpenAI image generation. It is not a gameplay screenshot. The prompt and generation record are in `docs/artwork/outpost-cover.md`. Gameplay screenshots remain game captures.
