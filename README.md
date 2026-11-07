@@ -102,5 +102,3 @@ Controls can be changed in Settings. The sanctuary's marked ring restores health
 ---
 
 Characters and animation by **KayKit**. Scenery by **Kenney**. [Full credits](THIRD_PARTY_NOTICES.md).
-
-For source builds and development, see the [maintenance handbook](https://github.com/Chris020606/JavaGame/blob/master/docs/development/README.md) and [contribution guide](https://github.com/Chris020606/JavaGame/blob/master/CONTRIBUTING.md).
