@@ -15,6 +15,7 @@
 | Chapters and wave compositions | `Campaign`, `WaveDirector`, `WaveFormation` | campaign/formation tests and save resume |
 | Enemy AI and attack windows | `Entities/Enemy`, `Entities/SquadTactics`, `Game`, `CoopWorld` | combat and co-op tests; test every affected variant |
 | Boss move rules and hazards | `Entities/BossMove`, `BossHazard`, solo/co-op impact resolution | boss regression, hazard geometry, balance |
+| Place names / subareas | `WorldLandmarks`, `Game.drawCombatCues` | area-boundary tests, map-detail review |
 | Terrain/roads/scenery | `EnvironmentLayout`, `RoadLayout`, `ArenaNavigation`, `WorldAssets` | terrain/navigation tests and art review |
 | Lighting, time and shaders | `DayNightCycle`, `ChapterLook`, `ModernRenderer`, `resources/outpost` shaders | day/night art review and package launch |
 | Animation transitions or weapon grips | `Entities/Player`, `Entities/Entity`, `tools/prepare_assets.py` | native combat-motion on each affected tier |

@@ -35,6 +35,10 @@ public class Game {
     private final java.util.function.BooleanSupplier mouseAttack;
     private final EnemyFocus enemyFocus = new EnemyFocus();
 
+    int focusKey() {
+        return settings.controls.key(FOCUS);
+    }
+
     Enemy focusedEnemy() {
         return enemyFocus.selected();
     }
@@ -112,13 +116,23 @@ public class Game {
     private void prepareTutorial() {
         if (tutorial == null || preparedStep == tutorial.step()) return;
         preparedStep = tutorial.step();
-        enemies.clear();
+        // Retain the selected practice actor between focus and strike so the frame stays visible.
+        boolean keepPartner =
+                preparedStep == Tutorial.Step.STRIKE
+                        && enemyFocus.selected() != null
+                        && enemies.contains(enemyFocus.selected());
+        if (!keepPartner) {
+            enemies.clear();
+            enemyFocus.clear();
+        }
         heroShots.clear();
         projectiles.clear();
         player.discipline().reset();
-        if (preparedStep == Tutorial.Step.STRIKE
-                || preparedStep == Tutorial.Step.CHARGE
-                || preparedStep == Tutorial.Step.PARRY) {
+        if (!keepPartner
+                && (preparedStep == Tutorial.Step.FOCUS
+                        || preparedStep == Tutorial.Step.STRIKE
+                        || preparedStep == Tutorial.Step.CHARGE
+                        || preparedStep == Tutorial.Step.PARRY)) {
             Enemy partner =
                     new Enemy(
                             player.getPosition().x() + 2.2f,
@@ -614,7 +628,7 @@ public class Game {
             return;
         }
         enemyFocus.update(enemies);
-        if (tutorial == null && settings.controls.pressed(FOCUS)) {
+        if (settings.controls.pressed(FOCUS)) {
             float focusX = player.getPosition().x(), focusZ = player.getPosition().z();
             enemyFocus.cycle(
                     focusX,
@@ -624,6 +638,7 @@ public class Game {
                             ArenaNavigation.projectileFraction(
                                             chapterIndex(), focusX, focusZ, enemy.x, enemy.z)
                                     >= 1);
+            if (tutorial != null && enemyFocus.selected() != null) tutorial.focus();
         }
         if (tutorial == null) {
             RecoveryWisps wisps = progress.recoveryWisps();
@@ -1246,7 +1261,7 @@ public class Game {
             feedback.add(
                     px,
                     pz,
-                    progress.heroClass() == HeroClass.ARCHER ? "EVADE / FOCUS" : "EVADE",
+                    progress.heroClass() == HeroClass.ARCHER ? "EVADE / PRECISION" : "EVADE",
                     Menu.TEAL);
             return;
         }
@@ -1782,6 +1797,24 @@ public class Game {
         }
     }
 
+    /** Waiting for the first arrival is preparation, not a playable "wave zero". */
+    private String waveProgressText(int wavesLeft) {
+        if (tutorial != null)
+            return "LESSON " + (tutorial.step().ordinal() + 1) + " OF " + tutorial.lessonCount();
+        if (wave < chapter().first())
+            return chapter().bossOnly()
+                    ? "BOSS APPROACHING"
+                    : "PREPARING / " + chapter().waves() + " WAVES";
+        if (chapter().bossOnly()) return "BOSS ONLY / " + enemies.size() + " HOSTILES";
+        return "WAVE "
+                + (wave - chapter().first() + 1)
+                + " / "
+                + chapter().waves()
+                + " - "
+                + wavesLeft
+                + " LEFT";
+    }
+
     private void drawHud() {
         int w = GetScreenWidth(), h = GetScreenHeight();
         boolean compact = w < 1000;
@@ -1804,22 +1837,7 @@ public class Game {
                                         director.remaining(),
                                         enemies.size(),
                                         director.total());
-        Menu.center(
-                tutorial != null
-                        ? "LESSON " + Math.min(8, tutorial.step().ordinal() + 1) + " OF 8"
-                        : chapter().bossOnly()
-                                ? "BOSS ONLY  /  " + enemies.size() + " HOSTILES"
-                                : "WAVE "
-                                        + Math.max(0, wave - chapter().first() + 1)
-                                        + " / "
-                                        + chapter().waves()
-                                        + "   -   "
-                                        + left
-                                        + " LEFT",
-                chapterCenter,
-                54,
-                compact ? 12 : 14,
-                Menu.TEXT);
+        Menu.center(waveProgressText(left), chapterCenter, 54, compact ? 12 : 14, Menu.TEXT);
         Menu.center(
                 tutorial != null
                         ? "No raids / Your campaign is safe"
@@ -2023,7 +2041,10 @@ public class Game {
                 y = 112;
         Menu.panel(x, y, width, 188);
         Menu.text(
-                "YOUR FIRST WATCH / LESSON " + Math.min(8, tutorial.step().ordinal() + 1) + " OF 8",
+                "YOUR FIRST WATCH / LESSON "
+                        + (tutorial.step().ordinal() + 1)
+                        + " OF "
+                        + tutorial.lessonCount(),
                 x + 20,
                 y + 12,
                 16,
@@ -2044,6 +2065,10 @@ public class Game {
                                             ? "Blue mana"
                                             : "Gold stamina")
                                     + " / Sanctuary: upper left";
+                    case FOCUS ->
+                            "Press "
+                                    + settings.controls.label(FOCUS)
+                                    + " to select the marked partner";
                     case STRIKE -> "Hit the marked partner twice";
                     case DODGE -> "Move + " + settings.controls.label(DODGE);
                     case CHARGE ->
@@ -2202,13 +2227,21 @@ public class Game {
     }
 
     private void drawCombatCues() {
+        WorldLandmarks.Landmark place =
+                WorldLandmarks.nearby(
+                        chapterIndex(), player.getPosition().x(), player.getPosition().z());
+        if (tutorial == null && activeBoss() == null && place != null) {
+            Menu.panel(GetScreenWidth() / 2 - 130, 118, 260, 38);
+            Menu.center(place.name(), GetScreenWidth() / 2, 129, 13, Menu.GOLD);
+        }
         // Practice partners have artificial health; keep their guided tutorial labels instead.
-        Enemy focused = tutorial == null ? enemyFocus.selected() : null;
+        Enemy focused = enemyFocus.selected();
         if (focused != null) {
             targetFrameScreen.draw(
                     focused,
                     focused.distance(player.getPosition().x(), player.getPosition().z()),
-                    settings.controls.label(FOCUS));
+                    settings.controls.label(FOCUS),
+                    tutorial != null);
             Vector2 mark =
                     GetWorldToScreen(
                             v(focused.x, .15f, focused.z),

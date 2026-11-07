@@ -963,8 +963,15 @@ public class InputSmokeTest {
             event(KEY_UP, forward, 0);
             for (int i = 0; i < 12; i++) frame(game);
             check(
-                    game.tutorial().step() == Tutorial.Step.STRIKE,
-                    "Walking did not advance practice");
+                    game.tutorial().step() == Tutorial.Step.FOCUS,
+                    "Walking did not advance to focus practice");
+            capture("tutorial-" + hero.name().toLowerCase() + "-focus");
+            key(game, game.focusKey());
+            for (int f = 0; f < 3; f++) frame(game);
+            check(
+                    game.tutorial().step() == Tutorial.Step.STRIKE && game.focusedEnemy() != null,
+                    "Focus action did not advance training");
+            capture("tutorial-" + hero.name().toLowerCase() + "-focused-partner");
             for (int n = 0; n < 2; n++) {
                 Entities.Enemy partner = game.getEnemies().getFirst();
                 game.getPlayer().aimAt(partner.x, partner.z);
@@ -1103,6 +1110,7 @@ public class InputSmokeTest {
                 for (int f = 0; f < 3; f++) frame(game);
                 capture("onboarding-center");
                 game.tutorial().movement(4);
+                game.tutorial().focus();
                 game.tutorial().hit(false);
                 game.tutorial().hit(false);
                 game.tutorial().dodge();
@@ -1113,6 +1121,41 @@ public class InputSmokeTest {
                 capture("onboarding-parry");
                 System.out.println(
                         "PASS: central onboarding panel and contextual charge/parry cues render");
+                return;
+            }
+            if (java.util.Arrays.asList(args).contains("--map-detail-review")) {
+                SaveGame.write(
+                        profile.resolve("save.properties"),
+                        new SaveGame.Snapshot(
+                                "Wayfarer",
+                                10,
+                                -1,
+                                180,
+                                new Progression(HeroClass.ARCHER),
+                                new WaveDirector.State(0, 0, 0, 8, 0, 21, 0),
+                                java.util.List.of(),
+                                Arena.HIGHLANDS));
+                check(game.loadCurrent(), "Landmark review failed");
+                key(game, KEY_ENTER);
+                for (int f = 0; f < 4; f++) frame(game);
+                capture("map-wayfarer-name");
+                check(
+                        WorldLandmarks.nearby(
+                                        0,
+                                        game.getPlayer().getPosition().x(),
+                                        game.getPlayer().getPosition().z())
+                                != null,
+                        "Camp location label missing");
+                game.photoMode(true);
+                var camera =
+                        game.getSceneManager().getOpenScene().getCameraController().getCamera();
+                camera._position().x(24).y(22).z(30);
+                camera.target().x(0).y(0).z(0);
+                for (int f = 0; f < 4; f++) frame(game);
+                capture("map-river-verges");
+                game.photoMode(false);
+                System.out.println(
+                        "PASS: authored area label, river pads and verge detail native renders");
                 return;
             }
             if (java.util.Arrays.asList(args).contains("--adventure-review")) {

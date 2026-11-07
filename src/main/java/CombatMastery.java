@@ -50,7 +50,11 @@ public final class CombatMastery {
     public String label(HeroClass hero) {
         return switch (hero) {
             case WARRIOR -> stacks > 0 ? "VALOR / NEXT STRIKE +20%" : "VALOR / PARRY TO EMPOWER";
-            case ARCHER -> stacks > 0 ? "FOCUS / NEXT SHOT +30%" : "FOCUS / EVADE A HIT TO EMPOWER";
+            // Keep the combat bonus distinct from the separate Focus Target action.
+            case ARCHER ->
+                    stacks > 0
+                            ? "PRECISION / NEXT SHOT +30%"
+                            : "PRECISION / EVADE A HIT TO EMPOWER";
             case MAGE -> "RESONANCE / " + stacks + " OF 3 / HEAVY +" + (stacks * 20) + "%";
         };
     }

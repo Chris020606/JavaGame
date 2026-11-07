@@ -24,6 +24,8 @@ The full input smoke uses temporary player data and covers menus, tutorials, com
 Focused scenarios are available when iterating:
 
 ```sh
+./gradlew inputSmokeTest --args=--tutorial-review
+./gradlew inputSmokeTest --args=--map-detail-review
 ./gradlew inputSmokeTest --args=--adventure-review
 ./gradlew inputSmokeTest --args=--combat-motion
 ./gradlew inputSmokeTest --args=--class-review

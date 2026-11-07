@@ -77,6 +77,7 @@ All main-source Java files, including retained examples. See the [Warden's Journ
 | [WeaponTrail](../../src/main/java/WeaponTrail.java) | Fixed-capacity history of the visible blade |
 | [WorkshopScreen](../../src/main/java/WorkshopScreen.java) | Shared layout coordinates keep mouse targets aligned with the drawn rows. |
 | [WorldAssets](../../src/main/java/WorldAssets.java) | Shared GPU assets: load once, pose each raider immediately before drawing. |
+| [WorldLandmarks](../../src/main/java/WorldLandmarks.java) | Chapter-local names and proximity bounds; no rewards or combat side effects |
 | [AssetPaths](../../src/main/java/assets/AssetPaths.java) | Locate external glTF/texture bundles independently of the launcher's working directory. |
 | [AudioRawStream](../../src/main/java/examples/AudioRawStream.java) | Retained Raylib experiment; not used by the game entry point. |
 | [CubicMap](../../src/main/java/examples/CubicMap.java) | raylib [models] example - Cubicmap loading and drawing This example has been created using raylib 1.8 (www.raylib.com) raylib is licensed under an unmodified zlib/libpng license (View raylib.h for details) Copyright (c) 2015 Ramon Santamaria (@raysan5) |

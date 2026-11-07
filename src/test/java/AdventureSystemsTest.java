@@ -8,6 +8,24 @@ import java.util.*;
 
 class AdventureSystemsTest {
     @Test
+    void subareasStayLocalToTheirZoneAndRiverPadsStayOnWater() {
+        assertEquals("WAYFARER'S REST", WorldLandmarks.nearby(0, 13, -3).name());
+        assertEquals("REFUGEE CAMP", WorldLandmarks.nearby(2, -12, 6).name());
+        assertNull(WorldLandmarks.nearby(0, 0, 0));
+        assertNull(WorldLandmarks.nearby(9, 13, -3));
+        var pads =
+                EnvironmentLayout.props(0).stream()
+                        .filter(p -> p.model().equals("lily_small"))
+                        .toList();
+        assertFalse(pads.isEmpty());
+        for (var pad : pads) {
+            assertNotNull(
+                    EnvironmentLayout.riverTile(Math.round(pad.x() / 4), Math.round(pad.z() / 4)));
+            assertTrue(pad.y() >= -.2f && pad.y() < 0);
+        }
+    }
+
+    @Test
     void focusCyclesVisibleLivingEnemiesAndClearsStaleActors() {
         Enemy close = new Enemy(0, 4, 1),
                 far = new Enemy(0, 10, 1),

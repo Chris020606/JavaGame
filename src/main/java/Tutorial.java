@@ -2,6 +2,7 @@
 public final class Tutorial {
     public enum Step {
         MOVE,
+        FOCUS,
         STRIKE,
         DODGE,
         CHARGE,
@@ -28,6 +29,14 @@ public final class Tutorial {
             traveled += Math.max(0, distance);
             if (traveled >= 4) next();
         }
+    }
+
+    public void focus() {
+        if (step == Step.FOCUS) next();
+    }
+
+    public int lessonCount() {
+        return Step.values().length;
     }
 
     public void hit(boolean charged) {
@@ -60,6 +69,7 @@ public final class Tutorial {
     public String title() {
         return switch (step) {
             case MOVE -> "Find your footing";
+            case FOCUS -> "Choose your target";
             case STRIKE -> "Aim and connect";
             case DODGE -> "Make space";
             case CHARGE -> "Commit to a heavy attack";
@@ -82,6 +92,11 @@ public final class Tutorial {
                             + " / "
                             + controls.label(Config.Controls.Action.RIGHT)
                             + ". Walk a few steps to continue.";
+            case FOCUS ->
+                    "Press "
+                            + controls.label(Config.Controls.Action.FOCUS)
+                            + " to focus the practice partner. The target frame shows health and"
+                            + " attack timing. Focus does not aim your attacks.";
             case STRIKE ->
                     "Point at the practice partner and click, or face them and press "
                             + controls.label(Config.Controls.Action.SLASH)

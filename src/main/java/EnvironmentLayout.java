@@ -317,6 +317,7 @@ public final class EnvironmentLayout {
                             yaw,
                             scale);
             }
+        addTravelDetails(p, chapter);
         return List.copyOf(p);
     }
 
@@ -340,6 +341,41 @@ public final class EnvironmentLayout {
             if (i > -5 && i < 5 && i != 1) g(p, "stone-wall", i * 4, 26, 0, 4);
             if (i % 4 != 0) g(p, "stone-wall", -26, i * 4, 90, 4);
             if (i < -2 || i > 2) g(p, "stone-wall", 26, i * 4, 90, 4);
+        }
+    }
+
+    /** Use a separate seed so verge detail never moves existing trees, cover or landmarks. */
+    private static void addTravelDetails(List<Prop> props, int chapter) {
+        Random detail = new Random(6101 + chapter);
+        for (int z = -20; z <= 20; z += 5) {
+            if (Math.abs(z) < 10) continue; // Leave the sanctuary's combat/healing space readable.
+            for (int side : new int[] {-1, 1}) {
+                float x = pathCenterX(chapter, z) + side * (2.8f + detail.nextFloat());
+                if (chapter == 0 && riverTile(Math.round(x / 4), Math.round(z / 4)) != null)
+                    continue;
+                n(
+                        props,
+                        chapter == 0 && z % 2 == 0 ? "flower_yellowC" : "grass_leafsLarge",
+                        x,
+                        z + detail.nextFloat(),
+                        detail.nextFloat() * 360,
+                        .8f + detail.nextFloat() * .5f);
+            }
+        }
+        if (chapter == 0) {
+            // Tile centres follow the actual river layout; pads must not appear on dry ground.
+            int[][] water = {{-6, -5}, {-3, -7}, {0, -7}, {2, -7}, {5, -5}};
+            for (int[] tile : water)
+                if (riverTile(tile[0], tile[1]) != null)
+                    props.add(
+                            new Prop(
+                                    false,
+                                    "lily_small",
+                                    tile[0] * 4,
+                                    -.13f,
+                                    tile[1] * 4,
+                                    detail.nextFloat() * 360,
+                                    1.4f));
         }
     }
 

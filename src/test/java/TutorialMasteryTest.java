@@ -4,6 +4,19 @@ import org.junit.jupiter.api.Test;
 
 class TutorialMasteryTest {
     @Test
+    void focusLessonUsesThePlayersActualBinding() {
+        Tutorial tutorial = new Tutorial();
+        tutorial.focus();
+        assertEquals(Tutorial.Step.MOVE, tutorial.step());
+        tutorial.movement(4);
+        Config.Controls controls = new Config.Controls();
+        assertTrue(tutorial.instruction(controls, HeroClass.MAGE).startsWith("Press T to focus"));
+        controls.bind(Config.Controls.Action.FOCUS, 66);
+        assertTrue(tutorial.instruction(controls, HeroClass.MAGE).startsWith("Press B to focus"));
+        assertEquals(9, tutorial.lessonCount());
+    }
+
+    @Test
     void practiceRequiresEachDemonstrationInOrder() {
         Tutorial t = new Tutorial();
         t.hit(true);
@@ -15,6 +28,10 @@ class TutorialMasteryTest {
         t.movement(3);
         assertEquals(Tutorial.Step.MOVE, t.step());
         t.movement(1);
+        assertEquals(Tutorial.Step.FOCUS, t.step());
+        t.hit(false);
+        assertEquals(Tutorial.Step.FOCUS, t.step());
+        t.focus();
         t.hit(false);
         assertEquals(Tutorial.Step.STRIKE, t.step());
         t.hit(false);

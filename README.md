@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Chris020606/JavaGame/releases/tag/v4.3.0"><strong>Download Outpost</strong></a>
+  <a href="https://github.com/Chris020606/JavaGame/releases/tag/v4.3.1"><strong>Download Outpost</strong></a>
   &nbsp; · &nbsp;
   <a href="#play-with-a-friend">Play with a friend</a>
   &nbsp; · &nbsp;
@@ -23,7 +23,7 @@ Choose a Warrior, Archer, or Mage. Play the four-chapter campaign alone, or shar
 | --- | --- | --- |
 | Fight up close with sword combos, parries, and heavy strikes. | Keep your distance with a bow, then equip a hand or siege crossbow. | Send spells through enemy ranks and spend mana on powerful casts. |
 
-New characters begin with a hands-on tutorial. Choose **Easy, Normal, Hard, or Extreme** when you start your adventure.
+New characters begin with a hands-on tutorial, including how to focus an enemy with **T**. Choose **Easy, Normal, Hard, or Extreme** when you start your adventure.
 
 ## Defend the sanctuary
 
@@ -86,14 +86,16 @@ Controls can be changed in Settings. The sanctuary's marked ring restores health
 </details>
 
 <details>
-<summary><strong>What's new in v4.3</strong></summary>
+<summary><strong>What's new in v4.3.1</strong></summary>
 
+- Learn enemy focus in a new tutorial lesson that uses your chosen key binding.
+- Find roadside planting, river lily pads, and named camps and ruins.
 - Focus enemies and read their health, distance, and attack timer in solo or co-op.
 - Revisit unlocked solo chapters from the world map.
 - Find new meadow and cemetery landmarks along a more distinct highland road.
 - Trees fade when they hide your hero, and campfire embers follow the campsite.
 
-[Read the release notes and download v4.3](https://github.com/Chris020606/JavaGame/releases/tag/v4.3.0).
+[Read the release notes and download v4.3.1](https://github.com/Chris020606/JavaGame/releases/tag/v4.3.1).
 
 </details>
 
@@ -101,4 +103,4 @@ Controls can be changed in Settings. The sanctuary's marked ring restores health
 
 Characters and animation by **KayKit**. Scenery by **Kenney**. [Full credits](THIRD_PARTY_NOTICES.md).
 
-For source builds and development, see the [maintenance handbook](docs/development/README.md) and [contribution guide](CONTRIBUTING.md).
+For source builds and development, see the [maintenance handbook](https://github.com/Chris020606/JavaGame/blob/master/docs/development/README.md) and [contribution guide](https://github.com/Chris020606/JavaGame/blob/master/CONTRIBUTING.md).
