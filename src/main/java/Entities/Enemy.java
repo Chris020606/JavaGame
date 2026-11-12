@@ -82,7 +82,11 @@ public class Enemy {
         maxHealth =
                 partyHealthScale
                         * (elite ? 1.5f : 1)
-                        * (40 + wave * 10)
+                        * (40
+                                + wave * 10
+                                + (partyHealthScale <= 1 && variant != 5
+                                        ? Math.max(0, wave - 4) * 8
+                                        : 0))
                         * (variant == 5
                                 ? 5
                                 : variant == 2
@@ -133,7 +137,9 @@ public class Enemy {
     public void approach(float px, float pz, float dt) {
         float distance = distance(px, pz);
         if (clock(dt)) return;
-        facing = (float) Math.toDegrees(Math.atan2(px - x, pz - z));
+        if (distance > 0.001f) {
+            facing = (float) Math.toDegrees(Math.atan2(px - x, pz - z));
+        }
         if (ranged() && distance < 4 && distance > .001f) {
             x = Math.max(-22, Math.min(22, x - (px - x) / distance * speed * .65f * dt));
             z = Math.max(-22, Math.min(22, z - (pz - z) / distance * speed * .65f * dt));
@@ -149,61 +155,45 @@ public class Enemy {
 
     public void navigate(float tx, float tz, float separationX, float separationZ, float dt) {
         if (clock(dt)) return;
-        float dx = tx - x,
-                dz = tz - z,
-                d = (float) Math.hypot(dx, dz),
-                nx = d > .001f ? dx / d : 0,
-                nz = d > .001f ? dz / d : 0;
-        float vx = 0, vz = 0, side = personality > .5f ? 1 : -1;
-        action = "APPROACH";
-        if (ranged()) {
-            if (d < 4.5f) {
-                vx = -nx + nz * side * .45f;
-                vz = -nz - nx * side * .45f;
-                action = "RETREAT";
-            } else if (d < 7.4f) {
-                if (cooldown > .15f || sideStepTime > 0) {
-                    vx = nz * side * .55f;
-                    vz = -nx * side * .55f;
-                    action = "STRAFE";
-                }
-            } else {
-                vx = nx;
-                vz = nz;
-            }
-        } else if (!boss() && cooldown > .35f && d < 3 && variant != 2) {
-            vx = -nx * .65f + nz * side * .25f;
-            vz = -nz * .65f - nx * side * .25f;
-            action = "RECOVER";
-        } else if (d > (boss() ? 2.2f : 1.45f)) {
-            float flank = !boss() && d > 3 && d < 10 ? (variant == 1 ? .75f : .35f) * side : 0;
-            vx = nx + nz * flank;
-            vz = nz - nx * flank;
-            action = flank != 0 ? "FLANK" : "APPROACH";
+        EnemyCombatBehavior.Motion motion =
+                EnemyCombatBehavior.planMotion(this, tx, tz, separationX, separationZ);
+        action = motion.action();
+
+        float safeDt = Math.min(dt, 0.15f);
+        float blend = Math.min(1.0f, safeDt * 9.0f);
+        velocityX += (motion.vx() * speed - velocityX) * blend;
+        velocityZ += (motion.vz() * speed - velocityZ) * blend;
+
+        x = Math.max(-22.0f, Math.min(22.0f, x + velocityX * safeDt));
+        z = Math.max(-22.0f, Math.min(22.0f, z + velocityZ * safeDt));
+
+        // Prevent stored velocity from sticking against arena bounds
+        if ((x <= -22.0f && velocityX < 0) || (x >= 22.0f && velocityX > 0)) {
+            velocityX = 0;
         }
-        vx += separationX * .9f;
-        vz += separationZ * .9f;
-        float magnitude = (float) Math.hypot(vx, vz);
-        if (magnitude > 1) {
-            vx /= magnitude;
-            vz /= magnitude;
+        if ((z <= -22.0f && velocityZ < 0) || (z >= 22.0f && velocityZ > 0)) {
+            velocityZ = 0;
         }
-        float blend = Math.min(1, dt * 9);
-        velocityX += (vx * speed - velocityX) * blend;
-        velocityZ += (vz * speed - velocityZ) * blend;
-        x = Math.max(-22, Math.min(22, x + velocityX * dt));
-        z = Math.max(-22, Math.min(22, z + velocityZ * dt));
+
         locomotion = (float) Math.hypot(velocityX, velocityZ) / Math.max(.1f, speed);
-        float target = (float) Math.toDegrees(Math.atan2(dx, dz)),
-                delta = (float) Math.IEEEremainder(target - facing, 360);
-        facing =
-                (float)
-                        Math.IEEEremainder(
-                                facing + Math.max(-540 * dt, Math.min(540 * dt, delta)), 360);
+        float dx = tx - x;
+        float dz = tz - z;
+        if (Math.hypot(dx, dz) > 0.001f) {
+            float target = (float) Math.toDegrees(Math.atan2(dx, dz));
+            float delta = (float) Math.IEEEremainder(target - facing, 360);
+            facing =
+                    (float)
+                            Math.IEEEremainder(
+                                    facing + Math.max(-540 * safeDt, Math.min(540 * safeDt, delta)),
+                                    360);
+        }
     }
 
     public boolean facingTarget(float tx, float tz) {
-        float target = (float) Math.toDegrees(Math.atan2(tx - x, tz - z));
+        float dx = tx - x;
+        float dz = tz - z;
+        if (Math.hypot(dx, dz) < 0.001f) return true;
+        float target = (float) Math.toDegrees(Math.atan2(dx, dz));
         return Math.abs(Math.IEEEremainder(target - facing, 360)) < 35;
     }
 

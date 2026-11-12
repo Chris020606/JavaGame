@@ -6,14 +6,16 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Chris020606/JavaGame/releases/tag/v4.3.1"><strong>Download Outpost</strong></a>
+  <a href="https://github.com/Chris020606/JavaGame/releases/tag/v4.4.0"><strong>Download Outpost</strong></a>
   &nbsp; · &nbsp;
   <a href="#play-with-a-friend">Play with a friend</a>
   &nbsp; · &nbsp;
   <a href="https://github.com/Chris020606/JavaGame/releases">Release notes</a>
 </p>
 
-The sanctuary is the valley's last source of light. Defend it from raiders and the restless dead, earn better equipment, and face the Ash Warden and the Hollow King.
+The kingdom fell when corrupt wardens and outlaw syndicates broke its ancient seals. Aethelgard still stands. Beyond its walls, families are waiting for someone to bring them home.
+
+Become a Warden, venture into the frozen valleys, and defend the Beacon that carries you and the survivors back to safety.
 
 Choose a Warrior, Archer, or Mage. Play the four-chapter campaign alone, or share the defense with a friend in two-player co-op.
 
@@ -23,13 +25,17 @@ Choose a Warrior, Archer, or Mage. Play the four-chapter campaign alone, or shar
 | --- | --- | --- |
 | Fight up close with sword combos, parries, and heavy strikes. | Keep your distance with a bow, then equip a hand or siege crossbow. | Send spells through enemy ranks and spend mana on powerful casts. |
 
-New characters begin with a hands-on tutorial, including how to focus an enemy with **T**. Choose **Easy, Normal, Hard, or Extreme** when you start your adventure.
+New solo characters begin in Aethelgard with a story opening and guided training. Meet your class mentor, receive your first weapon, then learn the essentials in the field, including enemy focus with **T**. Choose **Easy, Normal, Hard, or Extreme** when you start your adventure.
 
 ## Defend the sanctuary
 
 Enemies arrive in waves. Scouts flank, brutes push toward the center, and enemy archers try to keep their distance. Watch their attack warnings, protect the sanctuary, and leave yourself enough room to dodge.
 
-Between fights, spend crystals on your character and forge new equipment. Mix armor pieces, compare weapon stats, and see each change on your hero. Optional supply caches, survivors, and waystones offer extra rewards if you can spare the time to help.
+Return to your class mentor in Aethelgard to forge weapons and individual armor pieces. Goran equips Warriors, Lady Elyndra equips Mages, and Diana equips Archers. Mix your gear and compare its power or defense before equipping it.
+
+Torvald sells potions and permanent caravan upgrades in Market Square. Rescue six stranded citizens across the campaign and watch them settle into the city. The rescue ledger records who is safely home. Boss victories award XP and crystals; new equipment comes from your mentor.
+
+![Market Square in Aethelgard](docs/images/player-city-4.4.png)
 
 ![Actual gameplay: a Mage defending the meadow sanctuary with a focused enemy's attack timer visible](docs/images/player-target-focus.png)
 
@@ -41,7 +47,7 @@ In solo play, the **World Map / Chapters** screen lets you return to unlocked ch
 
 | Plan your next chapter | Equip your warden |
 | --- | --- |
-| ![The valley's four chapters and travel controls](docs/images/player-world-map.png) | ![Archer equipment with distinct hand and siege crossbows](docs/images/player-crossbows.png) |
+| ![The valley's four chapters and travel controls](docs/images/player-world-map.png) | ![Redesigned inventory with individual equipment slots](docs/images/player-inventory-4.4.png) |
 
 ## Play with a friend
 
@@ -77,7 +83,10 @@ On Mac, choose **macOS ARM64** for Apple Silicon or **macOS x64** for Intel. Kee
 | Heal with a potion | H |
 | Interact / sanctuary blessing | G |
 | Focus an enemy | T |
-| Inventory / workshop | Tab / E |
+| Inventory | E |
+| Character stats inside inventory | C |
+| Recall to city between fights | B |
+| Craft equipment | Talk to your class mentor in the city |
 | Orbit the camera | Hold right mouse button |
 | Pause | Esc |
 
@@ -86,16 +95,22 @@ Controls can be changed in Settings. The sanctuary's marked ring restores health
 </details>
 
 <details>
-<summary><strong>What's new in v4.3.1</strong></summary>
+<summary><strong>What's new in v4.4.0</strong></summary>
 
-- Learn enemy focus in a new tutorial lesson that uses your chosen key binding.
-- Find roadside planting, river lily pads, and named camps and ruins.
-- Focus enemies and read their health, distance, and attack timer in solo or co-op.
-- Revisit unlocked solo chapters from the world map.
-- Find new meadow and cemetery landmarks along a more distinct highland road.
-- Trees fade when they hide your hero, and campfire embers follow the campsite.
+- Explore Aethelgard, a city of market stalls, workshops, homes, gardens and castle walls.
+- Begin with a story opening, meet your mentor and receive your first weapon.
+- Rescue six distinct citizens and meet them again at home.
+- Equip armor piece by piece in the redesigned inventory, with item comparisons and explained stat cards.
+- Visit Torvald for provisions and permanent caravan upgrades.
+- Fight enemies that flank, hold the front line and reposition at range.
+- Earn XP and crystals from bosses, with steadier late-game stat growth.
+- Find the city radar, rescue ledger and contextual NPC labels.
 
-[Read the release notes and download v4.3.1](https://github.com/Chris020606/JavaGame/releases/tag/v4.3.1).
+| Forge individual pieces | Bring people home |
+| --- | --- |
+| ![Individual armor forging](docs/images/player-forge-4.4.png) | ![The city's rescue ledger](docs/images/player-rescues-4.4.png) |
+
+[Read the v4.4.0 release notes](docs/releases/v4.4.0.md).
 
 </details>
 

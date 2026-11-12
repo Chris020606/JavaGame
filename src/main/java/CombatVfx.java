@@ -103,6 +103,28 @@ public final class CombatVfx implements AutoCloseable {
         }
     }
 
+    public void parrySpark(float x, float z) {
+        for (int i = 0; i < 28; i++) {
+            Particle p;
+            if (particleCount < MAX_PARTICLES) p = particles[particleCount++];
+            else {
+                p = particles[replacement];
+                replacement = (replacement + 1) % MAX_PARTICLES;
+            }
+            double a = i * (Math.PI * 2 / 28) + (serial++ * .15);
+            float speed = 2.8f + (i % 3) * .8f;
+            p.x = x;
+            p.y = 1.1f;
+            p.z = z;
+            p.vx = (float) Math.cos(a) * speed;
+            p.vz = (float) Math.sin(a) * speed;
+            p.vy = .4f + (i % 4) * .4f;
+            p.total = p.life = .18f + (i % 3) * .07f;
+            p.size = .12f;
+            p.color = i % 2 == 0 ? Menu.GOLD : Menu.TEAL;
+        }
+    }
+
     public void begin() {
         BeginBlendMode(BLEND_ADDITIVE);
         rlDisableDepthMask();
@@ -266,6 +288,15 @@ public final class CombatVfx implements AutoCloseable {
         } else
             switch (e.bossMove) {
                 case SLAM -> {
+                    decal(ring, e.attackX, e.attackZ, 3.4f, 0, color, .35f);
+                    decal(
+                            ring,
+                            e.attackX,
+                            e.attackZ,
+                            Math.max(.2f, 3.4f * phase),
+                            0,
+                            color,
+                            .55f + phase * .35f);
                     decal(rune, e.attackX, e.attackZ, 3.4f, time * 9, color, .25f + phase * .4f);
                     glow(camera, e.x, 1.9f, e.z, 1.3f, color, phase * .25f);
                 }

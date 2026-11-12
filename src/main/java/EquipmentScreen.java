@@ -7,7 +7,7 @@ import assets.AssetPaths;
 
 /** Select/compare equipment, then equip explicitly, double-click, or drag to a labeled slot. */
 public final class EquipmentScreen implements AutoCloseable {
-    private final RenderTexture preview = LoadRenderTexture(640, 800);
+    private final RenderTexture preview = LoadRenderTexture(960, 1040);
     private final RenderTexture[] thumbnails = new RenderTexture[16];
     private final Shader shader =
             LoadShader(
@@ -15,10 +15,10 @@ public final class EquipmentScreen implements AutoCloseable {
                     AssetPaths.path("resources/outpost/preview.fs"));
     private final Camera3D camera =
             new Camera3D()
-                    ._position(new Vector3().x(3).y(2.9f).z(5.5f))
-                    .target(new Vector3().y(1.3f))
+                    ._position(new Vector3().x(2.2f).y(2.3f).z(4.7f))
+                    .target(new Vector3().y(1.05f))
                     .up(new Vector3().y(1))
-                    .fovy(40)
+                    .fovy(32)
                     .projection(CAMERA_PERSPECTIVE);
     private HeroClass thumbnailClass;
     private Progression owner;
@@ -26,6 +26,8 @@ public final class EquipmentScreen implements AutoCloseable {
     private double lastClick;
     private float yaw, dragX, dragY;
     private boolean orbit;
+    private boolean viewDossier;
+    private boolean showUnowned;
 
     private static Color tierColor(int tier) {
         return tier == 3
@@ -39,6 +41,8 @@ public final class EquipmentScreen implements AutoCloseable {
             selected = progress.weaponTier();
             dragged = lastClicked = -1;
             filter = 0;
+            showUnowned = false;
+            viewDossier = false;
         }
         Vector3 position = player.getPosition();
         float facing = player.getRotation().y();
@@ -48,12 +52,14 @@ public final class EquipmentScreen implements AutoCloseable {
         assets.previewPass(shader);
         BeginTextureMode(preview);
         ClearBackground(Menu.INK);
-        DrawRectangleGradientV(0, 0, 640, 800, Menu.color(48, 65, 91), Menu.color(18, 25, 40));
+        DrawRectangleGradientV(0, 0, 960, 1040, Menu.color(48, 65, 91), Menu.color(18, 25, 40));
         BeginMode3D(camera);
         DrawCylinder(new Vector3().y(-.03f), .95f, .95f, .06f, 32, Menu.color(93, 83, 59));
         assets.preparePlayer(player);
         assets.drawPlayerBody(player, progress, WHITE);
-        assets.drawPlayerWeapon(player, progress.heroClass().ordinal(), progress.weaponTier());
+        if (progress.hasWeapon()) {
+            assets.drawPlayerWeapon(player, progress.heroClass().ordinal(), progress.weaponTier());
+        }
         assets.drawArmor(player, progress);
         EndMode3D();
         EndTextureMode();
@@ -117,13 +123,13 @@ public final class EquipmentScreen implements AutoCloseable {
 
     private static boolean owned(Progression p, int item) {
         return item < 4
-                ? p.ownsWeapon(item)
-                : item < 16 ? p.ownsArmor(tier(item)) : p.potions() > 0;
+                ? (p.hasWeapon() && p.ownsWeapon(item))
+                : item < 16 ? p.ownsArmor(slot(item), tier(item)) : p.potions() > 0;
     }
 
     private static boolean equipped(Progression p, int item) {
         return item < 4
-                ? p.weaponTier() == item
+                ? (p.hasWeapon() && p.weaponTier() == item)
                 : item < 16 && p.armorTier(slot(item)) == tier(item);
     }
 
@@ -149,6 +155,7 @@ public final class EquipmentScreen implements AutoCloseable {
             Menu.icon("potion", x + size / 4, y + size / 4, size / 2, Menu.RED);
             return;
         }
+        if (thumbnails[item] == null) return;
         DrawTexturePro(
                 thumbnails[item].texture(),
                 new Rectangle().width(128).height(-128),
@@ -158,128 +165,173 @@ public final class EquipmentScreen implements AutoCloseable {
                 tint);
     }
 
-    private java.util.List<Integer> visible() {
+    private java.util.List<Integer> visible(Progression p) {
         java.util.ArrayList<Integer> ids = new java.util.ArrayList<>();
         for (int i = 0; i < 17; i++)
-            if (filter == 0 || filter == 1 && i < 4 || filter == 2 && i >= 4 && i < 16) ids.add(i);
+            if ((showUnowned || owned(p, i))
+                    && (filter == 0
+                            || filter == 1 && i < 4
+                            || filter == 2 && i >= 4 && i < 16
+                            || filter == 3 && i == 16)) ids.add(i);
         return ids;
     }
 
     public boolean draw(Progression p, String inventoryKey) {
-        int x = (GetScreenWidth() - 940) / 2, y = (GetScreenHeight() - 600) / 2;
+        int x = (GetScreenWidth() - 960) / 2, y = (GetScreenHeight() - 640) / 2;
         Vector2 mouse = GetMousePosition();
-        Menu.panel(x, y, 940, 600);
-        Menu.icon("bag", x + 24, y + 19, 24, Menu.GOLD);
-        Menu.text("THE WARDEN'S PACK", x + 60, y + 16, 27, Menu.TEXT);
-        Menu.text(p.crystals() + " CRYSTALS", x + 720, y + 24, 19, Menu.GOLD);
+        Menu.panel(x, y, 960, 640);
+        Menu.text("YOUR EQUIPMENT", x + 24, y + 18, 28, Menu.TEXT);
         Menu.text(
-                p.heroClass().label + " / " + p.difficulty().label + " / EQUIPMENT",
+                p.heroClass().label + " / LEVEL " + p.characterLevel(),
                 x + 24,
-                y + 62,
-                13,
-                Menu.MUTED);
-        Menu.frame(x + 20, y + 86, 258, 338, Menu.INK, Menu.LINE);
+                y + 58,
+                14,
+                Menu.TEAL);
+        Menu.icon("crystal", x + 714, y + 24, 20, Menu.GOLD);
+        Menu.text(p.crystals() + " CRYSTALS", x + 744, y + 26, 17, Menu.GOLD);
+        DrawLine(x + 20, y + 86, x + 940, y + 86, Menu.LINE);
+
+        // Character and equipped pieces have their own stable column.
+        Menu.frame(x + 20, y + 104, 248, 268, Menu.INK, Menu.LINE);
         DrawTexturePro(
                 preview.texture(),
-                new Rectangle().width(640).height(-800),
-                new Rectangle().x(x + 24).y(y + 90).width(250).height(330),
+                new Rectangle().width(960).height(-1040),
+                new Rectangle().x(x + 24).y(y + 108).width(240).height(260),
                 new Vector2(),
                 0,
                 WHITE);
-        Menu.text("DRAG TO TURN / SCROLL TO ZOOM", x + 30, y + 432, 11, Menu.MUTED);
-        Menu.text(p.weaponName(p.weaponTier()), x + 24, y + 452, 14, tierColor(p.weaponTier()));
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && inside(mouse, x + 24, y + 90, 250, 330))
+        Menu.text("DRAG TO TURN / SCROLL TO ZOOM", x + 28, y + 351, 10, Menu.MUTED);
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && inside(mouse, x + 24, y + 108, 240, 240))
             orbit = true;
         if (orbit && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) yaw += GetMouseDelta().x() * .8f;
-        if (inside(mouse, x + 24, y + 90, 250, 330))
+        if (inside(mouse, x + 24, y + 108, 240, 240))
             camera.fovy(Math.max(28, Math.min(52, camera.fovy() - GetMouseWheelMove() * 2)));
         if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) orbit = false;
-        String[] filters = {"BACKPACK", "WEAPONS", "ARMOR"};
-        for (int i = 0; i < 3; i++) {
-            int left = x + 400 + i * 172;
-            boolean hit = inside(mouse, left, y + 56, 166, 25);
-            if (hit && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                filter = i;
-                selected = visible().get(0);
-                dragged = lastClicked = -1;
-            }
-            Menu.frame(
-                    left,
-                    y + 56,
-                    166,
-                    25,
-                    filter == i ? Menu.color(55, 71, 95) : Menu.PANEL,
-                    filter == i ? Menu.GOLD : Menu.LINE);
-            Menu.center(filters[i], left + 83, y + 62, 12, filter == i ? Menu.GOLD : Menu.TEXT);
-        }
-        var ids = visible();
-        int pos = Math.max(0, ids.indexOf(selected)),
-                move =
-                        IsKeyPressed(KEY_RIGHT)
-                                ? 1
-                                : IsKeyPressed(KEY_LEFT)
-                                        ? -1
-                                        : IsKeyPressed(KEY_DOWN)
-                                                ? 6
-                                                : IsKeyPressed(KEY_UP) ? -6 : 0;
-        if (move != 0) selected = ids.get(Math.max(0, Math.min(ids.size() - 1, pos + move)));
-        if (IsKeyPressed(KEY_ENTER) && owned(p, selected)) equip(p, selected);
-        if (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)) remove(p, selected);
+        Menu.text("EQUIPPED", x + 20, y + 384, 12, Menu.GOLD);
         for (int s = 0; s < 5; s++) {
-            int sx = x + 300, sy = y + 90 + s * 70;
-            Menu.slot(sx, sy, 64, false, true);
+            int sx = x + 20 + s * 50, sy = y + 407;
             int level = s == 4 ? p.weaponTier() : p.armorTier(ArmorSlot.values()[s]);
+            boolean filled = s == 4 ? p.hasWeapon() : level > 0;
+            Menu.slot(sx, sy, 46, false, filled);
+            if (filled)
+                thumbnail(s == 4 ? level : 4 + (level - 1) * 4 + s, sx + 3, sy + 3, 40, WHITE);
+            else
+                Menu.icon(
+                        s == 4 ? "sword" : ArmorSlot.values()[s].icon(),
+                        sx + 11,
+                        sy + 11,
+                        24,
+                        Menu.LINE);
             Menu.center(
                     s == 4 ? "WEAPON" : ArmorSlot.values()[s].name(),
-                    sx + 32,
-                    sy + 4,
-                    9,
+                    sx + 23,
+                    sy + 51,
+                    8,
                     Menu.MUTED);
-            if (level > 0 || s == 4)
-                thumbnail(s == 4 ? level : 4 + (level - 1) * 4 + s, sx + 10, sy + 12, 44, WHITE);
-            else Menu.icon(ArmorSlot.values()[s].icon(), sx + 20, sy + 22, 24, Menu.LINE);
-            Menu.text("T" + level, sx + 4, sy + 48, 11, tierColor(level));
-            if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) && inside(mouse, sx, sy, 64, 64)) {
-                if (s == 4) p.equipWeapon(0);
-                else p.equipArmor(ArmorSlot.values()[s], 0);
+            if (inside(mouse, sx, sy, 46, 46)) {
+                if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+                    if (s == 4) p.equipWeapon(0);
+                    else p.equipArmor(ArmorSlot.values()[s], 0);
+                }
+                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && filled) {
+                    selected = s == 4 ? level : 4 + (level - 1) * 4 + s;
+                    filter = 0;
+                    viewDossier = false;
+                }
+                if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)
+                        && dragged >= 0
+                        && (Math.abs(mouse.x() - dragX) + Math.abs(mouse.y() - dragY) > 6)
+                        && (s == 4 && dragged < 4
+                                || s < 4
+                                        && dragged >= 4
+                                        && dragged < 16
+                                        && slot(dragged).ordinal() == s)) equip(p, dragged);
             }
-            if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)
-                    && dragged >= 0
-                    && inside(mouse, sx, sy, 64, 64)
-                    && (Math.abs(mouse.x() - dragX) + Math.abs(mouse.y() - dragY) > 6))
-                if (s == 4 && dragged < 4
-                        || s < 4 && dragged >= 4 && dragged < 16 && slot(dragged).ordinal() == s)
-                    equip(p, dragged);
         }
-        int hover = -1;
-        for (int cell = 0; cell < 18; cell++) {
-            int left = x + 400 + (cell % 6) * 75, top = y + 90 + (cell / 6) * 76;
-            int cellItem = cell < ids.size() ? ids.get(cell) : -1;
-            Menu.slot(left, top, 66, cellItem == selected, cellItem >= 0 && equipped(p, cellItem));
-            if (cell >= ids.size()) continue;
-            int item = ids.get(cell);
-            boolean available = owned(p, item);
-            thumbnail(item, left + 4, top + 1, 58, available ? WHITE : Menu.color(90, 95, 100));
-            if (available) {
+        InventoryGrowth.draw(p, x + 20, y + 482, 248);
+
+        if (IsKeyPressed(KEY_C)) viewDossier = !viewDossier;
+        if (Menu.button(
+                viewDossier ? "BACK TO ITEMS [C]" : "CHARACTER STATS [C]",
+                x + 286,
+                y + 104,
+                356,
+                true)) viewDossier = !viewDossier;
+        if (viewDossier) {
+            drawStatsSheet(p, x + 286, y + 160, 654, 410);
+        } else {
+            String[] categories = {"ALL", "WEAPONS", "ARMOR", "SUPPLIES"};
+            for (int i = 0; i < 4; i++) {
+                int tx = x + 286 + i * 90;
+                boolean hover = inside(mouse, tx, y + 164, 86, 30);
+                Menu.frame(
+                        tx,
+                        y + 164,
+                        86,
+                        30,
+                        filter == i ? Menu.color(53, 65, 75) : Menu.PANEL,
+                        filter == i ? Menu.GOLD : Menu.LINE);
+                Menu.center(
+                        categories[i], tx + 43, y + 174, 11, filter == i ? Menu.GOLD : Menu.MUTED);
+                if (hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                    filter = i;
+                    dragged = lastClicked = -1;
+                }
+            }
+            if (Menu.button(
+                    showUnowned ? "SHOW OWNED ONLY" : "INCLUDE UNOWNED",
+                    x + 286,
+                    y + 574,
+                    356,
+                    true)) showUnowned = !showUnowned;
+            var ids = visible(p);
+            if (!ids.isEmpty() && !ids.contains(selected)) selected = ids.get(0);
+            int pos = Math.max(0, ids.indexOf(selected));
+            int move =
+                    IsKeyPressed(KEY_RIGHT)
+                            ? 1
+                            : IsKeyPressed(KEY_LEFT)
+                                    ? -1
+                                    : IsKeyPressed(KEY_DOWN) ? 4 : IsKeyPressed(KEY_UP) ? -4 : 0;
+            if (move != 0 && !ids.isEmpty())
+                selected = ids.get(Math.max(0, Math.min(ids.size() - 1, pos + move)));
+            if (!ids.isEmpty() && IsKeyPressed(KEY_ENTER) && owned(p, selected)) equip(p, selected);
+            if (!ids.isEmpty()
+                    && equipped(p, selected)
+                    && (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE)))
+                remove(p, selected);
+            Menu.frame(x + 286, y + 204, 356, 356, Menu.color(18, 26, 38), Menu.LINE);
+            if (ids.isEmpty()) {
+                Menu.center("NO ITEMS IN THIS CATEGORY", x + 464, y + 338, 13, Menu.MUTED);
+                Menu.center(
+                        "Include unowned to browse forge equipment.",
+                        x + 464,
+                        y + 366,
+                        10,
+                        Menu.MUTED);
+            }
+            for (int cell = 0; cell < ids.size(); cell++) {
+                int item = ids.get(cell),
+                        cx = x + 298 + cell % 4 * 86,
+                        cy = y + 216 + cell / 4 * 68;
+                boolean available = owned(p, item), hover = inside(mouse, cx, cy, 72, 60);
+                Menu.frame(
+                        cx,
+                        cy,
+                        72,
+                        60,
+                        item == selected ? Menu.color(55, 62, 64) : Menu.PANEL,
+                        item == selected ? Menu.GOLD : equipped(p, item) ? Menu.TEAL : Menu.LINE);
+                thumbnail(item, cx + 10, cy, 50, available ? WHITE : Menu.color(90, 95, 100));
                 Menu.text(
                         item == 16 ? "x" + p.potions() : "T" + tier(item),
-                        left + 5,
-                        top + 49,
-                        11,
+                        cx + 5,
+                        cy + 44,
+                        10,
                         tierColor(tier(item)));
-                DrawRectangle(left + 5, top + 61, 56, 2, tierColor(tier(item)));
-            } else {
-                Menu.icon("lock", left + 47, top + 45, 13, Menu.MUTED);
-            }
-
-            if (equipped(p, item)) {
-                DrawRectangleLines(left + 1, top + 1, 64, 64, Menu.TEAL);
-                DrawRectangle(left + 49, top + 3, 14, 3, Menu.TEAL);
-            }
-            if (selected == item) DrawRectangleLines(left, top, 66, 66, Menu.GOLD);
-            if (inside(mouse, left, top, 66, 66)) {
-                hover = item;
-                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                if (!available) Menu.icon("lock", cx + 54, cy + 42, 12, Menu.MUTED);
+                else if (equipped(p, item)) Menu.text("ON", cx + 49, cy + 44, 9, Menu.TEAL);
+                if (hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                     selected = item;
                     if (available && lastClicked == item && GetTime() - lastClick < .35) {
                         equip(p, item);
@@ -296,102 +348,100 @@ public final class EquipmentScreen implements AutoCloseable {
                     }
                 }
             }
+            if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) dragged = -1;
+            drawSelected(p, x + 660, y + 104, ids.isEmpty());
         }
-        if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) dragged = -1;
-        Menu.frame(x + 400, y + 330, 510, 130, Menu.color(28, 39, 58), Menu.LINE);
-        Menu.text(name(p, selected), x + 416, y + 340, 23, tierColor(tier(selected)));
-        int delta =
-                selected < 4
-                        ? p.weaponBonus(selected) - p.weaponBonus(p.weaponTier())
-                        : selected < 16
-                                ? p.armorBonus(slot(selected), tier(selected))
-                                        - p.armorBonus(slot(selected), p.armorTier(slot(selected)))
-                                : 0;
-        String compare =
-                selected < 4
-                        ? "DAMAGE  " + p.damage() + "  >  " + (p.damage() + delta)
-                        : selected < 16
-                                ? "DEFENSE  " + p.defense() + "  >  " + (p.defense() + delta)
-                                : "Restores up to 60 HP / " + p.potions() + " stored";
-        Menu.text(
-                compare + (selected < 16 ? String.format("  (%+d)", delta) : ""),
-                x + 416,
-                y + 377,
-                17,
-                delta < 0 ? Menu.RED : delta > 0 ? Menu.TEAL : Menu.TEXT);
-        boolean wearing = equipped(p, selected);
-        String action =
-                !owned(p, selected)
-                        ? "LOCKED / VISIT FORGE"
-                        : selected == 16
-                                ? (p.health() < p.maxHealth() ? "USE POTION" : "HEALTH FULL")
-                                : wearing && selected == 0
-                                        ? "STARTER EQUIPPED"
-                                        : wearing ? "UNEQUIP" : "EQUIP [ENTER]";
-        if (Menu.button(
-                action,
-                x + 416,
-                y + 408,
-                245,
-                owned(p, selected)
-                        && !(wearing && selected == 0)
-                        && (selected != 16 || p.health() < p.maxHealth()))) {
-            if (wearing) remove(p, selected);
-            else equip(p, selected);
-        }
-        Menu.text(
-                wearing ? "EQUIPPED" : owned(p, selected) ? "OWNED" : "NOT OWNED",
-                x + 708,
-                y + 421,
-                15,
-                wearing ? Menu.TEAL : Menu.MUTED);
-        Menu.text(
-                "HEALTH " + p.maxHealth() + "   DAMAGE " + p.damage(),
-                x + 24,
-                y + 480,
-                18,
-                Menu.TEXT);
-        Menu.text(
-                p.resourceLabel() + " " + p.maxStamina() + "   DEFENSE " + p.defense(),
-                x + 24,
-                y + 510,
-                18,
-                Menu.TEAL);
-        Menu.text(
-                String.format("SPEED %.1f   RECOVERY %d/s", p.movementSpeed(), p.staminaRecovery()),
-                x + 24,
-                y + 540,
-                16,
-                Menu.MUTED);
-        if (Menu.button(
-                "USE POTION / " + p.potions(),
-                x + 400,
-                y + 485,
-                220,
-                p.potions() > 0 && p.health() < p.maxHealth())) p.usePotion();
-        if (Menu.button("BEST GEAR", x + 635, y + 485, 130, true)) {
-            p.equipWeapon(p.weaponUnlocked());
-            for (ArmorSlot slot : ArmorSlot.values()) p.equipArmor(slot, p.armorUnlocked());
-        }
-        boolean close = Menu.button("RETURN [" + inventoryKey + "]", x + 780, y + 485, 130, true);
-        Menu.wrapped(
-                "Select to compare. Double-click, Enter, or drag to equip. Right-click a slot to"
-                        + " remove armor.",
-                x + 400,
-                y + 545,
-                510,
-                13,
-                Menu.MUTED);
+        boolean close = Menu.button("RETURN [" + inventoryKey + "]", x + 660, y + 574, 280, true);
         if (dragged >= 0 && Math.abs(mouse.x() - dragX) + Math.abs(mouse.y() - dragY) > 6) {
             Menu.panel((int) mouse.x() + 12, (int) mouse.y() + 12, 60, 60);
             thumbnail(dragged, (int) mouse.x() + 14, (int) mouse.y() + 14, 56, WHITE);
-        } else if (hover >= 0 && hover != selected) {
-            int hx = Math.min(GetScreenWidth() - 280, (int) mouse.x() + 16),
-                    hy = Math.max(12, (int) mouse.y() - 42);
-            Menu.panel(hx, hy, 260, 34);
-            Menu.text(name(p, hover), hx + 10, hy + 9, 15, tierColor(tier(hover)));
         }
         return close;
+    }
+
+    private void drawSelected(Progression p, int x, int y, boolean empty) {
+        Menu.frame(x, y, 280, 456, Menu.color(27, 37, 52), Menu.LINE);
+        Menu.text("ITEM DETAILS", x + 16, y + 14, 12, Menu.MUTED);
+        if (empty) {
+            Menu.wrapped(
+                    "Select an item from your collection to inspect it here.",
+                    x + 20,
+                    y + 132,
+                    240,
+                    17,
+                    Menu.MUTED);
+            return;
+        }
+        Menu.slot(x + 94, y + 46, 92, false, equipped(p, selected));
+        thumbnail(
+                selected,
+                x + 100,
+                y + 52,
+                80,
+                owned(p, selected) ? WHITE : Menu.color(110, 115, 120));
+        Menu.wrapped(name(p, selected), x + 18, y + 154, 244, 21, tierColor(tier(selected)));
+        boolean wearing = equipped(p, selected), have = owned(p, selected);
+        Menu.text(
+                wearing ? "CURRENTLY EQUIPPED" : have ? "IN YOUR COLLECTION" : "NOT YET OWNED",
+                x + 18,
+                y + 215,
+                12,
+                wearing ? Menu.TEAL : Menu.GOLD);
+        if (selected < 16) {
+            int current = selected < 4 ? p.damage() : p.defense();
+            int next =
+                    selected < 4
+                            ? p.weaponDamage(selected)
+                            : current
+                                    + p.armorBonus(slot(selected), tier(selected))
+                                    - p.armorBonus(slot(selected), p.armorTier(slot(selected)));
+            EquipmentComparison.draw(
+                    selected < 4 ? "POWER" : "DEFENSE", current, next, x + 18, y + 250, 244);
+        } else Menu.text("Restores up to 60 health.", x + 18, y + 252, 14, Menu.TEXT);
+        String action =
+                !have
+                        ? "NOT OWNED"
+                        : selected == 16
+                                ? "DRINK POTION"
+                                : wearing
+                                        ? selected == 0 ? "STARTER EQUIPPED" : "REMOVE"
+                                        : "EQUIP [ENTER]";
+        boolean usable =
+                have
+                        && !(wearing && selected == 0)
+                        && (selected != 16 || p.health() < p.maxHealth());
+        if (Menu.button(action, x + 18, y + 302, 244, usable)) {
+            if (wearing) remove(p, selected);
+            else equip(p, selected);
+        }
+        String help =
+                !have
+                        ? "Forge this piece with your class mentor in the city. Requires level "
+                                + Progression.requiredLevel(tier(selected))
+                                + "."
+                        : selected == 16
+                                ? "Buy replacement potions from Torvald in Market Square."
+                                : "Double-click or drag to a matching equipment slot. Right-click"
+                                        + " an equipped slot to remove it.";
+        Menu.wrapped(help, x + 18, y + 368, 244, 12, Menu.MUTED);
+    }
+
+    private final CharacterStatsScreen characterStats = new CharacterStatsScreen();
+
+    private void drawStatsSheet(Progression p, int sx, int sy, int sw, int sh) {
+        characterStats.draw(p, sx, sy, sw, sh);
+    }
+
+    public void toggleStatsSheet() {
+        this.viewDossier = !this.viewDossier;
+    }
+
+    public void setViewDossier(boolean view) {
+        this.viewDossier = view;
+    }
+
+    public boolean isViewDossier() {
+        return viewDossier;
     }
 
     @Override

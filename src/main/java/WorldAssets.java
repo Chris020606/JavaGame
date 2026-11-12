@@ -14,9 +14,7 @@ import org.bytedeco.javacpp.FloatPointer;
 public final class WorldAssets implements AutoCloseable {
     private final Model raider = LoadModel(AssetPaths.path("resources/outpost/raider.glb"));
     private final Model sword =
-            LoadModel(
-                    AssetPaths.path(
-                            "resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/sword_1handed.gltf"));
+            LoadModel(AssetPaths.path("resources/outpost/weapons/sword_A.gltf"));
     private final Model supplyCache = LoadModel(AssetPaths.path("resources/outpost/crate.obj"));
     private final Shader silhouette =
             LoadShader(null, AssetPaths.path("resources/outpost/silhouette.fs"));
@@ -98,40 +96,29 @@ public final class WorldAssets implements AutoCloseable {
     private final Model skeletonMage =
             LoadModel(AssetPaths.path("resources/outpost/bosses/Skeleton_Mage.glb"));
     private final Model longsword =
-            LoadModel(
-                    AssetPaths.path(
-                            "resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/sword_2handed.gltf"));
-    private final Model waraxe =
-            LoadModel(
-                    AssetPaths.path(
-                            "resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/axe_2handed.gltf"));
+            LoadModel(AssetPaths.path("resources/outpost/weapons/sword_B.gltf"));
+    private final Model waraxe = LoadModel(AssetPaths.path("resources/outpost/weapons/axe_B.gltf"));
+    private final Model dawnblade =
+            LoadModel(AssetPaths.path("resources/outpost/weapons/sword_E.gltf"));
     private final Model stringBow =
-            LoadModel(
-                    AssetPaths.path(
-                            "resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/bow_withString.gltf"));
+            LoadModel(AssetPaths.path("resources/outpost/weapons/bow_A_withString.gltf"));
     private final Model handCrossbow =
-            LoadModel(
-                    AssetPaths.path(
-                            "resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/crossbow_1handed.gltf"));
+            LoadModel(AssetPaths.path("resources/outpost/weapons/bow_B.gltf"));
     private final Model crossbow =
-            LoadModel(
-                    AssetPaths.path(
-                            "resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/crossbow_2handed.gltf"));
-    private final Model wand =
-            LoadModel(
-                    AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/wand.gltf"));
+            LoadModel(AssetPaths.path("resources/outpost/weapons/bow_B_withString.gltf"));
+    private final Model wand = LoadModel(AssetPaths.path("resources/outpost/weapons/wand_A.gltf"));
     private final int[] count = new int[1];
     private final ModelAnimation animations =
             LoadModelAnimations(AssetPaths.path("resources/outpost/raider.glb"), count);
     private final Model archer = LoadModel(AssetPaths.path("resources/outpost/archer.glb"));
     private final Model shaman = LoadModel(AssetPaths.path("resources/outpost/shaman.glb"));
-    private final Model bow =
-            LoadModel(
-                    AssetPaths.path("resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/bow.gltf"));
+    private final Model bow = LoadModel(AssetPaths.path("resources/outpost/weapons/bow_A.gltf"));
     private final Model staff =
-            LoadModel(
-                    AssetPaths.path(
-                            "resources/KayKit_Adventurers_2.0_FREE/Assets/gltf/staff.gltf"));
+            LoadModel(AssetPaths.path("resources/outpost/weapons/staff_A.gltf"));
+    private final Model archmageStaff =
+            LoadModel(AssetPaths.path("resources/outpost/weapons/staff_B.gltf"));
+    private final Model dawnweaver =
+            LoadModel(AssetPaths.path("resources/outpost/weapons/spear_A.gltf"));
     private final int[] archerCount = new int[1], shamanCount = new int[1];
     private final ModelAnimation archerAnimations =
             LoadModelAnimations(AssetPaths.path("resources/outpost/archer.glb"), archerCount);
@@ -157,7 +144,10 @@ public final class WorldAssets implements AutoCloseable {
     private final java.util.Map<Model, int[]> modelBindings = new java.util.IdentityHashMap<>();
     private final java.util.Map<ModelAnimation, java.util.Map<Integer, ModelAnimation>>
             animationViews = new java.util.IdentityHashMap<>();
-    private final Vector3 axisUp = v(0, 1, 0), axisX = v(1, 0, 0), unitScale = v(1, 1, 1);
+    private final Vector3 axisUp = v(0, 1, 0),
+            axisX = v(1, 0, 0),
+            axisZ = v(0, 0, 1),
+            unitScale = v(1, 1, 1);
 
     private int uniform(String name) {
         return uniformLocations.computeIfAbsent(name, n -> GetShaderLocation(daylight, n));
@@ -269,10 +259,13 @@ public final class WorldAssets implements AutoCloseable {
                     skeletonMage,
                     longsword,
                     waraxe,
+                    dawnblade,
                     stringBow,
                     crossbow,
                     handCrossbow,
-                    wand
+                    wand,
+                    archmageStaff,
+                    dawnweaver
                 })
             if (model.meshCount() == 0)
                 throw new IllegalStateException("Missing equipment or skeleton roster model");
@@ -325,13 +318,15 @@ public final class WorldAssets implements AutoCloseable {
         loadEquipment("dawnstaff");
         for (int tier = 0; tier < bladeLengths.length; tier++) {
             Model weapon = weaponModel(0, tier);
+            float weaponScale = (weapon == dawnblade) ? 0.78f : 1.0f;
             for (int mesh = 0; mesh < weapon.meshCount(); mesh++)
                 bladeLengths[tier] =
                         Math.max(
                                 bladeLengths[tier],
                                 GetMeshBoundingBox(new Mesh(weapon.meshes()).position(mesh))
-                                        .max()
-                                        .y());
+                                                .max()
+                                                .y()
+                                        * weaponScale);
         }
         for (int chapter = 0; chapter < 4; chapter++)
             for (var prop : EnvironmentLayout.props(chapter)) {
@@ -586,6 +581,16 @@ public final class WorldAssets implements AutoCloseable {
         rlActiveTextureSlot(0);
     }
 
+    /** Binds an externally owned world model to the active lit/shadow shader pass. */
+    public void lightExternalModel(Model model) {
+        if (model != null && model.meshCount() > 0) lightModel(model);
+    }
+
+    /** Sets the material response for externally owned architecture in the active lit pass. */
+    public void externalSurface(float roughness, float metallic) {
+        surface(roughness, metallic);
+    }
+
     private void surface(float rough, float metal) {
         if (shadowPass) return;
         uniforms.put(0, rough).put(1, metal);
@@ -620,6 +625,35 @@ public final class WorldAssets implements AutoCloseable {
                     .035f,
                     Fade(Menu.TEAL, 1 - y / 1.5f));
         }
+    }
+
+    /**
+     * Faded scenery drawn after actors with depth write disabled so actors remain visible behind
+     * trees.
+     */
+    public void drawFadedScenery(int chapter, float time) {
+        if (shadowPass) return;
+        java.util.List<EnvironmentLayout.Prop> props = EnvironmentLayout.props(chapter);
+        rlDisableDepthMask();
+        for (int i = 0, size = props.size(); i < size; i++) {
+            var prop = props.get(i);
+            if (!prop.model().startsWith("tree_")) continue;
+            float opacity =
+                    SceneryVisibility.treeOpacity(
+                            prop.x(), prop.z(), prop.scale(), heroX, heroZ, viewerX, viewerZ);
+            if (opacity >= 1) continue;
+            PropTransform transform = propTransforms.get(prop);
+            Model model = prop.graveyard() ? graveyard.get(prop.model()) : nature.get(prop.model());
+            float wind = (float) Math.sin(time * .85f + prop.x() * .19f + prop.z() * .13f) * .8f;
+            DrawModelEx(
+                    model,
+                    transform.position(),
+                    transform.axis(),
+                    prop.yaw() + wind,
+                    transform.scale(),
+                    Fade(transform.tint(), opacity));
+        }
+        rlEnableDepthMask();
     }
 
     public void drawSky(Camera3D camera, DayNightCycle.Frame light) {
@@ -833,7 +867,8 @@ public final class WorldAssets implements AutoCloseable {
                             ? (float) Math.sin(time * .85f + prop.x() * .19f + prop.z() * .13f)
                                     * .8f
                             : 0;
-            // The shadow remains opaque; only the visible pass fades a canopy hiding the hero.
+            // The shadow remains opaque; the visible pass defers faded trees to drawFadedScenery
+            // so they blend smoothly over actors without occluding them in the depth buffer.
             float opacity =
                     !shadowPass && prop.model().startsWith("tree_")
                             ? SceneryVisibility.treeOpacity(
@@ -845,13 +880,14 @@ public final class WorldAssets implements AutoCloseable {
                                     viewerX,
                                     viewerZ)
                             : 1;
+            if (!shadowPass && opacity < 1) continue;
             DrawModelEx(
                     model,
                     transform.position(),
                     transform.axis(),
                     prop.yaw() + wind,
                     transform.scale(),
-                    opacity < 1 ? Fade(transform.tint(), opacity) : transform.tint());
+                    transform.tint());
         }
         if (shadowPass) return;
         // Derive embers from actual campfire props so moving a campsite cannot leave effects
@@ -1383,15 +1419,11 @@ public final class WorldAssets implements AutoCloseable {
                 ? (tier == 0 ? bow : tier == 1 ? stringBow : tier == 2 ? handCrossbow : crossbow)
                 : style == 2
                         ? (tier == 0
-                                ? staff
-                                : tier == 1
-                                        ? wand
-                                        : tier == 2 ? bossStaff : equipment.get("dawnstaff"))
+                                ? wand
+                                : tier == 1 ? staff : tier == 2 ? archmageStaff : dawnweaver)
                         : (tier == 0
                                 ? sword
-                                : tier == 1
-                                        ? longsword
-                                        : tier == 2 ? waraxe : equipment.get("dawnblade"));
+                                : tier == 1 ? longsword : tier == 2 ? waraxe : dawnblade);
     }
 
     boolean weaponMaterialsValid() {
@@ -1429,12 +1461,13 @@ public final class WorldAssets implements AutoCloseable {
         Matrix original = new Matrix().put(model.transform());
         model.transform(MatrixIdentity());
         lightModel(model);
-        boolean bow = item < 2 && progress.heroClass() == HeroClass.ARCHER;
-        DrawModelEx(model, v(0, 0, 0), axisX, bow ? 90 : 0, unitScale, WHITE);
+        boolean bow = item < 4 && progress.heroClass() == HeroClass.ARCHER;
+        DrawModelEx(model, v(0, 0, 0), axisZ, bow ? 90 : 0, unitScale, WHITE);
         model.transform(original);
     }
 
     public void drawPlayerWeapon(Player player, int style, int tier) {
+        if (tier < 0 || tier > 3) return;
         Model weapon = weaponModel(style, tier);
         drawWeapon(
                 player.getModel(),
@@ -1511,16 +1544,28 @@ public final class WorldAssets implements AutoCloseable {
             float scale) {
         lightModel(weapon);
         surface(.3f, .45f);
-        boolean left = weapon == bow || weapon == stringBow;
+        boolean left =
+                weapon == bow
+                        || weapon == stringBow
+                        || weapon == handCrossbow
+                        || weapon == crossbow;
+        float weaponScale = scale;
+        if (left) {
+            weaponScale *= 0.88f;
+        } else if (weapon == dawnblade) {
+            weaponScale *= 0.78f;
+        } else if (weapon == dawnweaver) {
+            weaponScale *= 0.82f;
+        }
         drawAttached(
                 character,
                 position,
                 facing,
                 weapon,
                 tint,
-                scale,
+                weaponScale,
                 left ? "handslot.l" : "handslot.r",
-                left && weapon != crossbow);
+                left);
     }
 
     private void drawAttached(
@@ -1560,10 +1605,17 @@ public final class WorldAssets implements AutoCloseable {
                             .m14(pose.translation().z())
                             .m15(1);
             if (flip) {
-                // Left-hand slot needs a half turn around the bow's long (local Z) axis.
-                // Rotate in slot space so facing and animation cannot undo the correction.
-                m.m0(-m.m0()).m1(-m.m1()).m2(-m.m2());
-                m.m4(-m.m4()).m5(-m.m5()).m6(-m.m6());
+                // In Fantasy Weapons Bits, bows have limbs extending along local X,
+                // shoot direction along +Z (string toward -Z), and lateral width along Y.
+                // Map local X to slot bone col 2 (limb vertical),
+                // local Y to slot bone col 1 (lateral thickness),
+                // local Z to -slot bone col 0 (forward arrow shoot vector).
+                float c0x = m.m0(), c0y = m.m1(), c0z = m.m2();
+                float c1x = m.m4(), c1y = m.m5(), c1z = m.m6();
+                float c2x = m.m8(), c2y = m.m9(), c2z = m.m10();
+                m.m0(c2x).m1(c2y).m2(c2z);
+                m.m4(c1x).m5(c1y).m6(c1z);
+                m.m8(-c0x).m9(-c0y).m10(-c0z);
             }
             weapon.transform(m);
             DrawModelEx(weapon, position, axisUp, facing, v(scale, scale, scale), tint);
@@ -1590,10 +1642,13 @@ public final class WorldAssets implements AutoCloseable {
                     skeletonMage,
                     longsword,
                     waraxe,
+                    dawnblade,
                     stringBow,
                     crossbow,
                     handCrossbow,
-                    wand
+                    wand,
+                    archmageStaff,
+                    dawnweaver
                 }) UnloadModel(model);
 
         UnloadModelAnimations(animations, count[0]);

@@ -12,5 +12,6 @@ public enum GameState {
     PAUSED,
     MAIN_MENU,
     SETTING_MENU,
-    PLAYING
+    PLAYING,
+    CITADEL
 }

@@ -55,8 +55,13 @@ public class InputSmokeTest {
         frame(game);
         event(KEY_UP, key, 0);
         frame(game);
-        if (before == GameState.LOGIN && game.tutorial() != null && !reviewingTutorial)
+        if (before == GameState.LOGIN && game.tutorial() != null && !reviewingTutorial) {
             game.finishTutorial();
+            if (game.getState() == GameState.CITADEL) {
+                game.getProgression().grantStarterWeapon();
+                game.deployFromCitadel();
+            }
+        }
     }
 
     private static void click(Game game, int x, int y) {
@@ -682,8 +687,8 @@ public class InputSmokeTest {
                 game.isInventoryOpen() && !game.getPlayer().isAttacking(),
                 "Pack click leaked into a world attack");
         capture("ironwood-inventory");
-        int packX = (GetScreenWidth() - 940) / 2, packY = (GetScreenHeight() - 600) / 2;
-        event(MOUSE_POSITION, packX + 845, packY + 507);
+        int packX = (GetScreenWidth() - 960) / 2, packY = (GetScreenHeight() - 640) / 2;
+        event(MOUSE_POSITION, packX + 800, packY + 593);
         event(MOUSE_DOWN, MOUSE_BUTTON_LEFT, 0);
         for (int i = 0; i < 4; i++) frame(game);
         check(
@@ -1062,6 +1067,67 @@ public class InputSmokeTest {
                     new java.util.concurrent.atomic.AtomicBoolean();
             game = new Game(() -> combatClick.getAndSet(false));
             game.getSceneManager().getOpenScene().getCameraController().setSensitivity(0);
+            if (java.util.Arrays.asList(args).contains("--xp-review")) {
+                java.util.List<Entities.Enemy> targets = new java.util.ArrayList<>();
+                for (int i = 0; i < 4; i++) targets.add(new Entities.Enemy(10 + i, 10, 1));
+                SaveGame.write(
+                        profile.resolve("save.properties"),
+                        new SaveGame.Snapshot(
+                                "Experience",
+                                0,
+                                8,
+                                0,
+                                new Progression(),
+                                new WaveDirector.State(1, 0, 4, 8, 0, 21, 0),
+                                targets));
+                check(game.loadCurrent(), "XP review load failed");
+                key(game, KEY_ENTER);
+                for (int i = 0; i < 4; i++) {
+                    game.getEnemies().getFirst().health = 0;
+                    frame(game);
+                }
+                check(game.getProgression().characterLevel() == 2, "Kills did not level player");
+                check(game.getProgression().levelPoints() == 1, "Level point missing");
+                for (int f = 0; f < 3; f++) frame(game);
+                capture("xp-level-up");
+                game.getPlayer().getPosition().z(4);
+                game.openWorkshop();
+                check(game.isWorkshopOpen(), "Workshop did not open");
+                for (int f = 0; f < 3; f++) frame(game);
+                capture("xp-training");
+                int wx = (GetScreenWidth() - WorkshopScreen.WIDTH) / 2;
+                int wy = (GetScreenHeight() - WorkshopScreen.HEIGHT) / 2;
+                click(game, wx + 830, wy + WorkshopScreen.ROW_TOP + WorkshopScreen.ROW_HEIGHT + 22);
+                check(
+                        game.getProgression().level(Progression.Upgrade.POWER) == 2,
+                        "Workshop click did not spend the point");
+                game.saveCurrent();
+                check(game.loadCurrent(), "XP save reload failed");
+                check(game.getProgression().characterLevel() == 2, "Level lost on reload");
+                check(game.getProgression().levelPoints() == 0, "Spent point restored on reload");
+                System.out.println(
+                        "PASS: real kill update awards XP, level point spending and save reload");
+                return;
+            }
+            if (java.util.Arrays.asList(args).contains("--entry-review")) {
+                for (int width : new int[] {1280, 1000}) {
+                    SetWindowSize(width, width == 1000 ? 680 : 800);
+                    game.setState(GameState.MAIN_MENU);
+                    for (int f = 0; f < 3; f++) frame(game);
+                    capture("entry-title-" + width);
+                    key(game, KEY_ENTER);
+                    check(game.getState() == GameState.LOGIN, "New game did not open creation");
+                    for (int f = 0; f < 3; f++) frame(game);
+                    capture("entry-create-" + width);
+                    int x = (GetScreenWidth() - 940) / 2, y = (GetScreenHeight() - 600) / 2;
+                    click(game, x + 480, y + 238);
+                    for (int f = 0; f < 3; f++) frame(game);
+                    capture("entry-mage-" + width);
+                }
+                System.out.println(
+                        "PASS: title and character creation render at both supported layouts");
+                return;
+            }
             if (java.util.Arrays.asList(args).contains("--quality-review")) {
                 game.startPlaytest();
                 key(game, KEY_TAB);
@@ -1282,6 +1348,7 @@ public class InputSmokeTest {
                 java.util.Properties props = new java.util.Properties();
                 kit.store(props);
                 props.setProperty("crystals", "2000");
+                props.setProperty("characterLevel", "10");
                 kit = Progression.restore(props);
                 check(kit.buyWeapon(3) && kit.buyArmor(3), "Top-tier purchases failed");
                 kit.equipWeapon(3);
@@ -1998,16 +2065,18 @@ public class InputSmokeTest {
             key(game, KEY_SPACE);
             check(game.getPlayer().isAttacking(), "Attack input failed");
             key(game, KEY_E);
-            check(game.isWorkshopOpen(), "E did not open workshop");
-            capture("ui-workshop-retina");
+            check(game.isInventoryOpen(), "E did not open inventory");
+            capture("ui-inventory-retina");
             float stoppedZ = game.getPlayer().getPosition().z();
             event(KEY_DOWN, KEY_W, 0);
             frame(game);
             event(KEY_UP, KEY_W, 0);
             frame(game);
-            check(game.getPlayer().getPosition().z() == stoppedZ, "Workshop did not stop movement");
+            check(
+                    game.getPlayer().getPosition().z() == stoppedZ,
+                    "Inventory did not stop movement");
             key(game, KEY_ESCAPE);
-            check(!game.isWorkshopOpen(), "Escape did not close workshop");
+            check(!game.isInventoryOpen(), "Escape did not close inventory");
             key(game, KEY_ESCAPE);
             check(game.getState() == GameState.PAUSED, "Escape did not pause");
             key(game, KEY_ENTER);
@@ -2041,10 +2110,12 @@ public class InputSmokeTest {
             capture("ui-raiders");
             key(game, KEY_SPACE);
             float startHand = handHeight(game);
-            for (int i = 0; i < 12; i++) frame(game);
-            check(
-                    Math.abs(handHeight(game) - startHand) > .01f,
-                    "Attack did not animate sword hand");
+            float maxHandDiff = 0;
+            for (int i = 0; i < 12; i++) {
+                frame(game);
+                maxHandDiff = Math.max(maxHandDiff, Math.abs(handHeight(game) - startHand));
+            }
+            check(maxHandDiff > .01f, "Attack did not animate sword hand");
             check(game.getPlayer().isAttacking(), "Sword swing ended too early");
             capture("ui-sword-swing");
             for (int i = 0; i < 20; i++) frame(game);
@@ -2286,18 +2357,16 @@ public class InputSmokeTest {
             check(game.getProgression().weaponUnlocked() == 1, "Boss did not unlock loot");
             check(game.getProgression().crystals() == 120, "Boss crystal reward incorrect");
             key(game, KEY_TAB);
-            int ix = (GetScreenWidth() - 940) / 2, iy = (GetScreenHeight() - 600) / 2;
-            event(MOUSE_POSITION, ix + 507, iy + 122);
-            event(MOUSE_DOWN, MOUSE_BUTTON_LEFT, 0);
-            frame(game);
-            event(MOUSE_UP, MOUSE_BUTTON_LEFT, 0);
-            frame(game);
+            int ix = (GetScreenWidth() - 960) / 2, iy = (GetScreenHeight() - 640) / 2;
+            click(game, ix + 420, iy + 246);
             check(
                     game.getProgression().weaponTier() == 0,
                     "Selecting an item should compare before equipping");
-            click(game, ix + 530, iy + 430);
+            click(game, ix + 800, iy + 428);
             check(
-                    game.getProgression().weaponTier() == 1 && game.getProgression().damage() == 33,
+                    game.getProgression().weaponTier() == 1
+                            && game.getProgression().damage()
+                                    == (25 + (game.getProgression().characterLevel() - 1) * 10 + 8),
                     "Inventory equip failed");
             for (int i = 0; i < 3; i++) frame(game);
             capture("ui-weapon-loot");
@@ -2704,20 +2773,16 @@ public class InputSmokeTest {
             Progression equipment = game.getProgression();
             for (int i = 0; i < 300; i++) equipment.rewardKill();
             game.getPlayer().getPosition().x(0).z(4);
-            key(game, KEY_E);
+            game.openWorkshop();
             check(game.isWorkshopOpen(), "Workshop did not open");
             int ex = (GetScreenWidth() - 940) / 2, ey = (GetScreenHeight() - 600) / 2;
-            click(game, ex + 830, ey + 162);
-            click(game, ex + 830, ey + 214);
-            click(game, ex + 830, ey + 266);
             check(
-                    equipment.maxHealth() == 120
-                            && equipment.damage() == 30
-                            && equipment.maxStamina() == 115,
-                    "Training cards did not independently upgrade HP, damage and stamina");
-            click(game, ex + 110, ey + 202);
-            click(game, ex + 820, ey + 335);
-            click(game, ex + 820, ey + 477);
+                    equipment.characterLevel() >= 10
+                            && equipment.maxHealth() > equipment.heroClass().health
+                            && equipment.damage() > 25,
+                    "Automatic leveling stats upgrade failed");
+            click(game, ex + 820, ey + 315);
+            click(game, ex + 820, ey + 460);
             check(
                     equipment.weaponUnlocked() == 3 && equipment.armorUnlocked() == 3,
                     "Forge purchase failed");
@@ -2727,28 +2792,30 @@ public class InputSmokeTest {
                             && !equipment.ownsWeapon(1)
                             && !equipment.ownsWeapon(2),
                     "Forge granted unpurchased lower tiers");
-            click(game, ex + 350, ey + 477);
+            click(game, ex + 350, ey + 460);
             check(
                     equipment.ownsArmor(1) && !equipment.ownsArmor(2),
                     "Separate lower-tier forge purchase failed");
             capture("expansion-forge");
-            click(game, ex + 110, ey + 282);
+            click(game, ex + 110, ey + 202);
             int beforeRestock = equipment.potions();
-            click(game, ex + 520, ey + 390);
+            click(game, ex + 350, ey + 295);
             check(
                     equipment.potions() == beforeRestock + 1,
                     "Supplies sidebar or potion purchase failed");
             capture("polish-supplies");
             key(game, KEY_ESCAPE);
             key(game, KEY_TAB);
-            click(game, ex + 658, ey + 122);
-            click(game, ex + 530, ey + 430);
+            ix = (GetScreenWidth() - 960) / 2;
+            iy = (GetScreenHeight() - 640) / 2;
+            click(game, ix + 420, iy + 246);
+            click(game, ix + 800, iy + 428);
             check(equipment.weaponTier() == 3, "Legendary weapon grid selection failed");
             // Tier-three helmet: drag from the grid into the head slot.
-            event(MOUSE_POSITION, ex + 433, ey + 274);
+            event(MOUSE_POSITION, ix + 506, iy + 314);
             event(MOUSE_DOWN, MOUSE_BUTTON_LEFT, 0);
             frame(game);
-            event(MOUSE_POSITION, ex + 332, ey + 122);
+            event(MOUSE_POSITION, ix + 43, iy + 430);
             frame(game);
             event(MOUSE_UP, MOUSE_BUTTON_LEFT, 0);
             frame(game);
@@ -2762,29 +2829,39 @@ public class InputSmokeTest {
             check(
                     equipment.armorTier(Entities.ArmorSlot.HEAD) == 0,
                     "Right-click did not remove armor");
-            for (int item = 12; item < 16; item++) {
-                click(game, ex + 433 + (item % 6) * 75, ey + 122 + (item / 6) * 76);
+            int[][] t3ArmorCells = {
+                {ix + 506, iy + 314},
+                {ix + 592, iy + 314},
+                {ix + 334, iy + 382},
+                {ix + 420, iy + 382}
+            };
+            for (int[] pos : t3ArmorCells) {
+                click(game, pos[0], pos[1]);
                 key(game, KEY_ENTER);
             }
             check(equipment.defense() == 21, "Armor grid did not equip the complete set");
-            click(game, ex + 650, ey + 68);
-            click(game, ex + 433, ey + 122);
+            click(game, ix + 419, iy + 179);
+            click(game, ix + 334, iy + 246);
             key(game, KEY_ENTER);
             check(equipment.weaponTier() == 0, "Weapon filter/keyboard equip failed");
-            click(game, ex + 658, ey + 122);
-            click(game, ex + 658, ey + 122);
+            click(game, ix + 420, iy + 246);
+            click(game, ix + 420, iy + 246);
             check(equipment.weaponTier() == 3, "Double-click equip failed");
-            click(game, ex + 850, ey + 68);
-            click(game, ex + 433, ey + 122);
+            click(game, ix + 509, iy + 179);
+            click(game, ix + 334, iy + 246);
             key(game, KEY_ENTER);
             check(equipment.armorTier(Entities.ArmorSlot.HEAD) == 1, "Armor filter equip failed");
-            click(game, ex + 700, ey + 507);
-            check(equipment.defense() == 21, "Best Gear did not restore the full armor set");
-            click(game, ex + 480, ey + 68);
+            click(game, ix + 334, iy + 314);
+            key(game, KEY_ENTER);
+            check(
+                    equipment.defense() == 21,
+                    "Re-equipping tier 3 helmet did not restore full defense");
+            click(game, ix + 329, iy + 179);
             for (int i = 0; i < 3; i++) frame(game);
             capture("expansion-inventory");
             key(game, KEY_ESCAPE);
-            game.getPlayer().discipline().stamina(110);
+            float expectedStamina = Math.min(110, game.getProgression().maxStamina());
+            game.getPlayer().discipline().stamina(expectedStamina);
             check(game.saveCurrent() && game.loadCurrent(), "Expanded equipment save failed");
             check(
                     game.getProgression().difficulty() == Entities.Difficulty.EXTREME
@@ -2792,8 +2869,8 @@ public class InputSmokeTest {
                             && game.getProgression().weaponTier() == 3,
                     "Difficulty or equipment lost on load");
             check(
-                    game.getPlayer().discipline().maximum() == 115
-                            && game.getPlayer().discipline().stamina() == 110,
+                    game.getPlayer().discipline().maximum() == game.getProgression().maxStamina()
+                            && game.getPlayer().discipline().stamina() == expectedStamina,
                     "Upgraded stamina failed to restore");
             // A final hit must finish its visible swing before the chapter screen interrupts it.
             Entities.Enemy finalSwing = encounter(game, profile, 5, 5, 10);

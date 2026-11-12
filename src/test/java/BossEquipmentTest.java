@@ -60,33 +60,26 @@ class BossEquipmentTest {
     }
 
     @Test
-    void bossLootUnlocksWithoutAutoEquippingAndCapsAtLegendary() {
+    void bossRewardsCurrencyAndExperienceWithoutGrantingEquipment() {
         Progression p = new Progression(HeroClass.ARCHER);
-        assertFalse(p.equipWeapon(1));
-        assertFalse(p.equipWeapon(-1));
         p.rewardEnemy(true);
         assertEquals(120, p.crystals());
-        assertEquals(1, p.kills());
-        assertEquals(1, p.weaponUnlocked());
-        assertEquals(25, p.damage());
-        assertTrue(p.equipWeapon(1));
-        assertEquals(33, p.damage());
-        assertEquals("Forged Bow", p.weaponName(1));
-        for (int i = 0; i < 5; i++) p.rewardEnemy(true);
-        assertEquals(3, p.weaponUnlocked());
-        assertTrue(p.equipWeapon(3));
-        assertEquals(49, p.damage());
-        assertTrue(p.purchase(Progression.Upgrade.CHARACTER));
-        assertEquals(59, p.damage());
-        assertTrue(p.equipWeapon(0));
-        assertEquals(35, p.damage());
-        assertFalse(p.equipWeapon(4));
+        assertEquals(3, p.characterLevel());
+        assertEquals(0, p.weaponUnlocked());
+        assertEquals(-1, p.lastBossWeapon());
+        for (int tier = 1; tier <= 3; tier++) {
+            assertFalse(p.ownsWeapon(tier));
+            assertFalse(p.ownsArmor(tier));
+        }
     }
 
     @Test
     void bossAndEquipmentRoundTripAndVersionOneMigrates() throws Exception {
         Progression p = new Progression(HeroClass.MAGE);
         p.rewardEnemy(true);
+        p.rewardEnemy(false);
+        p.rewardEnemy(false);
+        assertTrue(p.buyWeapon(1));
         p.equipWeapon(1);
         Enemy boss = new Enemy(0, 12, 5, 5, .5f);
         boss.health = 320;
@@ -105,7 +98,7 @@ class BossEquipmentTest {
         assertTrue(loaded.enemies().get(0).boss());
         assertEquals(320, loaded.enemies().get(0).health);
         assertEquals(1, loaded.progression().weaponTier());
-        assertEquals(33, loaded.progression().damage());
+        assertEquals(53, loaded.progression().damage());
         Properties props = AppData.read(file);
         props.setProperty("weaponTier", "2");
         AppData.write(file, props);

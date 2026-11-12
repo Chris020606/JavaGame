@@ -48,6 +48,7 @@ public final class CoopGame implements AutoCloseable {
     private String connectAddress, connectCode;
     private int connectPort, connectSlot;
     private final Path checkpoint = AppData.directory().resolve("coop-checkpoint.properties");
+    private final Color skyTopBlend = new Color(), skyHorizonBlend = new Color();
 
     public CoopGame() {
         settings.load(AppData.directory().resolve("settings.properties"));
@@ -278,7 +279,14 @@ public final class CoopGame implements AutoCloseable {
                 || confirmLeave) capturedMouse = true;
         if (state != null) {
             for (var h : state.heroes()) {
-                ensureAvatar(h.slot(), HeroClass.values()[h.hero()], state.chapter());
+                int totalPoints = h.vitality() + h.power() + h.endurance();
+                int tier =
+                        Math.max(
+                                state.chapter(),
+                                totalPoints >= 6
+                                        ? (totalPoints >= 10 ? 3 : 2)
+                                        : (totalPoints >= 3 ? 1 : 0));
+                ensureAvatar(h.slot(), HeroClass.values()[h.hero()], tier);
                 Player p = avatars[h.slot()];
                 float age = client.snapshotAge();
                 float tx = h.x() + h.vx() * age, tz = h.z() + h.vz() * age;
@@ -286,7 +294,7 @@ public final class CoopGame implements AutoCloseable {
                         || Math.hypot(p.getPosition().x() - tx, p.getPosition().z() - tz) > 4)
                     p.getPosition().x(tx).z(tz);
                 else {
-                    float blend = 1 - (float) Math.exp(-dt * (h.slot() == client.slot() ? 24 : 16));
+                    float blend = 1 - (float) Math.exp(-dt * (h.slot() == client.slot() ? 40 : 16));
                     p.getPosition()
                             .x(p.getPosition().x() + (tx - p.getPosition().x()) * blend)
                             .z(p.getPosition().z() + (tz - p.getPosition().z()) * blend);
@@ -517,6 +525,35 @@ public final class CoopGame implements AutoCloseable {
         return new Vector3().x(x).y(y).z(z);
     }
 
+    private static Color blendSky(
+            DayNightCycle.Rgb base, Color chapter, float amount, Color target) {
+        return target.r(
+                        (byte)
+                                Math.round(
+                                        base.r() * 255 * (1 - amount)
+                                                + Byte.toUnsignedInt(chapter.r()) * amount))
+                .g(
+                        (byte)
+                                Math.round(
+                                        base.g() * 255 * (1 - amount)
+                                                + Byte.toUnsignedInt(chapter.g()) * amount))
+                .b(
+                        (byte)
+                                Math.round(
+                                        base.b() * 255 * (1 - amount)
+                                                + Byte.toUnsignedInt(chapter.b()) * amount))
+                .a((byte) 255);
+    }
+
+    private void drawSanctuaryRing() {
+        Color ring = Fade(Menu.TEAL, .62f);
+        float radius = 6;
+        DrawCircle3D(v(0, .05f, 0), radius, v(1, 0, 0), 90, ring);
+        float pulse = (float) Math.sin(GetTime() * 2) * .08f;
+        DrawCircle3D(v(0, .06f, 0), radius + pulse, v(1, 0, 0), 90, Fade(Menu.GOLD, .42f));
+        DrawCylinderWires(v(0, 0, 0), radius, radius, .1f, 32, Fade(Menu.TEAL, .35f));
+    }
+
     private void actors() {
         if (state == null) {
             assets.preparePlayer(avatars[0]);
@@ -526,10 +563,17 @@ public final class CoopGame implements AutoCloseable {
         }
         for (var h : state.heroes()) {
             Player p = avatars[h.slot()];
+            int totalPoints = h.vitality() + h.power() + h.endurance();
+            int tier =
+                    Math.max(
+                            state.chapter(),
+                            totalPoints >= 6
+                                    ? (totalPoints >= 10 ? 3 : 2)
+                                    : (totalPoints >= 3 ? 1 : 0));
             assets.preparePlayer(p);
             assets.drawPlayerBody(
                     p, loadouts[h.slot()], h.hurt() > 0 && h.health() > 0 ? Menu.RED : WHITE);
-            assets.drawPlayerWeapon(p, h.hero(), state.chapter());
+            assets.drawPlayerWeapon(p, h.hero(), tier);
             assets.drawArmor(p, loadouts[h.slot()]);
         }
         for (Enemy e : enemyViews.values()) assets.drawEnemy(e);
@@ -555,8 +599,14 @@ public final class CoopGame implements AutoCloseable {
         renderer.endShadow();
         renderer.beginScene();
         ChapterLook look = ChapterLook.at(chapter);
+        float atmosphere = .12f + .34f * light.daylight();
         DrawRectangleGradientV(
-                0, 0, renderer.width(), renderer.height(), look.skyTop(), look.skyBottom());
+                0,
+                0,
+                renderer.width(),
+                renderer.height(),
+                blendSky(light.top(), look.skyTop(), atmosphere, skyTopBlend),
+                blendSky(light.horizon(), look.skyBottom(), atmosphere, skyHorizonBlend));
         BeginMode3D(camera);
         assets.drawSky(camera, light);
         Enemy boss =
@@ -567,6 +617,8 @@ public final class CoopGame implements AutoCloseable {
         assets.litPass(renderer, camera, time, boss, light);
         assets.drawEnvironment(chapter, time);
         actors();
+        assets.drawFadedScenery(chapter, time);
+        drawSanctuaryRing();
         if (state != null) {
             for (var h : state.heroes())
                 if (h.health() <= 0)
@@ -841,6 +893,28 @@ public final class CoopGame implements AutoCloseable {
                     focused.distance(me.x(), me.z()),
                     settings.controls.label(Config.Controls.Action.FOCUS));
         heroPanel(me, 16, 18, 280);
+        if (me.credits() > 0) {
+            int uw = 460, ux = w - uw - 16, uy = 18;
+            Menu.panel(ux, uy, uw, 85);
+            Menu.icon("crown", ux + 12, uy + 12, 20, Menu.GOLD);
+            Menu.text(
+                    me.credits() + " UPGRADE POINT" + (me.credits() > 1 ? "S" : "") + " AVAILABLE",
+                    ux + 38,
+                    uy + 12,
+                    14,
+                    Menu.GOLD);
+            if (Menu.button("[1] +25 HP", ux + 12, uy + 38, 138, true) || IsKeyPressed(KEY_ONE))
+                pendingButtons |= CoopInput.VITALITY;
+            if (Menu.button("[2] +15% DMG", ux + 158, uy + 38, 138, true) || IsKeyPressed(KEY_TWO))
+                pendingButtons |= CoopInput.POWER;
+            if (Menu.button(
+                            me.hero() == HeroClass.MAGE.ordinal() ? "[3] +25 MANA" : "[3] +25 STAM",
+                            ux + 304,
+                            uy + 38,
+                            144,
+                            true)
+                    || IsKeyPressed(KEY_THREE)) pendingButtons |= CoopInput.ENDURANCE;
+        }
         int center = w / 2;
         Menu.panel(center - 170, 18, 340, 95);
         Menu.center(
@@ -1084,11 +1158,12 @@ public final class CoopGame implements AutoCloseable {
                 14,
                 Menu.TEXT);
         Menu.text(
-                "Gear improves each chapter. The host saves a separate chapter checkpoint.",
+                "AETHELGARD CITADEL / Goran (Forge: Tier 1 Lv 3, Tier 2 Lv 6, Tier 3 Lv 10) /"
+                        + " Elyndra (Spire & Hearth) / Commander Sean (Deployment)",
                 x + 30,
                 y + 522,
-                13,
-                Menu.MUTED);
+                12,
+                Menu.TEAL);
     }
 
     private void pausePanel() {

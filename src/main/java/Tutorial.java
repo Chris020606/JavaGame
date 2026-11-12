@@ -125,8 +125,8 @@ public final class Tutorial {
                             + " counter.";
             case COMPLETE ->
                     "You have practiced the essentials. Class mastery rewards your combat style."
-                            + " Explore optional objectives and spend crystals at the sanctuary"
-                            + " workshop.";
+                        + " Find survivors outside the city. Defend the Beacon, then return to your"
+                        + " class mentor for equipment.";
         };
     }
 }

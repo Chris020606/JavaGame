@@ -21,7 +21,7 @@ public class Menu {
             font =
                     LoadFontEx(
                             assets.AssetPaths.path("resources/outpost/interface.ttf"),
-                            48,
+                            96,
                             (int[]) null,
                             0);
             SetTextureFilter(font.texture(), TEXTURE_FILTER_BILINEAR);
@@ -92,9 +92,28 @@ public class Menu {
             float maximum,
             Color fill,
             String label) {
+        resourceBar(x, y, width, height, current, current, maximum, fill, label);
+    }
+
+    public static void resourceBar(
+            int x,
+            int y,
+            int width,
+            int height,
+            float current,
+            float ghost,
+            float maximum,
+            Color fill,
+            String label) {
         frame(x, y, width, height, INK, GOLD);
-        int amount =
-                Math.round((width - 6) * Math.max(0, Math.min(1, current / Math.max(1, maximum))));
+        float m = Math.max(1, maximum);
+        int ghostAmount =
+                Math.round((width - 6) * Math.max(0, Math.min(1, Math.max(current, ghost) / m)));
+        if (ghostAmount > 0 && ghost > current) {
+            DrawRectangleGradientV(
+                    x + 3, y + 3, ghostAmount, height - 6, Fade(GOLD, .65f), Fade(GOLD, .40f));
+        }
+        int amount = Math.round((width - 6) * Math.max(0, Math.min(1, current / m)));
         if (amount > 0) {
             DrawRectangleGradientV(x + 3, y + 3, amount, height - 6, fill, Fade(fill, .66f));
             DrawLine(x + 4, y + 4, x + Math.max(4, amount), y + 4, Fade(TEXT, .35f));
@@ -120,6 +139,23 @@ public class Menu {
             } else line = next;
         }
         if (!line.isEmpty()) text(line, x, row, size, color);
+    }
+
+    public static int wrappedHeight(String text, int width, int size) {
+        if (text == null || text.isEmpty()) return 0;
+        String line = "";
+        int lines = 0;
+        for (String word : text.split(" ")) {
+            String next = line.isEmpty() ? word : line + " " + word;
+            if (measure(next, size) > width && !line.isEmpty()) {
+                lines++;
+                line = word;
+            } else {
+                line = next;
+            }
+        }
+        if (!line.isEmpty()) lines++;
+        return lines * (size + 5);
     }
 
     /** Small vector pictograms remain crisp at both display scales. */
@@ -186,8 +222,16 @@ public class Menu {
                 iconLine(cx, cy, cx, y + size, color);
             }
             case "boots" -> {
-                DrawRectangleLines(x + u, y, size / 3, size - u, color);
-                DrawRectangleLines(cx, cy, size / 2, size / 2 - u, color);
+                // Two matching boot silhouettes: cuff, shaft, toe and sole.
+                for (int offset : new int[] {0, size / 2}) {
+                    int bx = x + offset;
+                    iconLine(bx + u, y + u, bx + 3 * u, y + u, color);
+                    iconLine(bx + u, y + u, bx + u, y + 6 * u, color);
+                    iconLine(bx + 3 * u, y + u, bx + 3 * u, y + 4 * u, color);
+                    iconLine(bx + 3 * u, y + 4 * u, bx + 4 * u, y + 5 * u, color);
+                    iconLine(bx + 4 * u, y + 5 * u, bx + 4 * u, y + 6 * u, color);
+                    iconLine(bx + u, y + 6 * u, bx + 4 * u, y + 6 * u, color);
+                }
             }
             case "crossbow" -> {
                 iconLine(cx, y, cx, y + size, color);
@@ -290,9 +334,18 @@ public class Menu {
     }
 
     public static void bar(int x, int y, int w, float value, float max, Color color) {
+        bar(x, y, w, value, value, max, color);
+    }
+
+    public static void bar(int x, int y, int w, float value, float ghost, float max, Color color) {
         DrawRectangle(x - 1, y - 1, w + 2, 10, INK);
         DrawRectangle(x, y, w, 8, LINE);
-        int fill = (int) (w * Math.max(0, Math.min(1, value / Math.max(1, max))));
+        float m = Math.max(1, max);
+        int ghostFill = (int) (w * Math.max(0, Math.min(1, Math.max(value, ghost) / m)));
+        if (ghostFill > 0 && ghost > value) {
+            DrawRectangle(x, y, ghostFill, 8, Fade(GOLD, .65f));
+        }
+        int fill = (int) (w * Math.max(0, Math.min(1, value / m)));
         DrawRectangle(x, y, fill, 8, color);
         DrawLine(x, y, x + fill, y, Fade(TEXT, .3f));
     }

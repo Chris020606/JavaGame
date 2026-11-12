@@ -59,37 +59,47 @@ public final class EnvironmentLayout {
         List<Prop> p = new ArrayList<>();
         Random random = new Random(9201 + chapter * 31);
         if (chapter == 0) {
+            // Broad ancient oaks, lush shrubs and wildflowers frame the tranquil meadow perimeter.
+            for (int i = 0; i < 5; i++) {
+                float z = -8 + i * 6;
+                n(p, "tree_oak", -26 - (i % 2) * 2, z, 45 + i * 27, 4.5f + (i % 2) * .8f);
+                n(p, "plant_bushDetailed", -22, z + 2, i * 37, 2.5f);
+                n(p, "flower_yellowC", -20, z + 1, i * 53, 1.8f);
+            }
+            for (int i = 0; i < 4; i++) {
+                float x = -18 + i * 9;
+                n(p, "plant_bushDetailed", x, 25 + (i % 2) * 2, i * 41, 2.6f);
+                n(p, "flower_purpleC", x + 2, 24, i * 33, 2.0f);
+            }
+            n(p, "tree_oak", -30, 18, 40, 6.5f);
+            n(p, "tree_oak", 26, 24, 120, 6);
+            n(p, "tree_oak", -22, 12, 85, 4.2f);
             n(p, "tent_detailedOpen", -13, -10, 58, 3.7f);
             n(p, "tent_detailedOpen", -10, -15, 12, 3.1f);
             n(p, "campfire_stones", -9, -8, 0, 2.2f);
             n(p, "log_stack", -15, -13, 103, 2.1f);
             n(p, "fence_simple", -17, -8, 17, 2.4f);
             n(p, "fence_simple", -17, -11, 7, 2.2f);
-            n(p, "statue_columnDamaged", 9, 14, 11, 3.4f);
-            n(p, "statue_columnDamaged", 13, 16, 82, 2.5f);
-            n(p, "statue_obelisk", 11, 19, -9, 3.1f);
-            // Unequal landmarks help the player orient: ruins west, a wayfarer stop east.
-            // Keep the central eight-metre sanctuary clearing open for fights and healing.
+            n(p, "tree_oak", 11, 18, 20, 4.8f);
+            n(p, "plant_bushDetailed", 14, 15, 65, 2.6f);
+            n(p, "flower_redB", 10, 16, 0, 1.9f);
+            // Warden's Garden: a quiet stone platform adorned with wildflowers and lush shrubs.
             n(p, "platform_stone", -10, 5, 0, 3.5f);
-            n(p, "statue_columnDamaged", -12, 3, 18, 3.2f);
-            n(p, "statue_ring", -9, 6, 90, 2.8f);
-            n(p, "stone_largeA", -13, 7, 72, 2.2f);
+            n(p, "plant_bushDetailed", -12, 3, 18, 2.4f);
             n(p, "flower_purpleC", -8, 7, 0, 2.2f);
+            n(p, "flower_yellowC", -11, 7, 35, 1.8f);
             n(p, "tent_detailedOpen", 13, -3, -75, 2.8f);
             n(p, "campfire_stones", 11, -1, 0, 1.7f);
             n(p, "log_stack", 15, 1, 15, 1.8f);
             n(p, "fence_simple", 16, -4, 5, 2);
             n(p, "plant_bushDetailed", 16, 2, 40, 2.1f);
             n(p, "flower_yellowC", 9, -4, 0, 1.8f);
-            // A ruined lookout and stone stair terrace frame the eastern approach.
+            // Eastern approach: a gentle stone terrace with flowering shrubs and oaks.
             n(p, "platform_stone", 24, 7, 0, 5.5f);
-            n(p, "platform_stone", 27, 7, 0, 5.5f);
-            n(p, "statue_columnDamaged", 23, 4, 0, 5);
-            n(p, "statue_columnDamaged", 28, 4, 180, 4);
-            n(p, "statue_ring", 26, 8, 90, 4);
-            n(p, "stone_largeA", 22, 11, 35, 3);
+            n(p, "tree_oak", 25, 4, 180, 4.5f);
             n(p, "flower_purpleC", 21, 9, 0, 2);
-            n(p, "plant_bushDetailed", 29, 11, 40, 3);
+            n(p, "plant_bushDetailed", 28, 10, 40, 2.8f);
+            n(p, "flower_redB", 23, 11, 0, 1.8f);
             n(p, "bridge_wood", -4, -28, 90, 4.2f);
             // Layered riverbank groves conceal the distant seam from low orbit angles.
             for (int side : new int[] {-1, 1})
@@ -110,7 +120,7 @@ public final class EnvironmentLayout {
                             -17 + (i % 2) * 2,
                             random.nextFloat() * 360,
                             2.4f + random.nextFloat());
-                    if (i % 3 == 0) n(p, "stone_largeA", x, -23, random.nextFloat() * 360, 3.2f);
+                    if (i % 3 == 0) n(p, "flower_redB", x, -23, random.nextFloat() * 360, 2.0f);
                 }
             // Tree screens continue along both banks until the river leaves the distant view.
             for (int end : new int[] {-1, 1})
@@ -404,7 +414,7 @@ public final class EnvironmentLayout {
     }
 
     private static void cluster(List<Prop> p, Random r, float cx, float cz, int count) {
-        n(p, "stone_largeA", cx, cz, r.nextFloat() * 360, 2.3f + r.nextFloat());
+        n(p, "plant_bushDetailed", cx, cz, r.nextFloat() * 360, 2.2f + r.nextFloat());
         for (int i = 0; i < count; i++) {
             float x = cx + (float) r.nextGaussian() * 2.5f,
                     z = cz + (float) r.nextGaussian() * 2.5f;

@@ -22,13 +22,32 @@ public final class HudScreen {
         SLASH, HEAVY, PARRY, LUNGE, POTION, INVENTORY
     };
 
+    private float ghostHealth = -1;
+    private float ghostDelay = 0;
+
     public void draw(Progression p, Player player, Controls controls, CombatState state) {
         HudLayout layout = new HudLayout(GetScreenWidth(), GetScreenHeight());
         int x = layout.x(), y = layout.y(), span = layout.span();
         boolean compact = GetScreenWidth() < 1000;
+        float dt = Math.max(0, Math.min(.1f, GetFrameTime()));
+        float currentHp = p.health();
+        if (ghostHealth < 0 || currentHp >= ghostHealth) {
+            ghostHealth = currentHp;
+            ghostDelay = 0;
+        } else {
+            ghostDelay += dt;
+            if (ghostDelay >= 0.28f) {
+                ghostHealth =
+                        Math.max(
+                                currentHp,
+                                ghostHealth - Math.max(30f, (ghostHealth - currentHp) * 4.5f) * dt);
+            }
+        }
         int frameWidth = compact ? 216 : 320, fx = 16, fy = 20;
-        Menu.panel(fx, fy, frameWidth, 138);
-        DrawRectangle(fx + 1, fy + 10, 3, 118, Menu.GOLD);
+        int panelH = compact ? 162 : 168;
+        Menu.panel(fx, fy, frameWidth, panelH);
+        DrawRectangle(fx + 1, fy + 10, 3, panelH - 20, Menu.GOLD);
+        DrawLine(fx + 14, fy + 53, fx + frameWidth - 14, fy + 53, Fade(Menu.LINE, .5f));
         String crest =
                 p.heroClass() == HeroClass.WARRIOR
                         ? "sword"
@@ -49,25 +68,41 @@ public final class HudScreen {
                 Menu.MUTED);
         Menu.resourceBar(
                 fx + 14,
-                fy + 60,
+                fy + 58,
                 frameWidth - 28,
-                30,
+                26,
                 p.health(),
+                ghostHealth,
                 p.maxHealth(),
                 p.health() < p.maxHealth() * .25f ? Menu.RED : Menu.color(49, 153, 94),
                 "HEALTH");
         Menu.resourceBar(
                 fx + 14,
-                fy + 100,
+                fy + 90,
                 frameWidth - 28,
-                24,
+                22,
                 player.discipline().stamina(),
                 p.maxStamina(),
                 p.heroClass() == HeroClass.MAGE
                         ? Menu.color(65, 135, 235)
                         : Menu.color(190, 147, 48),
                 p.heroClass() == HeroClass.MAGE ? "MANA" : "STAMINA");
-        DrawRectangle(x - 8, y - 144, span + 16, 22, Fade(Menu.INK, .9f));
+        int xp = p.xp(), xpNeeded = p.xpToNextLevel();
+        Menu.resourceBar(
+                fx + 14,
+                fy + 118,
+                frameWidth - 28,
+                16,
+                xp,
+                xp,
+                xpNeeded,
+                Menu.color(135, 85, 215),
+                "XP");
+        Menu.text("[B] RECALL TO CITADEL", fx + 14, fy + 138, compact ? 9 : 11, Menu.TEAL);
+        // Size the passive combat hint to its text, leaving more of the world unobscured.
+        int hintWidth = Menu.measure(state.mastery(), 11) + 28;
+        DrawRectangle(
+                GetScreenWidth() / 2 - hintWidth / 2, y - 144, hintWidth, 24, Fade(Menu.INK, .88f));
         Menu.center(
                 state.mastery(),
                 GetScreenWidth() / 2,
@@ -118,37 +153,74 @@ public final class HudScreen {
             if (i == 4) Menu.text("" + p.potions(), sx + size - 15, y + size - 18, 13, Menu.GOLD);
             Menu.center(labels[i], sx + size / 2, y + size + 3, 9, Menu.MUTED);
         }
-        String timing =
-                state.charge() > 0
-                        ? "HEAVY CHARGE / RELEASE IN GOLD"
-                        : player.discipline().riposteReady()
-                                ? "RIPOSTE READY"
-                                : state.combo() > 0
-                                                && state.comboWindow() > 0
-                                                && state.cooldown() <= .22f
-                                        ? "CHAIN NOW"
-                                        : player.isAttacking() ? "ATTACK / RECOVERING" : null;
-        boolean actionMeter = state.charge() > 0;
-        if (timing != null) Menu.center(timing, GetScreenWidth() / 2, y - 39, 10, Menu.GOLD);
-        if (actionMeter) {
-            float maximum = state.charge() > 0 ? 1.4f : state.duration();
-            Menu.bar(
-                    x,
-                    y - 26,
-                    span,
-                    state.charge() > 0 ? state.charge() : maximum - state.cooldown(),
-                    maximum,
-                    state.charge() > 0 ? Menu.GOLD : Menu.TEAL);
-            if (state.charge() > 0)
-                DrawRectangle(
-                        x + (int) (span * .75f / 1.4f),
-                        y - 27,
-                        (int) (span * .3f / 1.4f),
+        if (state.charge() > 0) {
+            float charge = state.charge();
+            boolean inCritWindow = charge >= 0.75f && charge <= 1.05f;
+            int barY = y - 36;
+            int barH = 18;
+            Menu.frame(
+                    x - 2,
+                    barY - 2,
+                    span + 4,
+                    barH + 4,
+                    Menu.INK,
+                    inCritWindow ? Menu.GOLD : Menu.LINE);
+            int filled = (int) (span * Math.min(1.0f, charge / 1.4f));
+            if (filled > 0) {
+                DrawRectangleGradientH(
+                        x,
+                        barY,
+                        filled,
+                        barH,
+                        Menu.color(180, 130, 30),
+                        inCritWindow ? Menu.GOLD : Menu.color(220, 175, 45));
+                DrawLine(x, barY, x + filled, barY, Fade(Menu.TEXT, .4f));
+            }
+            // Critical release window illuminated brackets
+            int winStart = x + (int) (span * .75f / 1.4f);
+            int winWidth = (int) (span * .30f / 1.4f);
+            DrawRectangle(
+                    winStart, barY, winWidth, barH, Fade(Menu.GOLD, inCritWindow ? .35f : .15f));
+            DrawRectangleLines(
+                    winStart, barY, winWidth, barH, Fade(Menu.GOLD, inCritWindow ? .95f : .55f));
+
+            String spellName =
+                    p.heroClass() == HeroClass.WARRIOR
+                            ? "HEAVY CLEAVE"
+                            : p.heroClass() == HeroClass.ARCHER
+                                    ? "POWER SHOT"
+                                    : p.weaponTier() >= 3 ? "DAWNWEAVER MEND" : "ARCANE SURGE";
+            Menu.text(spellName, x + 8, barY + 2, 11, inCritWindow ? Menu.GOLD : Menu.TEXT);
+            Menu.text(
+                    String.format("%.2fs / 1.40s", charge), x + span - 84, barY + 2, 11, Menu.GOLD);
+            if (inCritWindow) {
+                Menu.center(
+                        "CRITICAL RELEASE WINDOW!", GetScreenWidth() / 2, barY - 16, 11, Menu.GOLD);
+            } else {
+                Menu.center(
+                        "HOLD TO CHARGE / RELEASE IN GOLD",
+                        GetScreenWidth() / 2,
+                        barY - 16,
                         10,
-                        Fade(Menu.GOLD, .65f));
-            else if (player.isAttacking())
-                DrawRectangle(
-                        x + (int) (span * state.impact() / maximum), y - 29, 2, 14, Menu.TEXT);
+                        Menu.MUTED);
+            }
+        } else {
+            String timing =
+                    player.discipline().riposteReady()
+                            ? "RIPOSTE READY! [PRESS STRIKE]"
+                            : state.combo() > 0
+                                            && state.comboWindow() > 0
+                                            && state.cooldown() <= .22f
+                                    ? "CHAIN NOW (COMBO " + state.combo() + " / 3)"
+                                    : player.isAttacking() ? "ATTACK / RECOVERING" : null;
+            if (timing != null) {
+                Menu.center(
+                        timing,
+                        GetScreenWidth() / 2,
+                        y - 25,
+                        11,
+                        player.discipline().riposteReady() ? Menu.GOLD : Menu.TEXT);
+            }
         }
         if (hover >= 0) {
             int tx = Math.max(8, Math.min(GetScreenWidth() - 338, GetScreenWidth() / 2 - 165)),

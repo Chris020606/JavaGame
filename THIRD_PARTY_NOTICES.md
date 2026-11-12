@@ -26,3 +26,9 @@ All three source pages mark these recordings CC0. Public-domain dedication: http
 ## Repository cover artwork
 
 `docs/images/outpost-cover.png` is illustrated title artwork created for Outpost with OpenAI image generation. It is not a gameplay screenshot. The prompt and generation record are in `docs/artwork/outpost-cover.md`. Gameplay screenshots remain game captures.
+
+### Aethelgard city, citizens and weapons
+
+- **KayKit Medieval Hexagon Pack 1.0**, Kay Lousberg: CC0. The city uses its buildings, terrain, props and nature meshes. Original license: `resources/KayKit_Medieval_Hexagon_Pack_1.0_FREE/License.txt`. Source: https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0 .
+- **KayKit Fantasy Weapons Bits**, Kay Lousberg: CC0. Weapon meshes and texture atlas under `resources/outpost/weapons`. Source and license declaration: https://kaylousberg.itch.io/fantasy-weapons-bits .
+- Citizen GLBs under `resources/outpost/citizens` derive from the bundled CC0 KayKit Adventurers meshes and animations, with civilian accessory removal and bone-name animation remapping. Rebuild using `tools/prepare_citizens.py`.

@@ -21,12 +21,15 @@ out vec4 finalColor;
 const float PI=3.14159265;
 float depthAt(vec2 p) { return dot(texture(shadowMap,p).rgb,vec3(1.0,1.0/255.0,1.0/65025.0)); }
 float visibility(vec3 n,vec3 l) {
-    vec4 q=sunVP*vec4(world,1.0);vec3 p=q.xyz/q.w*.5+.5;
+    vec4 q=sunVP*vec4(world,1.0);
+    if(abs(q.w)<.0001) return 1.0;
+    vec3 p=q.xyz/q.w*.5+.5;
     if(p.x<=.001 || p.x>=.999 || p.y<=.001 || p.y>=.999 || p.z>=1.0) return 1.0;
     float bias=max(.000018,.000065*(1.0-dot(n,l)));
     float sum=0.0;
+    float safeShadowSize=max(shadowSize,1.0);
     for(int x=-1;x<=1;x++) for(int y=-1;y<=1;y++)
-        sum+=p.z-bias<=depthAt(p.xy+vec2(x,y)/shadowSize)?1.0:0.0;
+        sum+=p.z-bias<=depthAt(p.xy+vec2(x,y)/safeShadowSize)?1.0:0.0;
     return .18+.82*sum/9.0;
 }
 vec3 fresnel(float cosine,vec3 f0) { return f0+(1.0-f0)*pow(1.0-cosine,5.0); }
@@ -41,7 +44,9 @@ void main() {
     }
     if(material.x<.28 && material.y<.15 && colDiffuse.b>colDiffuse.g && colDiffuse.b>colDiffuse.r*1.4)
         n=normalize(n+vec3(sin(world.x*3.0+uTime*1.6)*.065,0,cos(world.z*4.0+uTime*1.2)*.055));
-    vec3 v=normalize(viewPos-world),l=normalize(lightDir),h=normalize(v+l);
+    vec3 v=length(viewPos-world)>.0001?normalize(viewPos-world):vec3(0,1,0);
+    vec3 l=length(lightDir)>.0001?normalize(lightDir):vec3(0,1,0);
+    vec3 h=length(v+l)>.0001?normalize(v+l):vec3(0,1,0);
     float rough=clamp(material.x,.16,.95),metal=material.y;
     float nv=max(dot(n,v),.001),nl=max(dot(n,l),0.0),nh=max(dot(n,h),0.0),hv=max(dot(h,v),0.0);
     float a=rough*rough,a2=a*a,d=nh*nh*(a2-1.0)+1.0;

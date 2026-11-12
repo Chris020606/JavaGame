@@ -11,7 +11,26 @@ class EquipmentOwnershipTest {
         Properties p = new Properties();
         new Progression().store(p);
         p.setProperty("crystals", "10000");
+        p.setProperty("characterLevel", "10");
         return Progression.restore(p);
+    }
+
+    @Test
+    void underleveledPlayerCannotForgeHigherTiers() {
+        Progression p = new Progression();
+        Properties props = new Properties();
+        p.store(props);
+        props.setProperty("crystals", "10000");
+        Progression richNovice = Progression.restore(props);
+        assertEquals(1, richNovice.characterLevel());
+        assertFalse(richNovice.canBuyWeapon(2));
+        assertFalse(richNovice.canBuyWeapon(3));
+        assertFalse(richNovice.canBuyArmor(2));
+        assertFalse(richNovice.canBuyArmor(3));
+        richNovice.addXp(1500);
+        assertTrue(richNovice.characterLevel() >= 6);
+        assertTrue(richNovice.canBuyWeapon(2));
+        assertTrue(richNovice.canBuyArmor(2));
     }
 
     @Test
@@ -39,19 +58,19 @@ class EquipmentOwnershipTest {
     }
 
     @Test
-    void gapsPersistAndBossGrantsOnlyOneMissingWeapon() {
+    void gapsPersistAndBossDoesNotGrantMissingWeapons() {
         Progression p = funded();
         p.buyWeapon(3);
         p.buyArmor(3);
         p.rewardEnemy(true);
-        assertEquals(1, p.lastBossWeapon());
-        assertTrue(p.ownsWeapon(1));
+        assertEquals(-1, p.lastBossWeapon());
+        assertFalse(p.ownsWeapon(1));
         assertFalse(p.ownsWeapon(2));
         assertTrue(p.ownsWeapon(3));
         Properties saved = new Properties();
         p.store(saved);
         Progression loaded = Progression.restore(saved);
-        assertTrue(loaded.ownsWeapon(1));
+        assertFalse(loaded.ownsWeapon(1));
         assertFalse(loaded.ownsWeapon(2));
         assertTrue(loaded.ownsWeapon(3));
         assertFalse(loaded.ownsArmor(1));
@@ -68,6 +87,7 @@ class EquipmentOwnershipTest {
         Properties saved = new Properties();
         p.store(saved);
         saved.remove("ownedArmor");
+        for (ArmorSlot slot : ArmorSlot.values()) saved.remove("ownedArmor." + slot);
         saved.remove("ownedWeapons");
         saved.setProperty("equipped.HEAD", "1");
         Progression migrated = Progression.restore(saved);

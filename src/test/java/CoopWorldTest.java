@@ -93,4 +93,25 @@ class CoopWorldTest {
         assertEquals(0, restored.snapshot().chapter());
         assertEquals(CoopState.Phase.LOBBY, restored.snapshot().phase());
     }
+
+    @Test
+    void upgradesCanBePurchasedDuringCombatAndMovementTurnsNaturally() {
+        CoopWorld w = started();
+        assertEquals(CoopState.Phase.PLAYING, w.snapshot().phase());
+        var hero = w.snapshot().heroes().get(0);
+        int initialHp = (int) hero.maxHealth();
+        assertEquals(1, hero.credits());
+        // Spend 1 credit on VITALITY during combat!
+        w.input(0, new CoopInput(2, 0, 0, 0, CoopInput.VITALITY));
+        w.tick(1f / 60);
+        hero = w.snapshot().heroes().get(0);
+        assertEquals(0, hero.credits());
+        assertEquals(1, hero.vitality());
+        assertEquals(initialHp + 25, (int) hero.maxHealth());
+
+        // Moving right (moveX = 1, moveZ = 0) with aim at 0 (north) turns facing towards 90 (east)!
+        w.input(0, new CoopInput(3, 1, 0, 0, 0));
+        for (int i = 0; i < 15; i++) w.tick(1f / 60);
+        assertTrue(w.snapshot().heroes().get(0).facing() > 45f);
+    }
 }

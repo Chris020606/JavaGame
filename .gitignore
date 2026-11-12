@@ -88,3 +88,14 @@ hs_err_pid*.log
 /resources/KayKit_Character_Animations_1.1/*
 !/resources/KayKit_Character_Animations_1.1/License.txt
 !/gradle/wrapper/gradle-wrapper.jar
+
+# Unused downloaded source packs; the active city uses KayKit runtime glTF.
+/resources/low-poly-winter-medieval-castle-and-town-pack/
+/resources/outpost/citadel/winter/
+/resources/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/fbx*/
+/resources/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/obj/
+/resources/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Samples/
+/resources/KayKit_Medieval_Hexagon_Pack_1.0_FREE/Textures/
+/resources/KayKit_Medieval_Hexagon_Pack_1.0_FREE/*.url
+/resources/KayKit_Medieval_Hexagon_Pack_1.0_FREE/*.pdf
+/resources/KayKit_Medieval_Hexagon_Pack_1.0_FREE/*.jpg

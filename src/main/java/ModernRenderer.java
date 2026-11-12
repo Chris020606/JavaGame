@@ -96,7 +96,9 @@ public final class ModernRenderer implements AutoCloseable {
             SetTextureFilter(scene.texture(), TEXTURE_FILTER_BILINEAR);
         }
         BeginTextureMode(scene);
-        ClearBackground(WHITE);
+        // The scene pass always paints its own sky/gradient. A dark fallback prevents a
+        // partially-rendered frame from presenting as a full white screen.
+        ClearBackground(Menu.INK);
     }
 
     public int width() {

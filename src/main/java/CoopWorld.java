@@ -180,7 +180,7 @@ public final class CoopWorld {
                 presses[p.slot] = pressed;
                 if ((pressed & CoopInput.PAUSE) != 0 && phase == CoopState.Phase.PLAYING)
                     p.paused = !p.paused;
-                if (phase != CoopState.Phase.PLAYING && phase != CoopState.Phase.VICTORY) {
+                if (phase != CoopState.Phase.VICTORY) {
                     if (p.credits > 0) {
                         if ((pressed & CoopInput.VITALITY) != 0) {
                             p.vitality++;
@@ -195,7 +195,8 @@ public final class CoopWorld {
                             p.stamina = p.maxStamina();
                         }
                     }
-                    if ((pressed & CoopInput.READY) != 0) p.ready = !p.ready;
+                    if (phase != CoopState.Phase.PLAYING && (pressed & CoopInput.READY) != 0)
+                        p.ready = !p.ready;
                 }
                 // Presses are consumed even while paused, so resuming cannot unleash buffered
                 // attacks.
@@ -240,8 +241,12 @@ public final class CoopWorld {
         } else if (enemies.stream().noneMatch(m -> m.enemy.health > 0)) {
             if (wave >= Campaign.CHAPTERS[chapter].last()) {
                 finish(chapter == 3 ? CoopState.Phase.VICTORY : CoopState.Phase.INTERMISSION);
-                if (phase == CoopState.Phase.INTERMISSION) for (Hero p : heroes) p.credits++;
+                if (phase == CoopState.Phase.INTERMISSION)
+                    for (Hero p : heroes) if (p != null) p.credits++;
             } else {
+                if (rest >= 8.0f) {
+                    for (Hero p : heroes) if (p != null) p.credits++;
+                }
                 rest -= dt;
                 if (rest <= 0) startWave(wave + 1);
             }
@@ -389,7 +394,20 @@ public final class CoopWorld {
             p.parryCooldown = .8f;
             p.recovery = .34f;
         }
-        if (p.attack <= 0 && p.dodge <= 0) p.facing = p.input.aim();
+        boolean aiming =
+                (p.input.buttons() & (CoopInput.LIGHT | CoopInput.HEAVY)) != 0
+                        || p.charge > 0
+                        || p.attack > 0;
+        if (!aiming && (Math.abs(p.input.moveX()) > .05f || Math.abs(p.input.moveZ()) > .05f)) {
+            float moveAngle = (float) Math.toDegrees(Math.atan2(p.input.moveX(), p.input.moveZ()));
+            float delta = (moveAngle - p.facing + 540) % 360 - 180;
+            p.facing =
+                    (float)
+                            Math.IEEEremainder(
+                                    p.facing + Math.max(-720 * dt, Math.min(720 * dt, delta)), 360);
+        } else if (p.attack <= 0 && p.dodge <= 0) {
+            p.facing = p.input.aim();
+        }
         boolean heavyDown = (p.input.buttons() & CoopInput.HEAVY) != 0;
         if (heavyDown && canAct) p.charge = Math.min(1.6f, p.charge + dt);
         if (p.heavyReleased) {

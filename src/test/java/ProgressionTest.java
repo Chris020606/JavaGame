@@ -91,4 +91,39 @@ class ProgressionTest {
         e.approach(0, 0, 1);
         assertTrue(Float.isFinite(e.x));
     }
+
+    @Test
+    void xpAccumulationTriggersLevelUpAndAwardsLevelPoints() {
+        Progression p = new Progression();
+        assertEquals(1, p.characterLevel());
+        assertEquals(0, p.levelPoints());
+        assertEquals(100, p.xpToNextLevel());
+        assertTrue(p.addXp(100));
+        assertEquals(2, p.characterLevel());
+        assertEquals(1, p.levelPoints());
+        assertEquals(0, p.xp());
+        // Spending level point on vitality upgrades max health and consumes point
+        int hpBefore = p.maxHealth();
+        assertTrue(p.canPurchase(Progression.Upgrade.VITALITY));
+        assertTrue(p.purchase(Progression.Upgrade.VITALITY));
+        assertEquals(hpBefore + 20, p.maxHealth());
+        assertEquals(0, p.levelPoints());
+        assertFalse(p.canPurchase(Progression.Upgrade.VITALITY));
+        assertFalse(p.purchase(Progression.Upgrade.VITALITY));
+        assertFalse(p.canPurchase(Progression.Upgrade.POWER));
+        assertFalse(p.purchase(Progression.Upgrade.POWER));
+    }
+
+    @Test
+    void beaconFortificationsScaleDefensesAndAura() {
+        Progression p = new Progression();
+        for (int i = 0; i < 20; i++) p.rewardKill();
+        float baseHearth = p.healRate();
+        assertTrue(p.purchase(Progression.Upgrade.HEARTH));
+        assertTrue(p.healRate() > baseHearth);
+        assertTrue(p.purchase(Progression.Upgrade.SPIRE));
+        assertEquals(2, p.spireLevel());
+        assertTrue(p.purchase(Progression.Upgrade.SOLAR_WARD));
+        assertEquals(1, p.solarWardLevel());
+    }
 }

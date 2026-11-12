@@ -20,6 +20,15 @@ public class Player extends Entity {
     private int weaponStyle, weaponTier;
     private boolean crossbow;
     private boolean twoHanded;
+    private boolean hasWeapon = true;
+
+    public void setHasWeapon(boolean hasWeapon) {
+        this.hasWeapon = hasWeapon;
+    }
+
+    public boolean hasWeapon() {
+        return hasWeapon;
+    }
 
     public void setWeaponTier(int tier) {
         weaponTier = tier;
@@ -58,6 +67,41 @@ public class Player extends Entity {
     private float chargePoseTime, aimLock, locomotionClock;
     private float lastOutcomeTime;
     private float visualLift;
+
+    private boolean boundsEnabled = true;
+    private float minBoundX = -22.0f;
+    private float maxBoundX = 22.0f;
+    private float minBoundZ = -22.0f;
+    private float maxBoundZ = 22.0f;
+
+    public void setBoundsEnabled(boolean enabled) {
+        this.boundsEnabled = enabled;
+    }
+
+    public boolean isBoundsEnabled() {
+        return boundsEnabled;
+    }
+
+    public void setBounds(float minX, float maxX, float minZ, float maxZ) {
+        this.boundsEnabled = true;
+        this.minBoundX = minX;
+        this.maxBoundX = maxX;
+        this.minBoundZ = minZ;
+        this.maxBoundZ = maxZ;
+    }
+
+    public void clearBounds() {
+        this.boundsEnabled = false;
+    }
+
+    public void resetBounds() {
+        this.boundsEnabled = true;
+        this.minBoundX = -22.0f;
+        this.maxBoundX = 22.0f;
+        this.minBoundZ = -22.0f;
+        this.maxBoundZ = 22.0f;
+    }
+
     private final Vector3 renderPosition = new Vector3();
     private boolean fallenPose;
 
@@ -71,6 +115,10 @@ public class Player extends Entity {
     public void setCharging(boolean value) {
         if (value && !charging) chargePoseTime = 0;
         charging = value;
+    }
+
+    public float aimLock() {
+        return aimLock;
     }
 
     public void aimAt(float x, float z) {
@@ -158,14 +206,6 @@ public class Player extends Entity {
 
     public String getName() {
         return name;
-    }
-
-    public boolean isSex() {
-        return sex;
-    }
-
-    public void setSex(boolean sex) {
-        this.sex = sex;
     }
 
     public void setHealth(int health) {
@@ -312,7 +352,7 @@ public class Player extends Entity {
             dodgeTime = Math.max(0, dodgeTime - dt);
         } else {
             position.x(position.x() + velocityX * dt).z(position.z() + velocityZ * dt);
-            if (moving && !isAttacking() && !charging && aimLock <= 0) {
+            if (moving && !isAttacking() && aimLock <= 0) {
                 float target = (float) Math.toDegrees(Math.atan2(moveX, moveZ));
                 float delta = (target - getRotation().y() + 540) % 360 - 180;
                 getRotation()
@@ -335,8 +375,10 @@ public class Player extends Entity {
                 }
             }
         }
-        position.x(Math.max(-22, Math.min(22, position.x())))
-                .z(Math.max(-22, Math.min(22, position.z())));
+        if (boundsEnabled) {
+            position.x(Math.max(minBoundX, Math.min(maxBoundX, position.x())))
+                    .z(Math.max(minBoundZ, Math.min(maxBoundZ, position.z())));
+        }
         setPosition(position);
 
         attackTime = Math.max(0, attackTime - dt);
@@ -374,17 +416,19 @@ public class Player extends Entity {
             setAnimation(locomotion);
         } else {
             setAnimation(
-                    weaponStyle == 1
-                            ? rangedIdle()
-                            : weaponStyle == 2
-                                    ? PlayerAnimation.UNARMED_IDLE
-                                    : PlayerAnimation.MELEE_IDLE);
+                    !hasWeapon
+                            ? PlayerAnimation.UNARMED_IDLE
+                            : weaponStyle == 1
+                                    ? rangedIdle()
+                                    : weaponStyle == 2
+                                            ? PlayerAnimation.UNARMED_IDLE
+                                            : PlayerAnimation.MELEE_IDLE);
         }
 
         if (isDodging()) {
             advancePose(dt);
             playAnimationProgress(1 - dodgeTime / .34f);
-        } else if (!moving && weaponStyle == 2) {
+        } else if (!moving && (weaponStyle == 2 && hasWeapon)) {
             advancePose(dt);
             playAnimationProgress(0);
         } else updateAnimation(dt * (sprinting ? 1.35f : 1));
@@ -394,6 +438,14 @@ public class Player extends Entity {
         double angle = Math.toRadians(getRotation().y());
         float forward = dx * (float) Math.sin(angle) + dz * (float) Math.cos(angle),
                 side = dx * (float) Math.cos(angle) - dz * (float) Math.sin(angle);
+        if (!hasWeapon) {
+            if (forward < -.55f) return PlayerAnimation.WALK_BACKWARD;
+            if (Math.abs(side) > .7f)
+                return side > 0
+                        ? PlayerAnimation.RUN_STRAFE_RIGHT
+                        : PlayerAnimation.RUN_STRAFE_LEFT;
+            return sprint ? PlayerAnimation.RUN : PlayerAnimation.WALK;
+        }
         if (weaponStyle == 1) {
             String grip = !crossbow ? "BOW" : weaponTier == 2 ? "HANDBOW" : "SIEGEBOW";
             String direction =
@@ -460,11 +512,13 @@ public class Player extends Entity {
         PlayerAnimation recovery =
                 moving != null
                         ? moving
-                        : weaponStyle == 1
-                                ? rangedIdle()
-                                : weaponStyle == 2
-                                        ? PlayerAnimation.UNARMED_IDLE
-                                        : PlayerAnimation.MELEE_IDLE;
+                        : !hasWeapon
+                                ? PlayerAnimation.UNARMED_IDLE
+                                : weaponStyle == 1
+                                        ? rangedIdle()
+                                        : weaponStyle == 2
+                                                ? PlayerAnimation.UNARMED_IDLE
+                                                : PlayerAnimation.MELEE_IDLE;
         blendLocomotion(
                 getAnimationIndex(recovery.getAnimationName()),
                 locomotionClock * (moving != null ? 70 : 30),
@@ -582,7 +636,11 @@ public class Player extends Entity {
     public void poseForInventory() {
         Integer index =
                 getAnimationIndex(
-                        (weaponStyle == 1 ? rangedIdle() : PlayerAnimation.UNARMED_IDLE)
+                        (!hasWeapon
+                                        ? PlayerAnimation.UNARMED_IDLE
+                                        : weaponStyle == 1
+                                                ? rangedIdle()
+                                                : PlayerAnimation.MELEE_IDLE)
                                 .getAnimationName());
         if (index != null) poseStill(index, 0);
     }
@@ -598,7 +656,10 @@ public class Player extends Entity {
         visualLift = 0;
         fallenPose = false;
         requestedParry = false;
-        setAnimation(weaponStyle == 1 ? rangedIdle() : PlayerAnimation.MELEE_IDLE);
+        setAnimation(
+                !hasWeapon
+                        ? PlayerAnimation.UNARMED_IDLE
+                        : weaponStyle == 1 ? rangedIdle() : PlayerAnimation.MELEE_IDLE);
         restartAnimation();
         updateAnimation(0);
     }
@@ -670,14 +731,16 @@ public class Player extends Entity {
             playAnimationProgress(0);
         } else if (speed > .2f) {
             setAnimation(movement);
-            updateAnimation(dt * Math.min(1.4f, speed / 5));
+            updateAnimation(dt * (speed > 5.5f ? 1.35f : 1.0f));
         } else {
             setAnimation(
-                    weaponStyle == 1
-                            ? rangedIdle()
-                            : weaponStyle == 2
-                                    ? PlayerAnimation.UNARMED_IDLE
-                                    : PlayerAnimation.MELEE_IDLE);
+                    !hasWeapon
+                            ? PlayerAnimation.UNARMED_IDLE
+                            : weaponStyle == 1
+                                    ? rangedIdle()
+                                    : weaponStyle == 2
+                                            ? PlayerAnimation.UNARMED_IDLE
+                                            : PlayerAnimation.MELEE_IDLE);
             updateAnimation(dt);
         }
     }

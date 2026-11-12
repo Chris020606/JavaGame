@@ -12,6 +12,7 @@ import Entities.Enemy;
 import Entities.Player;
 import Entities.SquadTactics;
 
+import Scene.CameraController;
 import Scene.Scene;
 import Scene.SceneManager;
 
@@ -72,7 +73,11 @@ public class Game {
     private Tutorial.Step preparedStep;
     private final CombatMastery mastery = new CombatMastery();
     private float hitPause, hitMarker;
+    private float sanctuaryGhostHealth = -1, sanctuaryGhostDelay;
+    private float bossGhostHealth = -1, bossGhostDelay;
     private boolean activeHeavy, activeCharged;
+    private String lastDiscoveredLandmark = "";
+    private float landmarkBannerTime;
     private final ArrayList<Enemy> shotTargets = new ArrayList<>();
 
     Tutorial tutorial() {
@@ -98,23 +103,117 @@ public class Game {
         tutorial = new Tutorial();
         preparedStep = null;
         playtest = false;
-        start();
+        startPracticeArena();
         storyTime = 0;
+    }
+
+    void beginCombatTutorial() {
+        if (tutorial != null && tutorial.step() == Tutorial.Step.MOVE) {
+            tutorial.movement(4);
+        } else if (tutorial == null) {
+            tutorial = new Tutorial();
+            tutorial.movement(4);
+        }
+        practiceReturnState = state;
+        practiceReturnPlaytest = playtest;
+        practiceReturn =
+                new SaveGame.Snapshot(
+                        player.getName(),
+                        player.getPosition().x(),
+                        player.getPosition().z(),
+                        player.getRotation().y(),
+                        progress,
+                        director.snapshot(),
+                        java.util.List.copyOf(enemies),
+                        Arena.HIGHLANDS,
+                        player.discipline().stamina(),
+                        dayNight.phase());
+        preparedStep = null;
+        playtest = false;
+        startPracticeArena();
+        storyTime = 0;
+    }
+
+    private void startPracticeArena() {
+        applyHeroModel();
+        guardianCooldown = guardianFlash = 0;
+        storyTime = 12;
+        hudCharging = false;
+        mastery.reset();
+        hitPause = hitMarker = 0;
+        if (progress == null) {
+            progress = new Progression(selectedClass, selectedDifficulty);
+        }
+        if (!progress.hasWeapon()) {
+            progress.grantStarterWeapon();
+        }
+        player.setMovementSpeed(selectedClass.speed);
+        inventory = false;
+        fallen.clear();
+        outcomeTime = 0;
+        heroShots.clear();
+        enemies.clear();
+        projectiles.clear();
+        wave = 0;
+        nextWave = 5;
+        attackCooldown = slashTime = noticeTime = heavyCharge = 0;
+        bossHazards.clear();
+        workshop = false;
+        player.getPosition().x(0).y(0).z(4);
+        player.resetCombat();
+        director.reset();
+        director.difficulty(progress.difficulty());
+        dayNight.phase(DayNightCycle.initial(0));
+        applyProgression();
+        lastHeroX = 0;
+        lastHeroZ = 4;
+        feedback.clear();
+        vfx.clear();
+        combo = 0;
+        comboWindow = inputBuffer = attackElapsed = hurtFlash = 0;
+        impactPending = false;
+        player.setName(settings.playerName);
+        menuMessage = "";
+        state = GameState.PLAYING;
     }
 
     void finishTutorial() {
         if (tutorial == null) return;
         tutorial = null;
+        preparedStep = null;
+        enemies.clear();
+        enemyFocus.clear();
+        heroShots.clear();
+        projectiles.clear();
+        bossHazards.clear();
+        fallen.clear();
+        player.resetCombat();
+        impactPending = false;
         settings.tutorialSeen = true;
         persistSettings();
-        restoreSnapshot(practiceReturn, practiceReturnPlaytest);
-        state = practiceReturnState;
-        practiceReturn = null;
-        notifyPlayer("PRACTICE COMPLETE / Your adventure is ready.");
+        if (practiceReturn != null) {
+            restoreSnapshot(practiceReturn, practiceReturnPlaytest);
+            state = practiceReturnState;
+            practiceReturn = null;
+            applyProgression();
+            notifyPlayer("PRACTICE COMPLETE / Your adventure is ready.");
+        } else if (state == GameState.CITADEL) {
+            // Keep the player in the Citadel right where they are!
+            // Do NOT grant starter weapon automatically; do NOT deploy to mission.
+            applyProgression();
+            notifyPlayer("TUTORIAL DISMISSED / Explore the Citadel freely.");
+        } else {
+            // In combat mission: clean up practice dummy and start real battle / wave
+            enemies.clear();
+            enemyFocus.clear();
+            applyProgression();
+            notifyPlayer("PRACTICE COMPLETE / Your adventure is ready.");
+        }
     }
 
     private void prepareTutorial() {
-        if (tutorial == null || preparedStep == tutorial.step()) return;
+        if (state != GameState.PLAYING || tutorial == null || preparedStep == tutorial.step())
+            return;
         preparedStep = tutorial.step();
         // Retain the selected practice actor between focus and strike so the frame stays visible.
         boolean keepPartner =
@@ -140,8 +239,8 @@ public class Game {
                             1,
                             0,
                             .5f,
-                            Difficulty.EASY);
-            partner.health = 9999;
+                            Difficulty.EASY,
+                            6.0f);
             enemies.add(partner);
             player.aimAt(partner.x, partner.z);
         }
@@ -155,10 +254,18 @@ public class Game {
         if (tutorial == null && charged)
             progress.chapterFeats().record(chapterIndex(), ChapterFeats.Action.CHARGED_HIT);
         hitMarker = .16f;
-        if (progress.heroClass() == HeroClass.WARRIOR)
-            hitPause = Math.max(hitPause, heavy ? .045f : .025f);
+        float pause =
+                heavy
+                        ? (charged ? .05f : .038f)
+                        : (progress.heroClass() == HeroClass.WARRIOR ? .025f : 0);
+        if (pause > 0) hitPause = Math.max(hitPause, pause);
         if (!heavy) mastery.lightHit(progress.heroClass());
-        if (tutorial != null) tutorial.hit(charged);
+        if (tutorial != null) {
+            tutorial.hit(charged);
+            if (enemy.health < 60) {
+                enemy.health = enemy.maxHealth;
+            }
+        }
     }
 
     private final Path settingsPath = AppData.directory().resolve("settings.properties"),
@@ -189,13 +296,17 @@ public class Game {
     private Player player;
     private GameState journalReturn = GameState.MAIN_MENU;
     private boolean journalFeats;
+    private int journalTab;
     private int featsChapter;
     private GameState blessingReturn = GameState.PLAYING;
+    private GameState pauseReturn = GameState.PLAYING;
     private float storyTime;
     private Difficulty selectedDifficulty = Difficulty.NORMAL;
     private float lastHeroX, lastHeroZ;
     private final HudScreen hudScreen = new HudScreen();
     private boolean hudCharging, uiMouseCaptured;
+    private final CitadelHub citadelHub = new CitadelHub();
+    private final CitadelScreen citadelScreen = new CitadelScreen();
     private final WorkshopScreen workshopScreen = new WorkshopScreen();
     private final EquipmentScreen equipmentScreen = new EquipmentScreen();
     private final HeroPortrait heroPortrait = new HeroPortrait();
@@ -211,7 +322,7 @@ public class Game {
     private final ArrayList<Enemy> enemies = new ArrayList<>();
     private final ArrayList<Enemy> fallen = new ArrayList<>();
     private float outcomeTime;
-    private float guardianCooldown, guardianFlash, guardianX, guardianZ;
+    private float guardianCooldown, guardianFlash, guardianX, guardianZ, solarWardCooldown;
     private final Random random = new Random();
     private final WaveDirector director = new WaveDirector(random);
     private final GameAudio audio = new GameAudio();
@@ -310,6 +421,9 @@ public class Game {
                         ? Progression.playtest(
                                 selectedClass, selectedDifficulty, maxPlaytestTraining)
                         : new Progression(selectedClass, selectedDifficulty);
+        if (!playtest) {
+            progress.setHasWeapon(false);
+        }
         player.setMovementSpeed(selectedClass.speed);
         inventory = false;
         fallen.clear();
@@ -348,9 +462,192 @@ public class Game {
         writeCheckpoint();
     }
 
+    public void travelToCitadel() {
+        state = GameState.CITADEL;
+        workshop = false;
+        inventory = false;
+        citadelHub.closeNpc();
+        enemies.clear();
+        fallen.clear();
+        heroShots.clear();
+        projectiles.clear();
+        bossHazards.clear();
+        player.clearBounds();
+        player.getPosition().x(0).y(0).z(2);
+        player.getRotation().y(180);
+        lastHeroX = 0;
+        lastHeroZ = 2;
+        player.resetCombat();
+        CameraController cam = sceneManager.getOpenScene().getCameraController();
+        if (cam != null) {
+            cam.setYaw(0.0f);
+            cam.setPitch(20.0f);
+            cam.setDistance(8.0f);
+            cam.update(0);
+        }
+        notifyPlayer(
+                progress.rescuedSurvivors() > 0
+                        ? "ARRIVED AT AETHELGARD CITADEL / "
+                                + progress.rescuedSurvivors()
+                                + " RESCUED CITIZENS SHELTERED HERE"
+                        : "ARRIVED AT AETHELGARD CITADEL / TALK TO NPCS OR ENTER PORTAL");
+        if (wave == 0 && !progress.hasWeapon() && tutorial == null) {
+            tutorial = new Tutorial();
+        }
+    }
+
+    public void deployFromCitadel() {
+        state = GameState.PLAYING;
+        citadelHub.closeNpc();
+        player.resetBounds();
+        player.getPosition().x(0).y(0).z(4);
+        player.getRotation().y(0);
+        applyProgression();
+        player.resetCombat();
+        CameraController cam = sceneManager.getOpenScene().getCameraController();
+        if (cam != null) {
+            cam.setYaw(0.0f);
+            cam.setPitch(24.0f);
+            cam.setDistance(17.0f);
+            cam.update(0);
+        }
+        audio.play("upgrade");
+        vfx.impact(0, 4, Menu.GOLD, true);
+        notifyPlayer("EXPEDITION DEPLOYED / DEFEND THE PRIMORDIAL BEACON!");
+        if (tutorial != null || !settings.tutorialSeen || (wave == 0 && !progress.hasWeapon())) {
+            beginCombatTutorial();
+        }
+    }
+
+    private void updateCitadel(float dt) {
+        noticeTime = Math.max(0, noticeTime - dt);
+        vfx.update(dt);
+        if (citadelHub.updateTeleport(dt)) {
+            deployFromCitadel();
+            return;
+        }
+        if (citadelHub.isTeleporting()) {
+            return;
+        }
+        if (workshop) {
+            if (IsKeyPressed(KEY_ESCAPE)) {
+                workshop = false;
+            }
+            return;
+        }
+        if (inventory) {
+            if (settings.controls.pressed(INVENTORY)
+                    || IsKeyPressed(KEY_ESCAPE)
+                    || IsKeyPressed(KEY_E)
+                    || IsKeyPressed(KEY_TAB)) {
+                inventory = false;
+            }
+            return;
+        }
+        if (citadelHub.activeNpc() != null) {
+            if (IsKeyPressed(KEY_ESCAPE)
+                    || settings.controls.pressed(INTERACT)
+                    || IsKeyPressed(KEY_F)) {
+                citadelHub.closeNpc();
+                return;
+            }
+            return;
+        }
+        if (IsKeyPressed(KEY_ESCAPE)) {
+            pauseReturn = GameState.CITADEL;
+            state = GameState.PAUSED;
+            return;
+        }
+        if (settings.controls.pressed(INVENTORY) || IsKeyPressed(KEY_E) || IsKeyPressed(KEY_TAB)) {
+            inventory = true;
+            return;
+        }
+        if (settings.controls.pressed(INTERACT)
+                || IsKeyPressed(KEY_F)
+                || IsKeyPressed(KEY_ENTER)
+                || IsKeyPressed(KEY_SPACE)) {
+            CitadelNpc nearby =
+                    citadelHub.checkNearbyNpc(
+                            player.getPosition().x(),
+                            player.getPosition().z(),
+                            progress.rescuedSurvivors());
+            if (nearby != null) {
+                citadelHub.openNpc(nearby, progress);
+                audio.play("menu");
+                return;
+            } else if (citadelHub.isNearPortal(
+                    player.getPosition().x(), player.getPosition().z())) {
+                if (!progress.hasWeapon()) {
+                    notifyPlayer(
+                            "UNARMED! RECEIVE A WEAPON FROM YOUR "
+                                    + progress.heroClass().label.toUpperCase()
+                                    + " MENTOR BEFORE DEPLOYING.");
+                    audio.play("error");
+                    return;
+                }
+                citadelHub.startTeleport();
+                audio.play("upgrade");
+                vfx.impact(CitadelHub.PORTAL_X, CitadelHub.PORTAL_Z, Menu.GOLD, true);
+                return;
+            }
+        }
+        if (IsKeyPressed(KEY_J)) {
+            journalReturn = GameState.CITADEL;
+            journalTab = 1;
+            state = GameState.JOURNAL;
+            audio.play("menu");
+            return;
+        }
+
+        if (player.isBoundsEnabled()) {
+            player.clearBounds();
+        }
+        sceneManager.getOpenScene().updatesEntities(dt);
+        citadelHub.resolvePlayerCollision(player);
+
+        if (tutorial != null && tutorial.step() == Tutorial.Step.MOVE) {
+            float moveDist =
+                    (float)
+                            Math.hypot(
+                                    player.getPosition().x() - lastHeroX,
+                                    player.getPosition().z() - lastHeroZ);
+            if (moveDist > 0.001f) {
+                Tutorial.Step beforeStep = tutorial.step();
+                tutorial.movement(moveDist);
+                if (tutorial.step() != beforeStep) {
+                    audio.play("upgrade");
+                    notifyPlayer(
+                            "MOVEMENT PRACTICED! Visit your class mentor to claim your weapon.");
+                }
+            }
+        }
+        lastHeroX = player.getPosition().x();
+        lastHeroZ = player.getPosition().z();
+
+        // Expedition portal step check: stepping directly into the portal stone
+        if (citadelHub.isNearPortal(player.getPosition().x(), player.getPosition().z())
+                && Math.abs(player.getPosition().x() - CitadelHub.PORTAL_X) <= 1.2f
+                && Math.abs(player.getPosition().z() - CitadelHub.PORTAL_Z) <= 1.2f) {
+            if (!progress.hasWeapon()) {
+                // Like Pokemon Oak guard: player cannot leave unarmed!
+                player.getPosition().z(CitadelHub.PORTAL_Z - 1.6f);
+                notifyPlayer(
+                        "HALT! THE WILDS ARE TOO DANGEROUS UNARMED! SPEAK WITH YOUR CLASS MENTOR"
+                                + " FIRST!");
+                audio.play("error");
+            } else if (!citadelHub.isTeleporting()) {
+                // Stepping into the active expedition portal triggers deployment
+                citadelHub.startTeleport();
+                audio.play("upgrade");
+                vfx.impact(CitadelHub.PORTAL_X, CitadelHub.PORTAL_Z, Menu.GOLD, true);
+            }
+        }
+    }
+
     private void applyProgression() {
         player.setCrossbow(progress.heroClass() == HeroClass.ARCHER && progress.weaponTier() >= 2);
-        player.setWeaponTier(progress.weaponTier());
+        player.setHasWeapon(progress.hasWeapon());
+        player.setWeaponTier(progress.hasWeapon() ? progress.weaponTier() : 0);
         player.setMovementSpeed(progress.movementSpeed());
         player.setDodgeRecovery(
                 1.5f - .15f * progress.expedition().rank(Expedition.Blessing.WAYFARER));
@@ -384,8 +681,33 @@ public class Game {
         noticeTime = 3;
     }
 
+    private boolean rescueLedgerOpen;
+    private boolean storyOpening;
+    private int storyPage;
+
+    private final CityPresentation cityPresentation = new CityPresentation();
+    private final BlessingReminder blessingReminder = new BlessingReminder();
+
     public void update(float dt) {
+        if (rescueLedgerOpen) {
+            if (IsKeyPressed(KEY_ESCAPE)) rescueLedgerOpen = false;
+            return;
+        }
+        if (storyOpening) {
+            if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+                if (++storyPage >= OpeningStory.PAGES.length) storyOpening = false;
+            }
+            return;
+        }
         dt = Math.max(0, Math.min(dt, .05f));
+        if (state == GameState.CITADEL)
+            citadelHub.updateCitizens(
+                    dt,
+                    player.getPosition().x(),
+                    player.getPosition().z(),
+                    progress.rescuedSurvivors());
+        if (state == GameState.CITADEL)
+            cityPresentation.update(dt, player.getPosition().x(), player.getPosition().z());
         applyProgression();
         if (!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) uiMouseCaptured = false;
         else if (inventory || workshop || state != GameState.PLAYING) uiMouseCaptured = true;
@@ -398,6 +720,15 @@ public class Game {
                 dt -= held;
             }
         }
+        blessingReminder.update(
+                dt,
+                state == GameState.PLAYING
+                        && tutorial == null
+                        && enemies.isEmpty()
+                        && director.remaining() == 0
+                        && !inventory
+                        && !workshop,
+                progress.expedition().embers());
         prepareTutorial();
         final float presentationStep = dt;
         boolean outcome =
@@ -424,6 +755,7 @@ public class Game {
                     }
                 }
                 noticeTime = Math.max(0, noticeTime - dt);
+                landmarkBannerTime = Math.max(0, landmarkBannerTime - dt);
                 feedback.update(dt);
                 vfx.update(dt);
                 player.poseForOutcome(state != GameState.GAME_OVER, outcomeTime);
@@ -484,6 +816,16 @@ public class Game {
             state = GameState.RELIC_CHOICE;
             return;
         }
+        if (state == GameState.PLAYING && IsKeyPressed(KEY_B)) {
+            boolean inCombat = !enemies.isEmpty() || attackCooldown > 0 || slashTime > 0;
+            if (inCombat) {
+                notifyPlayer("CANNOT RETURN DURING BATTLE! CLEAR NEARBY THREATS FIRST.");
+                audio.play("error");
+            } else {
+                travelToCitadel();
+                return;
+            }
+        }
         if (state == GameState.CHAPTER_SELECT) {
             if (IsKeyPressed(KEY_ESCAPE)) state = chapterMapReturn;
             return;
@@ -501,12 +843,20 @@ public class Game {
             return;
         }
         if (state == GameState.JOURNAL) {
-            if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) state = journalReturn;
+            if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_J))
+                state = journalReturn;
+            return;
+        }
+        if (state == GameState.CITADEL) {
+            updateCitadel(dt);
             return;
         }
         if (state == GameState.LEVEL_COMPLETE || state == GameState.VICTORY) {
             if (settings.controls.pressed(SAVE)) saveCurrent();
-            if (settings.controls.pressed(INVENTORY) && state == GameState.LEVEL_COMPLETE) {
+            if ((settings.controls.pressed(INVENTORY)
+                            || IsKeyPressed(KEY_E)
+                            || IsKeyPressed(KEY_TAB))
+                    && state == GameState.LEVEL_COMPLETE) {
                 inventory = !inventory;
                 return;
             }
@@ -563,8 +913,12 @@ public class Game {
         if (IsKeyPressed(KEY_ESCAPE)) {
             if (inventory) inventory = false;
             else if (workshop) workshop = false;
-            else if (state == GameState.PLAYING) state = GameState.PAUSED;
-            else if (state == GameState.PAUSED) state = GameState.PLAYING;
+            else if (state == GameState.PLAYING || state == GameState.CITADEL) {
+                pauseReturn = state;
+                state = GameState.PAUSED;
+            } else if (state == GameState.PAUSED) {
+                state = pauseReturn;
+            }
             return;
         }
         if ((state == GameState.PLAYING || state == GameState.PAUSED)
@@ -586,11 +940,14 @@ public class Game {
                 return;
             }
             if (state == GameState.PAUSED) {
-                state = GameState.PLAYING;
+                state = pauseReturn;
                 return;
             }
         }
         if (state != GameState.PLAYING) return;
+        if (!player.isBoundsEnabled()) {
+            player.resetBounds();
+        }
         HudLayout belt = new HudLayout(GetScreenWidth(), GetScreenHeight());
         Vector2 pointer = GetMousePosition();
         int hovered =
@@ -604,24 +961,45 @@ public class Game {
                         || uiMouseCaptured;
         boolean heavyDown = settings.controls.down(HEAVY) || hudCharging;
         if (beltClick == 2) player.requestParry();
-        if (settings.controls.pressed(INVENTORY) || beltClick == 5) {
-            inventory = !inventory;
-            workshop = false;
-            if (tutorial != null && inventory) tutorial.inventory();
+        if (!inventory && !workshop && tutorial == null && IsKeyPressed(KEY_J)) {
+            journalReturn = state;
+            journalTab = 1;
+            state = GameState.JOURNAL;
+            audio.play("menu");
+            return;
         }
         if (inventory) {
+            if (settings.controls.pressed(INVENTORY)
+                    || IsKeyPressed(KEY_ESCAPE)
+                    || IsKeyPressed(KEY_E)
+                    || IsKeyPressed(KEY_TAB)) {
+                inventory = false;
+            }
             vfx.blade().clear();
             return;
         }
-        if (settings.controls.pressed(POTION) || beltClick == 4) {
-            notifyPlayer(
-                    progress.usePotion()
-                            ? "Potion used / +60 HP"
-                            : "Need missing health and a potion.");
+        if (settings.controls.pressed(INVENTORY)
+                || IsKeyPressed(KEY_E)
+                || IsKeyPressed(KEY_TAB)
+                || beltClick == 5) {
+            inventory = true;
+            workshop = false;
+            if (tutorial != null) tutorial.inventory();
+            return;
         }
-        if (settings.controls.pressed(WORKSHOP)) {
-            if (nearBase()) workshop = !workshop;
-            else notifyPlayer("Return to the outpost to upgrade.");
+        if (settings.controls.pressed(POTION) || beltClick == 4) {
+            float before = progress.health();
+            if (progress.usePotion()) {
+                float healed = progress.health() - before;
+                feedback.add(
+                        player.getPosition().x(),
+                        player.getPosition().z(),
+                        "+" + Math.round(healed) + " HP",
+                        Menu.TEAL);
+                notifyPlayer("Potion used / +" + Math.round(healed) + " HP");
+            } else {
+                notifyPlayer("Need missing health and a potion.");
+            }
         }
         if (workshop) {
             vfx.blade().clear();
@@ -652,10 +1030,13 @@ public class Game {
                 player.discipline().stamina(player.discipline().stamina() + RecoveryWisps.STAMINA);
                 audio.play("ward");
                 notifyPlayer("RECOVERY WISP / +18 HEALTH / +26 " + progress.resourceLabel());
+                feedback.add(
+                        player.getPosition().x(), player.getPosition().z(), "+18 HP", Menu.TEAL);
                 vfx.impact(player.getPosition().x(), player.getPosition().z(), Menu.TEAL, false);
             }
         }
         noticeTime = Math.max(0, noticeTime - dt);
+        landmarkBannerTime = Math.max(0, landmarkBannerTime - dt);
         storyTime = Math.max(0, storyTime - dt);
         attackCooldown = Math.max(0, attackCooldown - dt);
         slashTime = Math.max(0, slashTime - dt);
@@ -667,7 +1048,14 @@ public class Game {
         dayNight.update(dt);
         boolean wasDodging = player.isDodging();
         float beforeMoveX = player.getPosition().x(), beforeMoveZ = player.getPosition().z();
-        if (!overBelt && (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || heavyDown)) aimCursor();
+        if (!overBelt
+                && (IsMouseButtonDown(MOUSE_BUTTON_LEFT)
+                        || heavyDown
+                        || heavyCharge > 0
+                        || settings.controls.down(HEAVY)
+                        || settings.controls.pressed(HEAVY))) {
+            aimCursor();
+        }
         sceneManager.getOpenScene().updatesEntities(dt);
         ArenaNavigation.Position heroMove =
                 ArenaNavigation.move(
@@ -703,10 +1091,33 @@ public class Game {
         if (event.claim()) {
             if (tutorial == null)
                 progress.chapterFeats().record(chapterIndex(), ChapterFeats.Action.OBJECTIVE);
+            int lvlBefore = progress.characterLevel();
             progress.rewardObjective();
+            progress.addXp(120);
             audio.play("upgrade");
             vfx.impact(event.x(), event.z(), Menu.GOLD, true);
-            notifyPlayer("OBJECTIVE COMPLETE / +65 CRYSTALS / +1 EMBER BLESSING / SUPPLIES");
+            if (event.kind() == FieldEvent.Kind.SURVIVOR) {
+                progress.rescueSurvivor();
+                feedback.add(
+                        event.x(),
+                        event.z() - 1.2f,
+                        "SURVIVOR RESCUED -> EVACUATED TO CITADEL!",
+                        Menu.GOLD);
+                notifyPlayer(
+                        "SURVIVOR RESCUED / REFUGEE HAS ARRIVED SAFELY AT AETHELGARD CITADEL!");
+            }
+            if (progress.characterLevel() > lvlBefore) {
+                feedback.add(
+                        player.getPosition().x(),
+                        player.getPosition().z(),
+                        "LEVEL UP! REACHED LEVEL " + progress.characterLevel(),
+                        Menu.GOLD);
+            } else if (event.kind() != FieldEvent.Kind.SURVIVOR) {
+                feedback.add(event.x(), event.z(), "+120 XP", Menu.color(140, 80, 210));
+            }
+            if (event.kind() != FieldEvent.Kind.SURVIVOR) {
+                notifyPlayer("OBJECTIVE COMPLETE / +120 XP / +65 CRYSTALS / +1 EMBER BLESSING");
+            }
             saveCurrent();
         }
         float heroVx = Math.max(-15, Math.min(15, (px - lastHeroX) / Math.max(.001f, dt))),
@@ -716,20 +1127,43 @@ public class Game {
         if (nearBase()) progress.heal(dt);
         guardianFlash = Math.max(0, guardianFlash - dt);
         guardianCooldown = Math.max(0, guardianCooldown - dt);
-        if (tutorial == null && progress.baseLevel() >= 2 && guardianCooldown <= 0) {
-            Enemy target = SanctuaryWard.target(enemies);
+        solarWardCooldown = Math.max(0, solarWardCooldown - dt);
+        boolean hasSpire = progress.baseLevel() >= 2 || progress.spireLevel() >= 2;
+        if (tutorial == null && hasSpire && guardianCooldown <= 0) {
+            Enemy target = SanctuaryWard.target(enemies, progress.spireLevel());
             if (target != null) {
-                float damage = SanctuaryWard.damage(progress.baseLevel(), target.health);
+                float damage =
+                        SanctuaryWard.damage(
+                                progress.baseLevel(), progress.spireLevel(), target.health);
                 target.health -= damage;
                 target.hitFlash = .16f;
                 guardianX = target.x;
                 guardianZ = target.z;
                 guardianFlash = .28f;
-                guardianCooldown = SanctuaryWard.INTERVAL;
+                guardianCooldown = SanctuaryWard.interval(progress.spireLevel());
                 vfx.impact(target.x, target.z, Menu.TEAL, false);
                 feedback.add(target.x, target.z, "WARD -" + Math.round(damage), Menu.TEAL);
                 audio.play("ward");
             }
+        }
+        if (progress.solarWardLevel() > 0
+                && progress.baseHealth() < progress.maxBaseHealth() * 0.35f
+                && solarWardCooldown <= 0) {
+            solarWardCooldown = 45f;
+            float novaRadius = 12f;
+            float novaDmg = 25f + progress.solarWardLevel() * 15f;
+            for (Enemy enemy : enemies) {
+                if (enemy.health > 0 && enemy.distance(0, 0) <= novaRadius) {
+                    enemy.hit(novaDmg, 0, 0, 0);
+                    float dist = Math.max(0.1f, enemy.distance(0, 0));
+                    enemy.x += (enemy.x / dist) * 5.0f;
+                    enemy.z += (enemy.z / dist) * 5.0f;
+                    enemy.stun = 2.0f;
+                }
+            }
+            vfx.impact(0, 0, Menu.GOLD, true);
+            feedback.add(0, 0, "SOLAR NOVA WARD ACTIVATED!", Menu.GOLD);
+            audio.play("ward");
         }
         // Impact occurs part-way through the swing, once only, in the locked facing arc.
         if (impactPending) {
@@ -776,7 +1210,15 @@ public class Game {
                         && attackCooldown <= 0;
         boolean lightInput =
                 settings.controls.pressed(SLASH) || mousePressed || mouseHeld || beltClick == 0;
-        if (!overBelt && (mousePressed || mouseHeld || heavyCharge > 0)) aimCursor();
+        if (!overBelt
+                && (mousePressed
+                        || mouseHeld
+                        || heavyCharge > 0
+                        || heavyDown
+                        || settings.controls.pressed(HEAVY)
+                        || settings.controls.down(HEAVY))) {
+            aimCursor();
+        }
         if (lightInput && !finishingChapter && heavyCharge <= 0) {
             bufferedHeavy = bufferedLunge = false;
             bufferedTimed =
@@ -792,6 +1234,12 @@ public class Game {
             bufferedLunge = true;
             bufferedHeavy = false;
             inputBuffer = .22f;
+        }
+        if (inputBuffer > 0 && !progress.hasWeapon()) {
+            inputBuffer = 0;
+            heavyCharge = 0;
+            notifyPlayer("UNARMED! VISIT YOUR CLASS MENTOR IN CITADEL TO RECEIVE A WEAPON.");
+            return;
         }
         if (inputBuffer > 0
                 && attackCooldown <= 0
@@ -867,6 +1315,9 @@ public class Game {
                 impactPending = true;
                 activeHeavy = bufferedHeavy;
                 activeCharged = bufferedHeavy && releasedCharge >= .75f;
+                if (!overBelt) {
+                    aimCursor();
+                }
                 vfx.beginMelee(activeHeavy);
                 if (bufferedLunge) {
                     player.lunge(activeAttack.duration(), activeAttack.impact());
@@ -885,8 +1336,20 @@ public class Game {
             Enemy enemy = iterator.next();
             if (enemy.health <= 0) {
                 iterator.remove();
+                int lvlBefore = progress.characterLevel();
                 progress.rewardEnemy(enemy.boss());
                 if (enemy.elite) progress.rewardElite();
+                int xpGained = Progression.enemyXp(enemy.boss(), enemy.elite);
+                feedback.add(enemy.x, enemy.z, "+" + xpGained + " XP", Menu.color(140, 80, 210));
+                if (progress.characterLevel() > lvlBefore) {
+                    feedback.add(
+                            player.getPosition().x(),
+                            player.getPosition().z(),
+                            "LEVEL UP! REACHED LEVEL " + progress.characterLevel(),
+                            Menu.GOLD);
+                    audio.play("upgrade");
+                    vfx.impact(player.getPosition().x(), player.getPosition().z(), Menu.GOLD, true);
+                }
                 audio.play(enemy.boss() ? "boss-fall" : "kill");
                 enemy.attackTime = enemy.chargeTime = enemy.stun = enemy.hitFlash = 0;
                 enemy.healingTarget = null;
@@ -900,14 +1363,7 @@ public class Game {
                 vfx.impact(enemy.x, enemy.z, enemy.boss() ? Menu.GOLD : Menu.TEAL, enemy.boss());
                 feedback.add(enemy.x, enemy.z, "+" + enemy.reward() + " crystals", Menu.TEAL);
                 if (enemy.boss())
-                    notifyPlayer(
-                            chapter().title()
-                                    + " DEFEATED / "
-                                    + (progress.lastBossWeapon() < 0
-                                            ? "All weapons already owned"
-                                            : progress.weaponName(progress.lastBossWeapon())
-                                                    + " unlocked")
-                                    + " / +120 crystals / Armor is forged");
+                    notifyPlayer(chapter().title() + " DEFEATED / +120 CRYSTALS / +300 XP");
                 continue;
             }
             if (tutorial != null) {
@@ -980,8 +1436,10 @@ public class Game {
                     Enemy ally = enemy.healingTarget;
                     enemy.healingTarget = null;
                     if (ally.health > 0 && ally.distance(enemy.x, enemy.z) < 7) {
+                        float healed =
+                                Math.min(ally.maxHealth - ally.health, ally.maxHealth * .18f);
                         ally.health = Math.min(ally.maxHealth, ally.health + ally.maxHealth * .18f);
-                        feedback.add(ally.x, ally.z, "WARD +", Menu.TEAL);
+                        feedback.add(ally.x, ally.z, "+" + Math.round(healed) + " WARD", Menu.TEAL);
                     }
                 } else if (enemy.boss()) {
                     switch (enemy.bossMove) {
@@ -1129,9 +1587,19 @@ public class Game {
             for (Enemy enemy : shotTargets)
                 if (shot.hit(enemy)) {
                     float damage = Math.min(enemy.health, shot.damage);
+                    boolean isCrit = shot.heavy || shot.charged;
+                    boolean wasCasting = enemy.healingTarget != null;
                     enemy.hit(damage, shot.previousX, shot.previousZ, .25f);
-                    vfx.impact(enemy.x, enemy.z, shot.magic ? Menu.TEAL : Menu.GOLD, false);
-                    feedback.add(enemy.x, enemy.z, "-" + Math.round(damage), Menu.GOLD);
+                    vfx.impact(enemy.x, enemy.z, shot.magic ? Menu.TEAL : Menu.GOLD, isCrit);
+                    String fct =
+                            isCrit ? "-" + Math.round(damage) + "! CRIT" : "-" + Math.round(damage);
+                    feedback.add(enemy.x, enemy.z, fct, Menu.GOLD, isCrit);
+                    if (wasCasting) {
+                        feedback.add(enemy.x, enemy.z, "INTERRUPTED!", Menu.TEAL, true);
+                        enemy.healCooldown = Math.max(enemy.healCooldown, 4.0f);
+                        vfx.parrySpark(enemy.x, enemy.z);
+                        audio.play("slam");
+                    }
                     audio.play("hit");
                     connected(enemy, shot.heavy, shot.charged);
                     if (!shot.magic) {
@@ -1240,6 +1708,9 @@ public class Game {
             player.resetCombat();
             impactPending = false;
             attackCooldown = 0;
+            int waveXp = 100 + wave * 25;
+            int lvlBefore = progress.characterLevel();
+            progress.addXp(waveXp);
             progress.rewardChapterFeats(chapterIndex());
             progress.unlockChapter(chapterIndex() + 1);
             state = wave >= 10 ? GameState.VICTORY : GameState.LEVEL_COMPLETE;
@@ -1247,6 +1718,13 @@ public class Game {
             audio.play("victory");
             player.poseForOutcome(true, 0);
             vfx.impact(player.getPosition().x(), player.getPosition().z(), Menu.GOLD, true);
+            if (progress.characterLevel() > lvlBefore) {
+                feedback.add(
+                        player.getPosition().x(),
+                        player.getPosition().z(),
+                        "LEVEL UP! REACHED LEVEL " + progress.characterLevel(),
+                        Menu.GOLD);
+            }
             saveCurrent();
         }
     }
@@ -1268,8 +1746,9 @@ public class Game {
         if (parryable
                 && Combat.inArc(px, pz, player.getRotation().y(), sourceX, sourceZ, 1000, 75)
                 && player.discipline().deflect()) {
+            boolean isBoss = attacker != null && attacker.boss();
             if (attacker != null) {
-                attacker.stun = 1.1f;
+                attacker.stun = isBoss ? .95f : 1.1f;
                 attacker.attackTime = attacker.chargeTime = 0;
                 attacker.impactPending = false;
                 attacker.cooldown = 1.3f;
@@ -1283,8 +1762,12 @@ public class Game {
                                     + 10
                                             * progress.expedition()
                                                     .rank(Expedition.Blessing.SECOND_WIND));
+            vfx.parrySpark(px, pz);
             vfx.impact(px, pz, Menu.TEAL, true);
-            feedback.add(px, pz, "PARRY / RIPOSTE", Menu.GOLD);
+            feedback.add(
+                    px, pz, isBoss ? "BOSS PUSH BLOCKED / RIPOSTE" : "PARRY / RIPOSTE", Menu.GOLD);
+            sceneManager.getOpenScene().getCameraController().impact(isBoss ? .18f : .11f);
+            hitPause = Math.max(hitPause, isBoss ? .08f : .05f);
             audio.play("parry");
             return;
         }
@@ -1298,6 +1781,10 @@ public class Game {
         vfx.impact(px, pz, Menu.RED, false);
         feedback.add(px, pz, "-" + Math.round(before - progress.health()), Menu.RED);
         hurtFlash = .25f;
+        sceneManager
+                .getOpenScene()
+                .getCameraController()
+                .impact(Math.min(.14f, .035f + damage * .002f));
         audio.play("hurt");
     }
 
@@ -1452,9 +1939,23 @@ public class Game {
                         Math.min(
                                 enemy.health,
                                 Math.round(progress.damage() * activeAttack.multiplier()));
+                boolean isCrit =
+                        activeHeavy
+                                || activeCharged
+                                || activeAttack.multiplier() > 1.2f
+                                || mastery.stacks() > 0;
+                boolean wasCasting = enemy.healingTarget != null;
                 enemy.hit(damage, px, pz, activeAttack.multiplier() > 1 ? .8f : .35f);
-                vfx.impact(enemy.x, enemy.z, Menu.GOLD, activeAttack.multiplier() > 1);
-                feedback.add(enemy.x, enemy.z, "-" + Math.round(damage), Menu.GOLD);
+                vfx.impact(enemy.x, enemy.z, Menu.GOLD, isCrit);
+                String fct =
+                        isCrit ? "-" + Math.round(damage) + "! CRIT" : "-" + Math.round(damage);
+                feedback.add(enemy.x, enemy.z, fct, Menu.GOLD, isCrit);
+                if (wasCasting) {
+                    feedback.add(enemy.x, enemy.z, "INTERRUPTED!", Menu.TEAL, true);
+                    enemy.healCooldown = Math.max(enemy.healCooldown, 4.0f);
+                    vfx.parrySpark(enemy.x, enemy.z);
+                    audio.play("slam");
+                }
                 connected(enemy, activeHeavy, activeCharged);
                 hit = true;
             }
@@ -1498,6 +1999,88 @@ public class Game {
         BeginMode2D(uiCamera);
         try {
             if (photoMode) return;
+            if (storyOpening) {
+                OpeningStory.draw(storyPage);
+                return;
+            }
+            if (rescueLedgerOpen) {
+                if (RescueLedgerScreen.draw(progress)) rescueLedgerOpen = false;
+                return;
+            }
+            if (state == GameState.CITADEL) {
+                if (citadelHub.activeNpc() == null && !workshop && !inventory)
+                    cityPresentation.draw(
+                            citadelHub,
+                            progress,
+                            player.getPosition().x(),
+                            player.getPosition().z(),
+                            sceneManager.getOpenScene().getCameraController().getCamera());
+                CitadelScreen.Action act =
+                        citadelScreen.draw(
+                                citadelHub,
+                                progress,
+                                settings.controls,
+                                player.getPosition().x(),
+                                player.getPosition().z(),
+                                chapterIndex());
+                switch (act) {
+                    case CLAIM_STARTER_WEAPON -> {
+                        audio.play("upgrade");
+                        vfx.impact(
+                                player.getPosition().x(),
+                                player.getPosition().z(),
+                                Menu.GOLD,
+                                true);
+                        notifyPlayer(
+                                "STARTER WEAPON CLAIMED: "
+                                        + progress.weaponName(0).toUpperCase()
+                                        + "!");
+                        applyProgression();
+                        saveCurrent();
+                    }
+                    case OPEN_FORGE -> {
+                        workshop = true;
+                        workshopScreen.selectTab(0);
+                        workshopScreen.setMentor(
+                                citadelHub.activeNpc() != null
+                                        ? citadelHub.activeNpc().mentorClass()
+                                        : null);
+                    }
+                    case OPEN_SUPPLIES -> {
+                        workshop = true;
+                        workshopScreen.selectTab(2);
+                        workshopScreen.setMentor(
+                                citadelHub.activeNpc() != null
+                                        ? citadelHub.activeNpc().mentorClass()
+                                        : null);
+                    }
+                    case OPEN_TRAINING -> {}
+                    case DEPLOY_MISSION -> {
+                        citadelHub.startTeleport();
+                        audio.play("upgrade");
+                        vfx.impact(CitadelHub.PORTAL_X, CitadelHub.PORTAL_Z, Menu.GOLD, true);
+                    }
+                    case OPEN_RESCUE_LEDGER -> {
+                        rescueLedgerOpen = true;
+                        audio.play("menu");
+                    }
+                    case OPEN_JOURNAL -> {
+                        journalReturn = GameState.CITADEL;
+                        journalTab = 1;
+                        state = GameState.JOURNAL;
+                        audio.play("menu");
+                    }
+                    case CLOSE_DIALOGUE -> citadelHub.closeNpc();
+                    case NONE -> {}
+                }
+                if (workshop) drawWorkshop();
+                if (inventory && inventoryPrepared) drawInventory();
+                if (state == GameState.PAUSED) drawOverlay();
+                if (tutorial != null && !workshop && !inventory && citadelHub.activeNpc() == null) {
+                    drawCitadelTutorial();
+                }
+                return;
+            }
             drawEnemyHealth();
             if (state == GameState.MAIN_MENU) {
                 drawMainMenu();
@@ -1538,14 +2121,20 @@ public class Game {
                     && state == GameState.PLAYING
                     && !inventory
                     && !workshop) {
-                Menu.panel(GetScreenWidth() - 294, 254, 270, 132);
+                int pw = 400;
+                int textW = pw - 36;
+                int textH = Menu.wrappedHeight(chapter().story(), textW, 14);
+                int ph = textH + 68;
+                int px = GetScreenWidth() - pw - 20;
+                int py = 210;
+                Menu.panel(px, py, pw, ph);
                 Menu.text(
                         "CHAPTER " + (chapterIndex() + 1) + " / " + chapter().title(),
-                        GetScreenWidth() - 280,
-                        264,
-                        14,
+                        px + 18,
+                        py + 16,
+                        15,
                         Menu.GOLD);
-                Menu.wrapped(chapter().story(), GetScreenWidth() - 280, 292, 240, 16, Menu.TEXT);
+                Menu.wrapped(chapter().story(), px + 18, py + 42, textW, 14, Menu.TEXT);
             }
             if ((state == GameState.LEVEL_COMPLETE || state == GameState.VICTORY) && !inventory)
                 drawChapterEnd();
@@ -1614,11 +2203,17 @@ public class Game {
         DayNightCycle.Frame light = dayNight.frame();
         renderer.beginShadow(time, light);
         assets.pass(renderer.shadowShader, true);
-        assets.drawEnvironment(chapterIndex(), time);
-        drawActors();
+        if (state == GameState.CITADEL) {
+            citadelHub.prepareLighting(assets);
+            citadelHub.drawShadowArchitecture();
+            drawActors(true);
+        } else {
+            assets.drawEnvironment(chapterIndex(), time);
+            drawActors(true);
+        }
         renderer.endShadow();
         renderer.beginScene();
-        ChapterLook palette = ChapterLook.at(chapterIndex());
+        ChapterLook palette = ChapterLook.at(state == GameState.CITADEL ? 0 : chapterIndex());
         float atmosphere = .12f + .34f * light.daylight();
         DrawRectangleGradientV(
                 0,
@@ -1631,83 +2226,111 @@ public class Game {
         Enemy boss = activeBoss();
         assets.drawSky(camera, light);
         assets.litPass(renderer, camera, time, boss, light);
-        assets.drawEnvironment(chapterIndex(), time);
-        drawActors();
-        drawSanctuaryRing();
-        if (director.warning()) {
-            DrawCylinderWires(v(director.x(), .08f, director.z()), 1.4f, 1.4f, .15f, 24, Menu.RED);
-            DrawLine3D(
-                    v(director.x(), 0, director.z()), v(director.x(), 3, director.z()), Menu.GOLD);
-        }
-        vfx.begin();
-        for (HeroShot shot : heroShots)
-            vfx.projectile(
-                    camera,
-                    shot.x,
-                    shot.z,
-                    shot.vx,
-                    shot.vz,
-                    shot.magic,
-                    shot.restorative
-                            ? Menu.color(132, 255, 205)
-                            : shot.magic ? Menu.TEAL : Menu.GOLD,
+        if (state == GameState.CITADEL) {
+            citadelHub.prepareLighting(assets);
+            citadelHub.drawWorld(
                     time,
-                    shot.height());
-        if (progress.heroClass() == HeroClass.WARRIOR) vfx.drawBlade();
-        if (player.discipline().parrying())
-            vfx.shield(camera, player.getPosition().x(), player.getPosition().z(), time, Menu.TEAL);
-        if (heavyCharge > 0)
-            vfx.charge(
                     player.getPosition().x(),
                     player.getPosition().z(),
-                    heavyCharge,
-                    heavyCharge >= .75f && heavyCharge <= 1.05f ? Menu.GOLD : Menu.TEAL);
-        for (Enemy enemy : enemies) {
-            vfx.enemy(camera, enemy, time);
-            if (enemy.elite) {
-                float radius = 1.05f;
-                for (int i = 0; i < 24; i++) {
-                    double a = i * Math.PI / 12, b = (i + 1) * Math.PI / 12;
-                    DrawLine3D(
-                            v(
-                                    enemy.x + (float) Math.cos(a) * radius,
-                                    .13f,
-                                    enemy.z + (float) Math.sin(a) * radius),
-                            v(
-                                    enemy.x + (float) Math.cos(b) * radius,
-                                    .13f,
-                                    enemy.z + (float) Math.sin(b) * radius),
-                            Menu.GOLD);
+                    progress.rescuedSurvivors());
+            drawActors(false);
+        } else {
+            assets.drawEnvironment(chapterIndex(), time);
+            drawActors(false);
+            assets.drawFadedScenery(chapterIndex(), time);
+            drawSanctuaryRing();
+            if (director.warning()) {
+                DrawCylinderWires(
+                        v(director.x(), .08f, director.z()), 1.4f, 1.4f, .15f, 24, Menu.RED);
+                DrawLine3D(
+                        v(director.x(), 0, director.z()),
+                        v(director.x(), 3, director.z()),
+                        Menu.GOLD);
+            }
+            vfx.begin();
+            for (HeroShot shot : heroShots)
+                vfx.projectile(
+                        camera,
+                        shot.x,
+                        shot.z,
+                        shot.vx,
+                        shot.vz,
+                        shot.magic,
+                        shot.restorative
+                                ? Menu.color(132, 255, 205)
+                                : shot.magic ? Menu.TEAL : Menu.GOLD,
+                        time,
+                        shot.height());
+            if (progress.heroClass() == HeroClass.WARRIOR) vfx.drawBlade();
+            if (player.discipline().parrying())
+                vfx.shield(
+                        camera,
+                        player.getPosition().x(),
+                        player.getPosition().z(),
+                        time,
+                        Menu.TEAL);
+            if (heavyCharge > 0)
+                vfx.charge(
+                        player.getPosition().x(),
+                        player.getPosition().z(),
+                        heavyCharge,
+                        heavyCharge >= .75f && heavyCharge <= 1.05f ? Menu.GOLD : Menu.TEAL);
+            for (Enemy enemy : enemies) {
+                vfx.enemy(camera, enemy, time);
+                if (enemy.elite) {
+                    float radius = 1.05f;
+                    for (int i = 0; i < 24; i++) {
+                        double a = i * Math.PI / 12, b = (i + 1) * Math.PI / 12;
+                        DrawLine3D(
+                                v(
+                                        enemy.x + (float) Math.cos(a) * radius,
+                                        .13f,
+                                        enemy.z + (float) Math.sin(a) * radius),
+                                v(
+                                        enemy.x + (float) Math.cos(b) * radius,
+                                        .13f,
+                                        enemy.z + (float) Math.sin(b) * radius),
+                                Menu.GOLD);
+                    }
                 }
             }
+            for (BossHazard hazard : bossHazards) vfx.hazard(camera, hazard, time);
+            for (Projectile shot : projectiles)
+                vfx.projectile(
+                        camera,
+                        shot.x,
+                        shot.z,
+                        shot.vx,
+                        shot.vz,
+                        shot.magic,
+                        shot.magic ? Menu.color(180, 124, 235) : Menu.GOLD,
+                        time);
+            vfx.particles(camera);
+            vfx.end();
         }
-        for (BossHazard hazard : bossHazards) vfx.hazard(camera, hazard, time);
-        for (Projectile shot : projectiles)
-            vfx.projectile(
-                    camera,
-                    shot.x,
-                    shot.z,
-                    shot.vx,
-                    shot.vz,
-                    shot.magic,
-                    shot.magic ? Menu.color(180, 124, 235) : Menu.GOLD,
-                    time);
-        vfx.particles(camera);
-        vfx.end();
         EndMode3D();
         assets.finishLitPass();
         renderer.present();
     }
 
-    private void drawActors() {
+    private void drawActors(boolean shadowPass) {
         assets.preparePlayer(player);
         assets.drawPlayerBody(player, progress, hurtFlash > 0 ? Menu.RED : WHITE);
-        assets.drawPlayerWeapon(player, progress.heroClass().ordinal(), progress.weaponTier());
+        if (progress.hasWeapon()) {
+            assets.drawPlayerWeapon(player, progress.heroClass().ordinal(), progress.weaponTier());
+        }
         assets.drawArmor(player, progress);
+        if (state == GameState.CITADEL) {
+            return;
+        }
         for (Enemy enemy : enemies) assets.drawEnemy(enemy);
         for (Enemy enemy : fallen) assets.drawEnemy(enemy);
-        assets.drawFieldEvent(progress.fieldEvent(), (float) GetTime());
+        if (progress.fieldEvent().kind() == FieldEvent.Kind.SURVIVOR)
+            citadelHub.drawFieldSurvivor(
+                    assets, progress.fieldEvent(), progress.rescuedSurvivors(), (float) GetTime());
+        else assets.drawFieldEvent(progress.fieldEvent(), (float) GetTime());
         assets.drawRecoveryWisps(progress.recoveryWisps(), (float) GetTime());
+        if (shadowPass) return;
         if (progress.baseLevel() >= 2) {
             float pulse = (float) Math.sin(GetTime() * 2) * .08f;
             DrawSphere(v(-2, 1.7f + pulse, 0), .22f, Menu.TEAL);
@@ -1842,15 +2465,15 @@ public class Game {
                 tutorial != null
                         ? "No raids / Your campaign is safe"
                         : state == GameState.LEVEL_COMPLETE || state == GameState.VICTORY
-                                ? "THE SANCTUARY ENDURES"
+                                ? "THE PRIMORDIAL BEACON ENDURES"
                                 : director.remaining() > 0
-                                        ? director.remaining() + " reinforcements approaching"
+                                        ? director.remaining() + " frost legions approaching"
                                         : enemies.isEmpty()
                                                 ? WaveFormation.label(wave + 1)
                                                         + " / "
                                                         + (int) Math.ceil(nextWave)
                                                         + "s"
-                                                : "Protect the sanctuary",
+                                                : "Hold the sanctuary perimeter",
                 chapterCenter,
                 77,
                 compact ? 9 : 11,
@@ -1860,18 +2483,45 @@ public class Game {
         Menu.icon("crystal", w - 144, currencyY + 14, 20, Menu.GOLD);
         Menu.text("CRYSTALS", w - 114, currencyY + 6, 10, Menu.MUTED);
         Menu.text(String.valueOf(progress.crystals()), w - 114, currencyY + 22, 17, Menu.GOLD);
+        Menu.text("[J] CODEX / CHRONICLE", w - 156, currencyY + 54, compact ? 9 : 10, Menu.TEAL);
         if (w >= 1000) drawMinimap(w - 184, 82);
         if (state == GameState.PLAYING && !inventory && !workshop) drawCombatCues();
-        int sy = 180, sw = compact ? 130 : 208;
+        int sy = 194, sw = compact ? 130 : 208;
+        float dt = Math.max(0, Math.min(.1f, GetFrameTime()));
+        float currentBaseHp = progress.baseHealth();
+        if (sanctuaryGhostHealth < 0 || currentBaseHp >= sanctuaryGhostHealth) {
+            sanctuaryGhostHealth = currentBaseHp;
+            sanctuaryGhostDelay = 0;
+        } else {
+            sanctuaryGhostDelay += dt;
+            if (sanctuaryGhostDelay >= 0.28f) {
+                sanctuaryGhostHealth =
+                        Math.max(
+                                currentBaseHp,
+                                sanctuaryGhostHealth
+                                        - Math.max(
+                                                        35f,
+                                                        (sanctuaryGhostHealth - currentBaseHp)
+                                                                * 4.5f)
+                                                * dt);
+            }
+        }
         Menu.panel(16, sy, sw, 80);
-        Menu.text("SANCTUARY HEALTH", 28, sy + 8, compact ? 10 : 13, Menu.GOLD);
+        Menu.text("BEACON INTEGRITY", 28, sy + 8, compact ? 10 : 13, Menu.GOLD);
         Menu.text(
                 (int) progress.baseHealth() + " / " + progress.maxBaseHealth(),
                 28,
                 sy + 26,
                 18,
                 Menu.TEXT);
-        Menu.bar(28, sy + 48, sw - 24, progress.baseHealth(), progress.maxBaseHealth(), Menu.GOLD);
+        Menu.bar(
+                28,
+                sy + 48,
+                sw - 24,
+                progress.baseHealth(),
+                sanctuaryGhostHealth,
+                progress.maxBaseHealth(),
+                Menu.GOLD);
         String sanctuaryCue =
                 nearBase()
                         ? (compact
@@ -1885,23 +2535,22 @@ public class Game {
                                         + " HP/s / "
                                         + settings.controls.label(INTERACT)
                                         + " +100 / 30 CR")
-                        : "CENTER " + String.format("%.0f", sanctuaryDistance()) + "m / RADAR";
+                        : "BEACON " + String.format("%.0f", sanctuaryDistance()) + "m / RADAR";
         Menu.text(sanctuaryCue, 28, sy + 62, compact ? 8 : 9, nearBase() ? Menu.TEAL : Menu.MUTED);
-        if (progress.baseLevel() >= 2 && !compact && storyTime <= 0) {
+        boolean hasSpire = progress.baseLevel() >= 2 || progress.spireLevel() >= 2;
+        if (hasSpire && !compact && storyTime <= 0) {
+            float maxCooldown = SanctuaryWard.interval(progress.spireLevel());
+            float range = SanctuaryWard.range(progress.spireLevel());
             Menu.panel(16, sy + 86, 208, 43);
             Menu.text(
-                    guardianCooldown > 0 ? "WARD RECHARGING" : "WARD READY / 9m RANGE",
+                    guardianCooldown > 0
+                            ? "LIGHT SPIRE RECHARGING"
+                            : "LIGHT SPIRE / " + String.format("%.0f", range) + "m",
                     28,
                     sy + 93,
                     10,
                     Menu.TEAL);
-            Menu.bar(
-                    28,
-                    sy + 114,
-                    184,
-                    SanctuaryWard.INTERVAL - guardianCooldown,
-                    SanctuaryWard.INTERVAL,
-                    Menu.TEAL);
+            Menu.bar(28, sy + 114, 184, maxCooldown - guardianCooldown, maxCooldown, Menu.TEAL);
         }
         hudScreen.draw(
                 progress,
@@ -1928,7 +2577,7 @@ public class Game {
                     12,
                     Menu.TEXT);
             Menu.text(
-                    settings.controls.label(WORKSHOP) + " WORKSHOP / ESC PAUSE",
+                    settings.controls.label(INVENTORY) + " INVENTORY / ESC PAUSE",
                     w - 220,
                     h - 49,
                     11,
@@ -1943,41 +2592,50 @@ public class Game {
                     10,
                     Menu.MUTED);
         }
-        if (progress.expedition().embers() > 0) {
-            if (compact)
-                Menu.text(
-                        progress.expedition().embers()
-                                + " EMBERS / "
-                                + settings.controls.label(INTERACT),
-                        28,
-                        270,
-                        11,
-                        Menu.GOLD);
-            else {
-                int by = h < 740 ? h - 202 : h - 250;
-                Menu.panel(16, by, 218, 54);
-                Menu.text(
-                        progress.expedition().embers()
-                                + " EMBER BLESSING"
-                                + (progress.expedition().embers() > 1 ? "S" : ""),
-                        28,
-                        by + 9,
-                        14,
-                        Menu.GOLD);
-                Menu.text(
-                        settings.controls.label(INTERACT) + " AT SANCTUARY / CLEAR FIELD",
-                        28,
-                        by + 32,
-                        10,
-                        Menu.TEAL);
-            }
+        if (blessingReminder.visible()) {
+            int bx = w - 424, by = 260;
+            Menu.panel(bx, by, 400, 92);
+            Menu.icon("crystal", bx + 14, by + 15, 24, Menu.GOLD);
+            Menu.text(
+                    progress.expedition().embers() + " EMBER BLESSING AVAILABLE",
+                    bx + 48,
+                    by + 12,
+                    16,
+                    Menu.GOLD);
+            Menu.text(
+                    "Choose a bonus that strengthens this expedition.",
+                    bx + 16,
+                    by + 40,
+                    12,
+                    Menu.TEXT);
+            Menu.text(
+                    "Return to the Beacon, clear enemies, press "
+                            + settings.controls.label(INTERACT),
+                    bx + 16,
+                    by + 64,
+                    12,
+                    Menu.TEAL);
         }
         FieldEvent event = progress.fieldEvent();
         if (event.visible() && state == GameState.PLAYING && !inventory && !workshop) {
             Menu.panel(24, 338, 270, 128);
-            Menu.text("OPTIONAL / " + event.title(), 38, 350, 16, Menu.GOLD);
+            boolean rescue = event.kind() == FieldEvent.Kind.SURVIVOR;
+            Menu.text(
+                    rescue ? "RESCUE / BRING THEM HOME" : "OPTIONAL / " + event.title(),
+                    38,
+                    350,
+                    15,
+                    Menu.GOLD);
             Menu.wrapped(
-                    "[" + settings.controls.label(INTERACT) + "] " + event.instruction(),
+                    rescue
+                            ? event.status() == FieldEvent.Status.WAITING
+                                    ? "Press "
+                                            + settings.controls.label(INTERACT)
+                                            + " near survivor. Escort to Beacon."
+                                    : "Beacon / "
+                                            + Math.round(Math.hypot(event.x(), event.z()))
+                                            + "m away. Stay close and protect them."
+                            : "[" + settings.controls.label(INTERACT) + "] " + event.instruction(),
                     38,
                     380,
                     244,
@@ -2006,6 +2664,23 @@ public class Game {
         }
         for (Enemy enemy : enemies)
             if (enemy.boss() && enemy.health > 0) {
+                if (bossGhostHealth < 0 || enemy.health >= bossGhostHealth) {
+                    bossGhostHealth = enemy.health;
+                    bossGhostDelay = 0;
+                } else {
+                    bossGhostDelay += dt;
+                    if (bossGhostDelay >= 0.28f) {
+                        bossGhostHealth =
+                                Math.max(
+                                        enemy.health,
+                                        bossGhostHealth
+                                                - Math.max(
+                                                                40f,
+                                                                (bossGhostHealth - enemy.health)
+                                                                        * 4.5f)
+                                                        * dt);
+                    }
+                }
                 Menu.panel(w / 2 - 170, 114, 340, 72);
                 Menu.center(
                         (wave == 10 ? "HOLLOW KING" : wave == 5 ? "ASH WARDEN" : "WARLORD")
@@ -2016,7 +2691,14 @@ public class Game {
                         121,
                         18,
                         Menu.GOLD);
-                Menu.bar(w / 2 - 154, 151, 308, enemy.health, enemy.maxHealth, Menu.RED);
+                Menu.bar(
+                        w / 2 - 154,
+                        151,
+                        308,
+                        enemy.health,
+                        bossGhostHealth,
+                        enemy.maxHealth,
+                        Menu.RED);
                 Menu.center(
                         (enemy.enraged() ? "ENRAGED / " : "")
                                 + enemy.moveLabel()
@@ -2035,28 +2717,58 @@ public class Game {
         }
     }
 
-    private void drawTutorial() {
-        int width = Math.max(300, Math.min(560, GetScreenWidth() - 480)),
+    private void drawCitadelTutorial() {
+        if (tutorial == null) return;
+        int width = Math.max(400, Math.min(580, GetScreenWidth() - 400)),
                 x = (GetScreenWidth() - width) / 2,
-                y = 112;
-        Menu.panel(x, y, width, 188);
-        Menu.text(
-                "YOUR FIRST WATCH / LESSON "
-                        + (tutorial.step().ordinal() + 1)
-                        + " OF "
-                        + tutorial.lessonCount(),
-                x + 20,
-                y + 12,
-                16,
-                Menu.TEAL);
-        Menu.text(tutorial.title(), x + 20, y + 39, 24, Menu.GOLD);
-        Menu.wrapped(
-                tutorial.instruction(settings.controls, progress.heroClass()),
-                x + 20,
-                y + 77,
-                width - 40,
-                18,
-                Menu.TEXT);
+                y = 88;
+        if (tutorial.step() == Tutorial.Step.MOVE) {
+            String text =
+                    "Move with "
+                            + settings.controls.label(FORWARD)
+                            + " / "
+                            + settings.controls.label(LEFT)
+                            + " / "
+                            + settings.controls.label(BACK)
+                            + " / "
+                            + settings.controls.label(RIGHT)
+                            + ". Walk a few steps to find your footing in Aethelgard Citadel.";
+            int textH = Menu.wrappedHeight(text, width - 40, 14);
+            int panelH = 68 + textH + 50;
+            Menu.panel(x, y, width, panelH);
+            Menu.text("CITADEL ORIENTATION / MOVEMENT", x + 20, y + 14, 14, Menu.TEAL);
+            Menu.text("Find your footing", x + 20, y + 36, 20, Menu.GOLD);
+            Menu.wrapped(text, x + 20, y + 64, width - 40, 14, Menu.TEXT);
+            if (Menu.button("SKIP TUTORIAL", x + width - 160, y + 64 + textH + 10, 140, true)) {
+                finishTutorial();
+            }
+        } else if (!progress.hasWeapon()) {
+            String mentorGuide =
+                    progress.heroClass() == HeroClass.WARRIOR
+                            ? "Visit Goran the Blacksmith at the forge (West of the central road)."
+                            : progress.heroClass() == HeroClass.ARCHER
+                                    ? "Visit Diana the Huntress at the Archery Range (Northwest of"
+                                            + " spawn)."
+                                    : "Visit Lady Elyndra at the Arcanist Sanctum (East of the"
+                                            + " central road).";
+            int textH = Menu.wrappedHeight(mentorGuide, width - 40, 14);
+            int panelH = 68 + textH + 50;
+            Menu.panel(x, y, width, panelH);
+            Menu.text("CITADEL ORIENTATION / MOVEMENT COMPLETE", x + 20, y + 14, 14, Menu.TEAL);
+            Menu.text("Claim Your Starter Weapon", x + 20, y + 36, 20, Menu.GOLD);
+            Menu.wrapped(mentorGuide, x + 20, y + 64, width - 40, 14, Menu.TEXT);
+            if (Menu.button("SKIP TUTORIAL", x + width - 160, y + 64 + textH + 10, 140, true)) {
+                finishTutorial();
+            }
+        }
+    }
+
+    private void drawTutorial() {
+        int width = Math.max(480, Math.min(620, GetScreenWidth() - 200)),
+                x = (GetScreenWidth() - width) / 2,
+                y = 100;
+        int lessonIndex = Math.max(1, tutorial.step().ordinal());
+        String instruction = tutorial.instruction(settings.controls, progress.heroClass());
         String hint =
                 switch (tutorial.step()) {
                     case MOVE ->
@@ -2069,7 +2781,7 @@ public class Game {
                             "Press "
                                     + settings.controls.label(FOCUS)
                                     + " to select the marked partner";
-                    case STRIKE -> "Hit the marked partner twice";
+                    case STRIKE -> "Hit the marked partner twice with your weapon";
                     case DODGE -> "Move + " + settings.controls.label(DODGE);
                     case CHARGE ->
                             heavyCharge >= .75f && heavyCharge <= 1.05f
@@ -2091,11 +2803,26 @@ public class Game {
                                     : "Walk into the teal circle around the sanctuary";
                     case COMPLETE -> "Your adventure is ready";
                 };
-        Menu.wrapped(hint, x + 20, y + 150, width - 40, 14, Menu.TEAL);
+        int instH = Menu.wrappedHeight(instruction, width - 40, 16);
+        int hintH = Menu.wrappedHeight(hint, width - 40, 13);
+        int panelH = 75 + instH + 10 + hintH + 54;
+        Menu.panel(x, y, width, panelH);
+        Menu.text(
+                "COMBAT TRAINING / LESSON " + lessonIndex + " OF " + (tutorial.lessonCount() - 1),
+                x + 20,
+                y + 14,
+                15,
+                Menu.TEAL);
+        Menu.text(tutorial.title(), x + 20, y + 38, 22, Menu.GOLD);
+        int instY = y + 70;
+        Menu.wrapped(instruction, x + 20, instY, width - 40, 16, Menu.TEXT);
+        int hintY = instY + instH + 10;
+        Menu.wrapped(hint, x + 20, hintY, width - 40, 13, Menu.TEAL);
+        int btnY = hintY + hintH + 12;
         if (Menu.button(
                 tutorial.complete() ? "BEGIN YOUR ADVENTURE" : "SKIP TRAINING",
                 x + 20,
-                y + 196,
+                btnY,
                 tutorial.complete() ? width - 40 : 180,
                 true)) finishTutorial();
     }
@@ -2230,9 +2957,42 @@ public class Game {
         WorldLandmarks.Landmark place =
                 WorldLandmarks.nearby(
                         chapterIndex(), player.getPosition().x(), player.getPosition().z());
+        if (place != null) {
+            if (!place.name().equals(lastDiscoveredLandmark)) {
+                lastDiscoveredLandmark = place.name();
+                landmarkBannerTime = 3.6f;
+            }
+        } else {
+            lastDiscoveredLandmark = "";
+        }
         if (tutorial == null && activeBoss() == null && place != null) {
-            Menu.panel(GetScreenWidth() / 2 - 130, 118, 260, 38);
-            Menu.center(place.name(), GetScreenWidth() / 2, 129, 13, Menu.GOLD);
+            if (landmarkBannerTime > 0) {
+                float alpha =
+                        landmarkBannerTime > 2.8f
+                                ? (3.6f - landmarkBannerTime) / 0.8f
+                                : landmarkBannerTime < 0.8f ? landmarkBannerTime / 0.8f : 1.0f;
+                alpha = Math.max(0f, Math.min(1f, alpha));
+                int bw = 460, bh = 54;
+                int bx = GetScreenWidth() / 2 - bw / 2, by = 110;
+                DrawRectangleGradientH(
+                        bx, by, bw / 2, bh, Fade(Menu.INK, 0), Fade(Menu.INK, 0.90f * alpha));
+                DrawRectangleGradientH(
+                        bx + bw / 2,
+                        by,
+                        bw / 2,
+                        bh,
+                        Fade(Menu.INK, 0.90f * alpha),
+                        Fade(Menu.INK, 0));
+                DrawLine(bx + 35, by, bx + bw - 35, by, Fade(Menu.GOLD, 0.80f * alpha));
+                DrawLine(bx + 55, by + bh, bx + bw - 55, by + bh, Fade(Menu.GOLD, 0.80f * alpha));
+                Menu.center(
+                        place.name(), GetScreenWidth() / 2, by + 10, 20, Fade(Menu.GOLD, alpha));
+                String sub = chapter().title() + " • CHAPTER " + (chapterIndex() + 1);
+                Menu.center(sub, GetScreenWidth() / 2, by + 34, 11, Fade(Menu.TEXT, alpha * 0.9f));
+            } else {
+                Menu.panel(GetScreenWidth() / 2 - 130, 118, 260, 38);
+                Menu.center(place.name(), GetScreenWidth() / 2, 129, 13, Menu.GOLD);
+            }
         }
         // Practice partners have artificial health; keep their guided tutorial labels instead.
         Enemy focused = enemyFocus.selected();
@@ -2265,18 +3025,32 @@ public class Game {
 
     private void drawMinimap(int x, int y) {
         Menu.panel(x, y, 160, 160);
-        Menu.text("RADAR", x + 12, y + 10, 12, Menu.MUTED);
+        WorldLandmarks.Landmark place =
+                WorldLandmarks.nearby(
+                        chapterIndex(), player.getPosition().x(), player.getPosition().z());
+        String locationTitle = place != null ? place.name() : chapter().title();
+        if (Menu.measure(locationTitle, 11) > 136) {
+            Menu.text(locationTitle, x + 12, y + 10, 9, place != null ? Menu.GOLD : Menu.MUTED);
+        } else {
+            Menu.text(locationTitle, x + 12, y + 10, 11, place != null ? Menu.GOLD : Menu.MUTED);
+        }
         Menu.text(
                 dayNight.frame().label() + " / " + dayNight.frame().clock(),
                 x + 12,
                 y + 143,
                 11,
                 Menu.GOLD);
-        int cx = x + 80, cy = y + 90;
+        int cx = x + 80, cy = y + 88;
+        Menu.center("N", cx, cy - 69, 10, Menu.GOLD);
+        Menu.center("S", cx, cy + 61, 9, Menu.MUTED);
+        Menu.center("W", cx - 69, cy - 5, 9, Menu.MUTED);
+        Menu.center("E", cx + 69, cy - 5, 9, Menu.MUTED);
+
+        DrawCircle(cx, cy, 59, Fade(Menu.INK, 0.6f));
         DrawCircleLines(cx, cy, 59, Menu.LINE);
         DrawCircleLines(cx, cy, 15, Fade(Menu.TEAL, .8f));
-        DrawLine(cx - 59, cy, cx + 59, cy, Menu.LINE);
-        DrawLine(cx, cy - 59, cx, cy + 59, Menu.LINE);
+        DrawLine(cx - 59, cy, cx + 59, cy, Fade(Menu.LINE, 0.45f));
+        DrawLine(cx, cy - 59, cx, cy + 59, Fade(Menu.LINE, 0.45f));
         DrawCircle(cx, cy, 5, Menu.TEAL);
         if (progress.fieldEvent().visible())
             DrawCircle(
@@ -2287,22 +3061,34 @@ public class Game {
         for (var wisp : progress.recoveryWisps().active())
             DrawCircleLines(
                     cx + (int) (wisp.x() * 2.5f), cy + (int) (wisp.z() * 2.5f), 4, Menu.TEAL);
-        for (Enemy e : enemies)
-            DrawCircle(
-                    cx + (int) (e.x * 2.5f),
-                    cy + (int) (e.z * 2.5f),
-                    3,
-                    e.boss() || e.elite || e.variant == 2 ? Menu.GOLD : Menu.RED);
+        Enemy focused = enemyFocus.selected();
+        for (Enemy e : enemies) {
+            int ex = cx + (int) (e.x * 2.5f);
+            int ez = cy + (int) (e.z * 2.5f);
+            DrawCircle(ex, ez, 3, e.boss() || e.elite || e.variant == 2 ? Menu.GOLD : Menu.RED);
+            if (e == focused) {
+                DrawPolyLines(new Vector2().x(ex).y(ez), 4, 7, 45, Menu.GOLD);
+            }
+        }
         if (director.warning())
             DrawCircleLines(
                     cx + (int) (director.x() * 2.5f),
                     cy + (int) (director.z() * 2.5f),
                     6,
                     Menu.GOLD);
-        DrawCircle(
-                cx + (int) (player.getPosition().x() * 2.5f),
-                cy + (int) (player.getPosition().z() * 2.5f),
-                4,
+        float px = cx + player.getPosition().x() * 2.5f;
+        float pz = cy + player.getPosition().z() * 2.5f;
+        float facingRad = (float) Math.toRadians(player.getRotation().y());
+        float noseX = px + (float) Math.sin(facingRad) * 6.5f;
+        float noseZ = pz + (float) Math.cos(facingRad) * 6.5f;
+        float leftX = px + (float) Math.sin(facingRad + 2.5f) * 4.5f;
+        float leftZ = pz + (float) Math.cos(facingRad + 2.5f) * 4.5f;
+        float rightX = px + (float) Math.sin(facingRad - 2.5f) * 4.5f;
+        float rightZ = pz + (float) Math.cos(facingRad - 2.5f) * 4.5f;
+        DrawTriangle(
+                new Vector2().x(noseX).y(noseZ),
+                new Vector2().x(leftX).y(leftZ),
+                new Vector2().x(rightX).y(rightZ),
                 Menu.TEXT);
     }
 
@@ -2313,12 +3099,8 @@ public class Game {
     private final MainMenuScreen mainMenuScreen = new MainMenuScreen();
 
     private void drawMainMenu() {
-        dim();
-        switch (mainMenuScreen.draw(
-                settings.playerName,
-                Files.exists(savePath),
-                menuMessage,
-                settings.controls.label(FOCUS))) {
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(Menu.INK, .55f));
+        switch (mainMenuScreen.draw(settings.playerName, Files.exists(savePath), menuMessage)) {
             case PLAY_TOGETHER -> coopRequested = true;
             case NEW_GAME -> requestNewGame();
             case LOAD_GAME -> loadCurrent();
@@ -2439,8 +3221,12 @@ public class Game {
 
     private void drawWorkshop() {
         dim();
-        if (workshopScreen.draw(progress, settings.controls.label(WORKSHOP), audio))
-            workshop = false;
+        int crystalsBefore = progress.crystals();
+        if (workshopScreen.draw(progress, "ESC", audio)) workshop = false;
+        if (progress.crystals() != crystalsBefore) {
+            applyProgression();
+            saveCurrent();
+        }
     }
 
     private void drawOverlay() {
@@ -2463,7 +3249,9 @@ public class Game {
         Menu.text(
                 lost
                         ? (progress.health() <= 0 ? "WARDEN FALLEN" : "OUTPOST FALLEN")
-                        : "DEFENSE PAUSED",
+                        : (pauseReturn == GameState.CITADEL || state == GameState.CITADEL
+                                ? "CITADEL SANCTUARY"
+                                : "DEFENSE PAUSED"),
                 x,
                 y,
                 36,
@@ -2487,7 +3275,7 @@ public class Game {
                 440,
                 true)) {
             if (lost) retryChapter();
-            else state = GameState.PLAYING;
+            else state = pauseReturn;
         }
         if (Menu.button(
                 playtest ? "SAVE PLAYTEST" : "SAVE GAME",
@@ -2507,13 +3295,22 @@ public class Game {
             journalReturn = state;
             state = GameState.JOURNAL;
         }
-        if (Menu.button("SAVE & MAIN MENU", x, y + 262, 440, !lost)) {
-            if (saveCurrent()) state = GameState.MAIN_MENU;
+        boolean canRecall = !lost && tutorial == null && (enemies.isEmpty() && attackCooldown <= 0);
+        String recallLabel = canRecall ? "VISIT CITADEL" : "VISIT CITADEL (IN COMBAT)";
+        if (!lost && tutorial == null && Menu.button(recallLabel, x, y + 262, 212, canRecall))
+            travelToCitadel();
+        if (!lost && tutorial == null && Menu.button("WORLD MAP", x + 228, y + 262, 212, true))
+            openChapterMap();
+        if (Menu.button("SAVE & EXIT", x, y + 316, 440, !lost)) {
+            saveCurrent();
+            if (practiceReturn != null) {
+                restoreSnapshot(practiceReturn, practiceReturnPlaytest);
+                practiceReturn = null;
+            }
+            tutorial = null;
+            state = GameState.MAIN_MENU;
         }
         if (lost && Menu.button("MAIN MENU", x, y + 262, 440, true)) state = GameState.MAIN_MENU;
-
-        if (!lost && tutorial == null && Menu.button("WORLD MAP / CHAPTERS", x, y + 316, 440, true))
-            openChapterMap();
         Menu.text(
                 lost
                         ? "Retry restores your gear at the start of this chapter."
@@ -2599,7 +3396,7 @@ public class Game {
         }
         Menu.text(
                 chapter().bossOnly()
-                        ? "BOSS / +120 CRYSTALS / WEAPON UNLOCK / ARMOR: FORGE"
+                        ? "BOSS / +120 CRYSTALS / +300 XP"
                         : "CHAPTER COMPLETE / The ember burns brighter.",
                 x,
                 y + 310,
@@ -2631,9 +3428,10 @@ public class Game {
                 y + 468,
                 12,
                 Menu.MUTED);
-        if (Menu.button("WORLD MAP / CHAPTERS", x, y + 416, 380, true)) openChapterMap();
+        if (Menu.button("WORLD MAP / CHAPTERS", x, y + 416, 260, true)) openChapterMap();
+        if (Menu.button("VISIT CITADEL", x + 280, y + 416, 170, true)) travelToCitadel();
         if (state != GameState.VICTORY
-                && Menu.button("MAIN MENU [ESC]", x + 440, y + 416, 200, true)) {
+                && Menu.button("MAIN MENU [ESC]", x + 470, y + 416, 170, true)) {
             saveCurrent();
             state = GameState.MAIN_MENU;
         }
@@ -2644,29 +3442,144 @@ public class Game {
         int x = (GetScreenWidth() - 760) / 2, y = (GetScreenHeight() - 610) / 2;
         Menu.panel(x - 20, y - 16, 800, 642);
         Menu.icon("book", x, y, 30, Menu.GOLD);
-        Menu.text("CHRONICLE / THE LAST EMBER", x + 46, y, 30, Menu.TEXT);
-        if (Menu.button("STORY", x, y + 48, 360, true)) journalFeats = false;
-        if (Menu.button("CHAPTER FEATS", x + 380, y + 48, 380, true)) {
-            journalFeats = true;
+        Menu.text("CHRONICLE & WARDEN'S CODEX", x + 46, y, 26, Menu.TEXT);
+        if (Menu.button("STORY & LORE", x, y + 48, 246, true)) journalTab = 0;
+        if (Menu.button("WARDEN'S CODEX", x + 256, y + 48, 246, true)) journalTab = 1;
+        if (Menu.button("CHAPTER FEATS", x + 512, y + 48, 248, true)) {
+            journalTab = 2;
             featsChapter = chapterIndex();
         }
-        DrawRectangle(x + (journalFeats ? 380 : 0), y + 94, journalFeats ? 380 : 360, 2, Menu.GOLD);
-        if (journalFeats) drawFeatsPage(x, y);
-        else
-            for (int i = 0; i < Campaign.CHAPTERS.length; i++) {
-                Campaign.Chapter c = Campaign.CHAPTERS[i];
-                int top = y + 108 + i * 100;
-                Menu.panel(x, top, 760, 94);
-                Menu.text((i + 1) + " / " + c.title(), x + 16, top + 9, 21, Menu.GOLD);
-                Menu.text(
-                        c.bossOnly() ? "BOSS DUEL" : c.waves() + " DEFENSE WAVES",
-                        x + 530,
-                        top + 12,
-                        15,
-                        Menu.TEAL);
-                Menu.wrapped(c.story(), x + 16, top + 43, 718, 14, Menu.TEXT);
-            }
-        if (Menu.button("RETURN [ENTER / ESC]", x, y + 540, 360, true)) state = journalReturn;
+        DrawRectangle(x + journalTab * 256, y + 94, 246, 2, Menu.GOLD);
+        if (journalTab == 2) drawFeatsPage(x, y);
+        else if (journalTab == 1) drawCodexPage(x, y);
+        else drawStoryPage(x, y);
+        if (Menu.button("RETURN [ENTER / ESC / J]", x, y + 546, 360, true)) state = journalReturn;
+    }
+
+    private void drawStoryPage(int x, int y) {
+        Menu.panel(x, y + 104, 760, 68);
+        Menu.text("THE PRIMORDIAL BEACON & THE HOLLOW FROST", x + 16, y + 112, 15, Menu.GOLD);
+        Menu.wrapped(
+                "When the Celestial Sun-Spires fell a century ago, eternal winter swallowed the"
+                        + " realm. The Primordial Beacon holds the valley's last living solar forge"
+                        + " ember. If the beacon is extinguished, humanity freezes forever. Awaken"
+                        + " its solar ley-lines, hold the perimeter, and march north to destroy the"
+                        + " Hollow King.",
+                x + 16,
+                y + 132,
+                728,
+                12,
+                Menu.TEXT);
+        for (int i = 0; i < Campaign.CHAPTERS.length; i++) {
+            Campaign.Chapter c = Campaign.CHAPTERS[i];
+            int top = y + 178 + i * 86;
+            boolean unlocked = i <= Math.max(progress.unlockedChapter(), chapterIndex());
+            boolean cleared = i < progress.unlockedChapter();
+            Menu.panel(x, top, 760, 80);
+            Menu.text(
+                    (i + 1) + " / " + c.title(),
+                    x + 16,
+                    top + 8,
+                    16,
+                    unlocked ? Menu.GOLD : Menu.MUTED);
+            Menu.text(
+                    cleared ? "CLEARED" : unlocked ? "ACTIVE" : "LOCKED",
+                    x + 400,
+                    top + 10,
+                    12,
+                    cleared ? Menu.TEAL : unlocked ? Menu.GOLD : Menu.MUTED);
+            Menu.text(
+                    c.bossOnly() ? "BOSS DUEL" : c.waves() + " WAVES",
+                    x + 630,
+                    top + 10,
+                    12,
+                    Menu.MUTED);
+            Menu.wrapped(
+                    cleared ? c.aftermath() : c.story(),
+                    x + 16,
+                    top + 30,
+                    728,
+                    12,
+                    unlocked ? (cleared ? Menu.color(180, 220, 255) : Menu.TEXT) : Menu.MUTED);
+        }
+    }
+
+    private void drawCodexPage(int x, int y) {
+        int card1Y = y + 104;
+        Menu.panel(x, card1Y, 760, 100);
+        Menu.icon("sword", x + 14, card1Y + 12, 22, Menu.GOLD);
+        Menu.text(
+                "COMBAT TIMING / 3-HIT COMBOS & CRITICAL CHARGE",
+                x + 44,
+                card1Y + 12,
+                15,
+                Menu.GOLD);
+        Menu.wrapped(
+                "- 3-HIT COMBO CHAIN: Light strikes [Space / Left Click] chain into 3 attacks. The"
+                    + " 3rd finisher deals +40% stagger and knockback.\n"
+                    + "- CRITICAL CHARGE RELEASE: Hold Heavy [Q / Right Click]. Watch the cast bar"
+                    + " fill. Release during the GOLD BRACKETS (0.75s-1.05s) for a guaranteed +75%"
+                    + " critical hit with armor-piercing bonus!\n"
+                    + "- PARRY & RIPOSTE: Press Parry [F] right before an incoming golden attack to"
+                    + " deflect 100% damage, stun the attacker, and ready a devastating"
+                    + " counter-riposte.",
+                x + 16, card1Y + 36, 728, 12, Menu.TEXT);
+
+        int card2Y = y + 212;
+        Menu.panel(x, card2Y, 760, 100);
+        Menu.icon("shield", x + 14, card2Y + 12, 22, Menu.TEAL);
+        Menu.text("TACTICS / SPELL INTERRUPTS & MOBILITY", x + 44, card2Y + 12, 15, Menu.TEAL);
+        Menu.wrapped(
+                "- SPELL INTERRUPTS: Shamans and frost casters show an arched cast bar over their"
+                    + " head. Hit them during their cast to INTERRUPT and lock out their magic for"
+                    + " 4.5 seconds!\n"
+                    + "- MOBILITY: Lunge [R] dashes forward to close distance. Dodge [Ctrl] and"
+                    + " Sprint [Shift] consume stamina to evade heavy boss hazards.\n"
+                    + "- TARGET LOCK: Press Focus [T] or Middle Click to lock your combat camera"
+                    + " and aim toward high-threat enemies.",
+                x + 16,
+                card2Y + 36,
+                728,
+                12,
+                Menu.TEXT);
+
+        int card3Y = y + 320;
+        Menu.panel(x, card3Y, 760, 100);
+        Menu.icon("potion", x + 14, card3Y + 12, 22, Menu.GOLD);
+        Menu.text("PROGRESSION / XP LEVELING VS CRYSTAL FORGE", x + 44, card3Y + 12, 15, Menu.GOLD);
+        Menu.wrapped(
+                "- COMBAT XP & LEVELING: Slaying enemies and surviving waves earns XP. Leveling up"
+                        + " fully restores Health & Stamina, and grants 1 Attribute Point.\n"
+                        + "- ATTRIBUTE TRAINING: Spend Attribute Points at The Workshop [E] on"
+                        + " Vitality (+Max HP), Power (+Dmg), Endurance (+Stamina), Recovery"
+                        + " (+Regen), Agility (+Speed).\n"
+                        + "- FORGE & LEVEL REQUIREMENTS: Crystals craft weapons and armor. Higher"
+                        + " tiers require Warden Levels: Tier 1 (Lv 2), Tier 2 (Lv 4), Tier 3 (Lv"
+                        + " 6).",
+                x + 16,
+                card3Y + 36,
+                728,
+                12,
+                Menu.TEXT);
+
+        int card4Y = y + 428;
+        Menu.panel(x, card4Y, 760, 100);
+        Menu.icon("crown", x + 14, card4Y + 12, 22, Menu.TEAL);
+        Menu.text(
+                "THE SANCTUARY / PRIMORDIAL BEACON FORTIFICATIONS",
+                x + 44,
+                card4Y + 12,
+                15,
+                Menu.TEAL);
+        Menu.wrapped(
+                "- BEACON INTEGRITY: Strengthen the beacon's max health in the Workshop to"
+                    + " withstand heavy raids.\n"
+                    + "- LIGHT SPIRE BATTERY: Upgrades the automated radiant turret to blast foes"
+                    + " with increasing fire rate and holy damage.\n"
+                    + "- WARMTH HEARTH & SOLAR NOVA: Enhances passive healing while standing near"
+                    + " the beacon, and unlocks an emergency 35% HP knockback pulse that stuns"
+                    + " surrounding hordes.",
+                x + 16, card4Y + 36, 728, 12, Menu.TEXT);
     }
 
     private void drawFeatsPage(int x, int y) {
@@ -2744,10 +3657,14 @@ public class Game {
         }
         settings.playerName = Settings.cleanName(nameDraft);
         settings.difficulty = selectedDifficulty;
+        settings.tutorialSeen = false;
         persistSettings();
         start();
+        travelToCitadel();
+        tutorial = new Tutorial();
+        storyPage = 0;
+        storyOpening = true;
         saveCurrent();
-        beginTutorial();
     }
 
     void startPlaytest() {
@@ -2827,24 +3744,22 @@ public class Game {
     private void drawNameEntry() {
         dim();
         int x = (GetScreenWidth() - 940) / 2, y = (GetScreenHeight() - 600) / 2;
-        Menu.panel(x, y, 940, 600);
+        // Separate character preview from the form instead of enclosing everything in one box.
+        Menu.panel(x, y, 600, 600);
+        Menu.panel(x + 612, y, 328, 600);
+        DrawRectangle(x + 24, y + 126, 552, 2, Fade(Menu.GOLD, .4f));
         Color accent =
                 selectedClass == HeroClass.WARRIOR
                         ? Menu.GOLD
                         : selectedClass == HeroClass.ARCHER ? Menu.TEAL : Menu.color(182, 149, 237);
-        heroPortrait.draw(x + 610, y + 65, 306, 408);
-        Menu.text("THE LAST EMBER", x + 24, y + 22, 16, accent);
-        Menu.text("CHOOSE YOUR WARDEN", x + 24, y + 53, 35, Menu.TEXT);
-        Menu.text(
-                "A valley without dawn is waiting for your light.",
-                x + 24,
-                y + 102,
-                18,
-                Menu.MUTED);
+        heroPortrait.draw(x + 624, y + 65, 292, 408);
+        Menu.text("NEW ADVENTURE", x + 24, y + 22, 16, accent);
+        Menu.text("CREATE YOUR WARDEN", x + 24, y + 53, 32, Menu.TEXT);
+        Menu.text("Choose a name, a class, and your challenge.", x + 24, y + 102, 18, Menu.MUTED);
         Menu.panel(x + 24, y + 137, 560, 58);
         Menu.text(
                 nameDraft.isEmpty()
-                        ? "Your legend starts with a name"
+                        ? "Enter your name"
                         : nameDraft + ((int) (GetTime() * 2) % 2 == 0 ? "_" : ""),
                 x + 40,
                 y + 153,
@@ -2859,14 +3774,16 @@ public class Game {
                     true)) selectedClass = hero;
         Menu.text(
                 switch (selectedClass) {
-                    case WARRIOR -> "Stand against the dark. Make every swing count.";
-                    case ARCHER -> "Find the opening. Let the next arrow bring dawn.";
-                    case MAGE -> "Shape the ember. Turn the cold into light.";
+                    case WARRIOR -> "Sword and shield. Block, counter, and break their guard.";
+                    case ARCHER -> "Bows and crossbows. Dodge, aim, and strike from range.";
+                    case MAGE -> "Arcane spells. Spend mana to control the battlefield.";
                 },
                 x + 24,
                 y + 278,
-                18,
+                15,
                 accent);
+        // Underlines remain visible without hover, making both selections unambiguous.
+        DrawRectangle(x + 28 + selectedClass.ordinal() * 190, y + 260, 172, 3, accent);
         Menu.text("CHOOSE YOUR CHALLENGE", x + 24, y + 326, 13, Menu.GOLD);
         for (Difficulty choice : Difficulty.values())
             if (Menu.button(
@@ -2875,8 +3792,9 @@ public class Game {
                     y + 350,
                     134,
                     true)) selectedDifficulty = choice;
+        DrawRectangle(x + 28 + selectedDifficulty.ordinal() * 142, y + 394, 126, 3, Menu.GOLD);
         Menu.wrapped(selectedDifficulty.description, x + 24, y + 411, 548, 17, Menu.MUTED);
-        if (Menu.button("LIGHT THE BEACON [ENTER]", x + 24, y + 482, 286, true)) confirmName();
+        if (Menu.button("BEGIN ADVENTURE [ENTER]", x + 24, y + 482, 286, true)) confirmName();
         if (Menu.button("CLEAR NAME", x + 326, y + 482, 118, true)) nameDraft = "";
         if (Menu.button("BACK", x + 462, y + 482, 122, true)) state = GameState.MAIN_MENU;
         Menu.center(selectedClass.label.toUpperCase(), x + 763, y + 489, 28, accent);
@@ -2890,8 +3808,7 @@ public class Game {
                 y + 530,
                 13,
                 Menu.MUTED);
-        Menu.text(
-                "One ember. One last watch. Your story begins here.", x + 24, y + 556, 17, accent);
+        Menu.text("Your adventure begins with guided training.", x + 24, y + 556, 17, accent);
         for (int i = 0; i < 9; i++) {
             float rise = ((float) GetTime() * .18f + i * .13f) % 1;
             DrawCircle(
@@ -3057,7 +3974,7 @@ public class Game {
     }
 
     boolean saveCurrent() {
-        if (tutorial != null) {
+        if (tutorial != null && state != GameState.CITADEL) {
             notifyPlayer("Practice stays separate / Your campaign save is safe.");
             return false;
         }
@@ -3160,11 +4077,20 @@ public class Game {
         comboWindow = inputBuffer = attackElapsed = hurtFlash = slashTime = noticeTime = 0;
         attackCooldown = .3f;
         impactPending = false;
-        sceneManager.getOpenScene().getCameraController().update(0);
+        CameraController cam = sceneManager.getOpenScene().getCameraController();
+        if (cam != null) {
+            cam.setYaw(0.0f);
+            cam.setPitch(24.0f);
+            cam.setDistance(17.0f);
+            cam.update(0);
+        }
+        tutorial = null;
+        preparedStep = null;
         state =
                 director.levelCleared(enemies.size())
                         ? (wave >= 10 ? GameState.VICTORY : GameState.LEVEL_COMPLETE)
                         : GameState.PAUSED;
+        pauseReturn = GameState.PLAYING;
         if (state == GameState.LEVEL_COMPLETE || state == GameState.VICTORY) outcomeTime = 3;
 
         hudCharging = false;
@@ -3213,6 +4139,11 @@ public class Game {
         return workshop;
     }
 
+    void openWorkshop() {
+        workshop = true;
+        workshopScreen.setMentor(progress != null ? progress.heroClass() : null);
+    }
+
     boolean isInventoryOpen() {
         return inventory;
     }
@@ -3230,6 +4161,7 @@ public class Game {
         if (state == GameState.CHAPTER_SELECT
                 || state == GameState.RELIC_CHOICE
                 || state == GameState.PLAYING
+                || state == GameState.CITADEL
                 || state == GameState.PAUSED
                 || state == GameState.LEVEL_COMPLETE
                 || state == GameState.VICTORY
@@ -3237,6 +4169,7 @@ public class Game {
                 || state == GameState.SETTING_MENU && settingsReturn == GameState.PAUSED
                 || state == GameState.PLAYTEST_SETUP && playtestReturn == GameState.PAUSED)
             saveCurrent();
+        citadelHub.close();
         audio.close();
         vfx.close();
         assets.close();
@@ -3265,6 +4198,18 @@ public class Game {
 
     public Player getPlayer() {
         return player;
+    }
+
+    public void openInventory() {
+        inventory = true;
+    }
+
+    public void closeInventory() {
+        inventory = false;
+    }
+
+    public EquipmentScreen getEquipmentScreen() {
+        return equipmentScreen;
     }
 
     public void setPlayer(Player player) {

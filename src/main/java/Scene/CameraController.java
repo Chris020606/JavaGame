@@ -20,6 +20,30 @@ public class CameraController {
         impactClock = 0;
     }
 
+    public void setDistance(float distance) {
+        this.distance = Math.max(4.0f, Math.min(18.0f, distance));
+    }
+
+    public float getDistance() {
+        return distance;
+    }
+
+    public void setYaw(float yaw) {
+        this.yaw = yaw;
+    }
+
+    public float getYaw() {
+        return yaw;
+    }
+
+    public void setPitch(float pitch) {
+        this.pitch = Math.max(5.0f, Math.min(70.0f, pitch));
+    }
+
+    public float getPitch() {
+        return pitch;
+    }
+
     public CameraController(Entity entity) {
         this.target = entity;
 
@@ -70,6 +94,11 @@ public class CameraController {
             pitch -= mouseDelta.y() * mouseSensitivity;
         }
         pitch = Math.max(5.0f, Math.min(70.0f, pitch));
+
+        float wheel = GetMouseWheelMove();
+        if (wheel != 0) {
+            distance = Math.max(4.0f, Math.min(18.0f, distance - wheel * 1.5f));
+        }
 
         Vector3 playerPosition = target.getPosition();
 

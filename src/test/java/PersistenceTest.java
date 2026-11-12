@@ -38,9 +38,9 @@ class PersistenceTest {
         assertEquals("Ada", restored.name());
         assertEquals(3, restored.x());
         assertEquals(90, restored.facing());
-        assertEquals(2, restored.progression().characterLevel());
-        assertEquals(108, restored.progression().health());
-        assertEquals(45, restored.progression().crystals());
+        assertEquals(3, restored.progression().characterLevel());
+        assertEquals(133, restored.progression().health());
+        assertEquals(0, restored.progression().crystals());
         assertEquals(8, restored.wave().remaining());
         assertEquals(1.2f, restored.wave().arrival());
         assertEquals(3, restored.enemies().get(0).variant);

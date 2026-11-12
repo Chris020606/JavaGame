@@ -12,11 +12,10 @@ public final class Controls {
         RIGHT("Right", KEY_D),
         SLASH("Slash", KEY_SPACE),
         HEAVY("Heavy", KEY_Q),
-        WORKSHOP("Workshop", KEY_E),
         MUTE("Mute", KEY_M),
         SAVE("Quick save", KEY_F5),
         LOAD("Quick load", KEY_F9),
-        INVENTORY("Inventory", KEY_TAB),
+        INVENTORY("Inventory", KEY_E),
         POTION("Use potion", KEY_H),
         SPRINT("Sprint", KEY_LEFT_SHIFT),
         DODGE("Dodge", KEY_LEFT_CONTROL),
@@ -97,6 +96,13 @@ public final class Controls {
     }
 
     public void restore(java.util.Properties p) {
+        // Migrate legacy configurations: ensure INVENTORY maps to E (KEY_E = 69) and remove
+        // obsolete WORKSHOP
+        if ("258".equals(p.getProperty("key.INVENTORY"))
+                || "69".equals(p.getProperty("key.WORKSHOP"))) {
+            p.setProperty("key.INVENTORY", "69");
+        }
+        p.remove("key.WORKSHOP");
         EnumMap<Action, Integer> restored = new EnumMap<>(Action.class);
         java.util.HashSet<Integer> used = new java.util.HashSet<>();
         for (Action a : Action.values())

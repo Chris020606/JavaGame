@@ -110,6 +110,8 @@ public final class FieldEvent {
                     case 2 -> Kind.SURVIVOR;
                     default -> Kind.BEACON;
                 };
+        // Six authored rescue opportunities across both expedition regions; boss duels stay clear.
+        if (wave == 4 || wave == 6 || wave == 7 || wave == 9) kind = Kind.SURVIVOR;
         x = wave % 2 == 0 ? -12 : 12;
         z = wave >= 6 ? -10 : 8;
         time = kind == Kind.SURVIVOR ? 65 : 45;

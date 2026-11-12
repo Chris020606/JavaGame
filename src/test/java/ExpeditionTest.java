@@ -14,6 +14,7 @@ class ExpeditionTest {
     private Progression funded() {
         Progression p = new Progression(HeroClass.WARRIOR, Difficulty.EXTREME);
         for (int i = 0; i < 15000; i++) p.rewardKill();
+        p.grantLevelPoints(100);
         return p;
     }
 

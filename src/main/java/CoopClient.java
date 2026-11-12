@@ -52,7 +52,7 @@ public final class CoopClient implements AutoCloseable {
                 try {
                     CoopInput last = CoopInput.NONE;
                     while (!closed) {
-                        CoopInput next = commands.poll(33, TimeUnit.MILLISECONDS);
+                        CoopInput next = commands.poll(10, TimeUnit.MILLISECONDS);
                         if (next != null) last = next;
                         CoopProtocol.write(out, CoopProtocol.input(last));
                     }

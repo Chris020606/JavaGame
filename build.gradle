@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'outpost'
-version = '4.3.1'
+version = '4.4.0'
 repositories { mavenCentral() }
 
 dependencies {
@@ -28,6 +28,9 @@ test { useJUnitPlatform() }
 def runtimeAssets = copySpec {
     from('resources') {
         include 'knight.glb', 'outpost/**', 'audio/**'
+        exclude 'outpost/citadel/winter/**'
+        include 'KayKit_Medieval_Hexagon_Pack_1.0_FREE/Assets/gltf/**'
+        include 'KayKit_Medieval_Hexagon_Pack_1.0_FREE/License.txt'
         include 'KayKit_Adventurers_2.0_FREE/Assets/gltf/**'
         include 'KayKit_Adventurers_2.0_FREE/Characters/gltf/*.png'
         include 'KayKit_Adventurers_2.0_FREE/License.txt', 'KayKit_Character_Animations_1.1/License.txt'
@@ -35,7 +38,7 @@ def runtimeAssets = copySpec {
 }
 def guideImages = copySpec {
     from('docs/images') {
-        include 'outpost-cover.png', 'player-meadow.png', 'player-welcome.png', 'player-warrior.png', 'player-mage.png', 'player-moonlight.png', 'player-victory.png', 'player-inventory.png', 'player-interface.png', 'player-crossbows.png', 'player-mana.png', 'player-target-focus.png', 'player-world-map.png'
+        include 'player-city-4.4.png', 'player-inventory-4.4.png', 'player-forge-4.4.png', 'player-rescues-4.4.png', 'outpost-cover.png', 'player-meadow.png', 'player-welcome.png', 'player-warrior.png', 'player-mage.png', 'player-moonlight.png', 'player-victory.png', 'player-inventory.png', 'player-interface.png', 'player-crossbows.png', 'player-mana.png', 'player-target-focus.png', 'player-world-map.png'
     }
 }
 distributions {
@@ -106,6 +109,14 @@ tasks.register('coopNativeTest', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'CoopNativeTest'
+    jvmArgs = application.applicationDefaultJvmArgs
+    workingDir = projectDir
+}
+
+tasks.register('citadelInspection', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'CitadelVisualInspection'
     jvmArgs = application.applicationDefaultJvmArgs
     workingDir = projectDir
 }
