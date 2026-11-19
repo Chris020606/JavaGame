@@ -1,14 +1,12 @@
 ![OUTPOST — Guard the last light](docs/images/outpost-cover.png)
 
 <p align="center">
-  <strong>A fantasy action RPG for one or two players.</strong><br>
+  <strong>A fantasy action RPG for solo adventurers.</strong><br>
   Windows · macOS · Linux
 </p>
 
 <p align="center">
-  <a href="https://github.com/Chris020606/JavaGame/releases/tag/v4.4.0"><strong>Download Outpost</strong></a>
-  &nbsp; · &nbsp;
-  <a href="#play-with-a-friend">Play with a friend</a>
+  <a href="https://github.com/Chris020606/JavaGame/releases/latest"><strong>Download Outpost</strong></a>
   &nbsp; · &nbsp;
   <a href="https://github.com/Chris020606/JavaGame/releases">Release notes</a>
 </p>
@@ -17,7 +15,17 @@ The kingdom fell when corrupt wardens and outlaw syndicates broke its ancient se
 
 Become a Warden, venture into the frozen valleys, and defend the Beacon that carries you and the survivors back to safety.
 
-Choose a Warrior, Archer, or Mage. Play the four-chapter campaign alone, or share the defense with a friend in two-player co-op.
+Choose a Warrior, Archer, or Mage. Explore a four-chapter single-player campaign.
+
+![A moonlit Aethelgard beneath snowy peaks](docs/images/player-title-night.png)
+
+## Your next watch
+
+Walk the streets of Aethelgard, talk with its people, and prepare for the road beyond its gates. Out in the valley, every expedition means defending the Beacon and bringing someone home.
+
+| A city worth returning to | Equipment that changes your build |
+| --- | --- |
+| ![Aethelgard Market Square](docs/images/player-city-current.png) | ![Equipment inventory and character preview](docs/images/player-inventory-current.png) |
 
 ## Choose your class
 
@@ -29,13 +37,11 @@ New solo characters begin in Aethelgard with a story opening and guided training
 
 ## Defend the sanctuary
 
-Enemies arrive in waves. Scouts flank, brutes push toward the center, and enemy archers try to keep their distance. Watch their attack warnings, protect the sanctuary, and leave yourself enough room to dodge.
+The wave display tracks enemies in the field and incoming reinforcements. Enemies arrive in waves. Scouts flank, brutes push toward the center, and enemy archers try to keep their distance. Watch their attack warnings, protect the sanctuary, and leave yourself enough room to dodge.
 
 Return to your class mentor in Aethelgard to forge weapons and individual armor pieces. Goran equips Warriors, Lady Elyndra equips Mages, and Diana equips Archers. Mix your gear and compare its power or defense before equipping it.
 
 Torvald sells potions and permanent caravan upgrades in Market Square. Rescue six stranded citizens across the campaign and watch them settle into the city. The rescue ledger records who is safely home. Boss victories award XP and crystals; new equipment comes from your mentor.
-
-![Market Square in Aethelgard](docs/images/player-city-4.4.png)
 
 ![Actual gameplay: a Mage defending the meadow sanctuary with a focused enemy's attack timer visible](docs/images/player-target-focus.png)
 
@@ -45,26 +51,13 @@ Travel from **Ember Meadow** through the **Ash Cemetery** and **Frozen Pass** to
 
 In solo play, the **World Map / Chapters** screen lets you return to unlocked chapters with your current gear. Travelling restarts that chapter and replaces its checkpoint.
 
-| Plan your next chapter | Equip your warden |
-| --- | --- |
-| ![The valley's four chapters and travel controls](docs/images/player-world-map.png) | ![Redesigned inventory with individual equipment slots](docs/images/player-inventory-4.4.png) |
-
-## Play with a friend
-
-Co-op is for **two players on the same Wi-Fi/LAN or a private VPN**. Both players need the same game version. Public matchmaking is not available.
-
-1. Choose **Play Together**. One player selects **Host New Game**.
-2. Send the lobby invite to your friend.
-3. Your friend selects **Paste Invite**, then **Join Session**.
-4. Choose your upgrades and both press **Ready**.
-
-You share one sanctuary, with encounters scaled for two players. Revive a fallen partner by holding **G** nearby. Mage heavy bolts can heal a teammate or repair the sanctuary. Co-op has its own checkpoint, so your solo adventure stays separate.
-
-If a connection fails, allow the host through the firewall on **TCP 27878**. Hosts with several network addresses can use **Next Address** to select the one their friend can reach.
+![Choose your route through the valley](docs/images/player-world-map.png)
 
 ## Start playing
 
 Download the archive for your computer from the [latest release](https://github.com/Chris020606/JavaGame/releases/latest), extract the whole folder, and open **Outpost**. Java is included in the desktop downloads.
+
+Music and sound effects have separate volume controls in **Settings**.
 
 On Mac, choose **macOS ARM64** for Apple Silicon or **macOS x64** for Intel. Keep the application and its bundled files together.
 
@@ -90,27 +83,22 @@ On Mac, choose **macOS ARM64** for Apple Silicon or **macOS x64** for Intel. Kee
 | Orbit the camera | Hold right mouse button |
 | Pause | Esc |
 
-Controls can be changed in Settings. The sanctuary's marked ring restores health. In solo play, press G there to spend crystals repairing it; in co-op, hold G there to spend a potion on repairs.
+Controls can be changed in Settings. The sanctuary's marked ring restores health. Press G there to spend crystals repairing it.
 
 </details>
 
 <details>
-<summary><strong>What's new in v4.4.0</strong></summary>
+<summary><strong>What's new in v4.5.0</strong></summary>
 
-- Explore Aethelgard, a city of market stalls, workshops, homes, gardens and castle walls.
-- Begin with a story opening, meet your mentor and receive your first weapon.
-- Rescue six distinct citizens and meet them again at home.
-- Equip armor piece by piece in the redesigned inventory, with item comparisons and explained stat cards.
-- Visit Torvald for provisions and permanent caravan upgrades.
-- Fight enemies that flank, hold the front line and reposition at range.
-- Earn XP and crystals from bosses, with steadier late-game stat growth.
-- Find the city radar, rescue ledger and contextual NPC labels.
+- A living title scene with drifting clouds, snowy peaks, a river valley, and a day–night sky you can move.
+- Clearer conversations with clickable **Talk** prompts throughout Aethelgard.
+- More dangerous boss patterns with readable warnings and room to dodge.
+- Rescue opportunities that remain available after the fighting ends.
+- Clearer equipment comparisons, an upgrades filter, and city destinations you can track from the radar.
+- Separate music and effects controls, cleaner combat rewards, and clearer wave progress.
+- A focused single-player adventure; multiplayer has been removed.
 
-| Forge individual pieces | Bring people home |
-| --- | --- |
-| ![Individual armor forging](docs/images/player-forge-4.4.png) | ![The city's rescue ledger](docs/images/player-rescues-4.4.png) |
-
-[Read the v4.4.0 release notes](docs/releases/v4.4.0.md).
+[Read the full update notes](docs/releases/v4.5.0.md).
 
 </details>
 

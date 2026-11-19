@@ -67,6 +67,20 @@ public class Player extends Entity {
     private float chargePoseTime, aimLock, locomotionClock;
     private float lastOutcomeTime;
     private float visualLift;
+    private static final float DEFLECT_DURATION = 0.28f;
+    private float deflectReactionTime;
+    private int attackCombo = 1;
+    private boolean heavyAttack;
+
+    public void triggerDeflectReaction() {
+        deflectReactionTime = DEFLECT_DURATION;
+        velocityX = velocityZ = 0;
+        attackTime = 0;
+    }
+
+    public boolean isDeflecting() {
+        return deflectReactionTime > 0;
+    }
 
     private boolean boundsEnabled = true;
     private float minBoundX = -22.0f;
@@ -192,7 +206,6 @@ public class Player extends Entity {
         movementSpeed = speed;
     }
 
-    private boolean sex; // true = male, false = female
     private int level;
     private int health = 100;
     private float attackTime, attackDuration = .5f, attackImpact = .18f, attackStartPose;
@@ -228,11 +241,20 @@ public class Player extends Entity {
         this.cameraController = cameraController;
     }
 
-    public void setAnimation(PlayerAnimation animation) {
+    private PlayerAnimation currentClip;
 
+    public PlayerAnimation currentClip() {
+        return currentClip;
+    }
+
+    public void setAnimation(PlayerAnimation animation) {
+        this.currentClip = animation;
         Integer index = getAnimationIndex(animation.getAnimationName());
 
         if (index == null) {
+            if (!hasAnimation() && getAnimationCount() == 0) {
+                return;
+            }
             throw new IllegalStateException(
                     "Missing required player animation: " + animation.getAnimationName());
         }
@@ -249,16 +271,16 @@ public class Player extends Entity {
 
         boolean moving = false;
 
-        Camera3D camera = cameraController.getCamera();
-
-        float forwardX = camera.target().x() - camera._position().x();
-        float forwardZ = camera.target().z() - camera._position().z();
-
-        float length = (float) Math.sqrt(forwardX * forwardX + forwardZ * forwardZ);
-
-        if (length > 0.0f) {
-            forwardX /= length;
-            forwardZ /= length;
+        float forwardX = 0, forwardZ = 1;
+        if (cameraController != null && cameraController.getCamera() != null) {
+            Camera3D camera = cameraController.getCamera();
+            forwardX = camera.target().x() - camera._position().x();
+            forwardZ = camera.target().z() - camera._position().z();
+            float length = (float) Math.sqrt(forwardX * forwardX + forwardZ * forwardZ);
+            if (length > 0.0f) {
+                forwardX /= length;
+                forwardZ /= length;
+            }
         }
 
         float rightX = -forwardZ;
@@ -267,28 +289,30 @@ public class Player extends Entity {
         float moveX = 0.0f;
         float moveZ = 0.0f;
 
-        if (controls.down(FORWARD)) {
-            moveX += forwardX;
-            moveZ += forwardZ;
-            moving = true;
-        }
+        if (controls != null) {
+            if (controls.down(FORWARD)) {
+                moveX += forwardX;
+                moveZ += forwardZ;
+                moving = true;
+            }
 
-        if (controls.down(BACK)) {
-            moveX -= forwardX;
-            moveZ -= forwardZ;
-            moving = true;
-        }
+            if (controls.down(BACK)) {
+                moveX -= forwardX;
+                moveZ -= forwardZ;
+                moving = true;
+            }
 
-        if (controls.down(RIGHT)) {
-            moveX += rightX;
-            moveZ += rightZ;
-            moving = true;
-        }
+            if (controls.down(RIGHT)) {
+                moveX += rightX;
+                moveZ += rightZ;
+                moving = true;
+            }
 
-        if (controls.down(LEFT)) {
-            moveX -= rightX;
-            moveZ -= rightZ;
-            moving = true;
+            if (controls.down(LEFT)) {
+                moveX -= rightX;
+                moveZ -= rightZ;
+                moving = true;
+            }
         }
 
         float moveLength = (float) Math.sqrt(moveX * moveX + moveZ * moveZ);
@@ -382,9 +406,26 @@ public class Player extends Entity {
         setPosition(position);
 
         attackTime = Math.max(0, attackTime - dt);
+        deflectReactionTime = Math.max(0, deflectReactionTime - dt);
         PlayerAnimation locomotion = locomotion(moveX, moveZ, sprinting);
         if (isDodging()) {
             setAnimation(dodgeClip);
+        } else if (deflectReactionTime > 0) {
+            setAnimation(
+                    weaponStyle == 2 ? PlayerAnimation.MAGIC_RAISE : PlayerAnimation.BLOCK_HIT);
+            advancePose(dt);
+            playAnimationProgress(1.0f - deflectReactionTime / DEFLECT_DURATION);
+            return;
+        } else if (discipline.parrying()) {
+            setAnimation(
+                    weaponStyle == 2
+                            ? PlayerAnimation.MAGIC_RAISE
+                            : weaponStyle == 1
+                                    ? PlayerAnimation.BOW_DRAW
+                                    : PlayerAnimation.BLOCK_ATTACK);
+            advancePose(dt);
+            playAnimationProgress(1.0f - discipline.parryWindow() / 0.22f);
+            return;
         } else if (attackTime > 0) {
             poseAttack(dt, moving ? locomotion : null);
             return;
@@ -395,7 +436,7 @@ public class Player extends Entity {
                                     ? crossbowClip(PlayerAnimation.CROSSBOW_IDLE)
                                     : PlayerAnimation.BOW_DRAW)
                             : weaponStyle == 2
-                                    ? PlayerAnimation.MAGIC_RAISE
+                                    ? PlayerAnimation.MAGIC_CAST
                                     : twoHanded
                                             ? PlayerAnimation.TWO_HANDED_CHOP
                                             : PlayerAnimation.ATTACK_CHOP);
@@ -418,19 +459,12 @@ public class Player extends Entity {
             setAnimation(
                     !hasWeapon
                             ? PlayerAnimation.UNARMED_IDLE
-                            : weaponStyle == 1
-                                    ? rangedIdle()
-                                    : weaponStyle == 2
-                                            ? PlayerAnimation.UNARMED_IDLE
-                                            : PlayerAnimation.MELEE_IDLE);
+                            : weaponStyle == 1 ? rangedIdle() : PlayerAnimation.MELEE_IDLE);
         }
 
         if (isDodging()) {
             advancePose(dt);
             playAnimationProgress(1 - dodgeTime / .34f);
-        } else if (!moving && (weaponStyle == 2 && hasWeapon)) {
-            advancePose(dt);
-            playAnimationProgress(0);
         } else updateAnimation(dt * (sprinting ? 1.35f : 1));
     }
 
@@ -484,10 +518,27 @@ public class Player extends Entity {
                                     elapsed, attackImpact, attackDuration, 1, attackStartPose)
                             : after / Math.max(.1f, attackDuration - attackImpact);
         } else if (weaponStyle == 2) {
-            clip =
-                    elapsed < attackImpact
-                            ? PlayerAnimation.MAGIC_RAISE
-                            : PlayerAnimation.MAGIC_SHOOT;
+            if (heavyAttack) {
+                clip =
+                        elapsed < attackImpact
+                                ? PlayerAnimation.MAGIC_CAST
+                                : PlayerAnimation.MAGIC_SHOOT;
+            } else if (attackCombo == 3) {
+                clip =
+                        elapsed < attackImpact
+                                ? PlayerAnimation.MAGIC_CAST
+                                : PlayerAnimation.MAGIC_RAISE;
+            } else if (attackCombo == 2) {
+                clip =
+                        elapsed < attackImpact
+                                ? PlayerAnimation.MAGIC_CAST
+                                : PlayerAnimation.MAGIC_SHOOT;
+            } else {
+                clip =
+                        elapsed < attackImpact
+                                ? PlayerAnimation.MAGIC_RAISE
+                                : PlayerAnimation.MAGIC_SHOOT;
+            }
             progress =
                     elapsed < attackImpact
                             ? AttackMotion.contact(
@@ -514,15 +565,11 @@ public class Player extends Entity {
                         ? moving
                         : !hasWeapon
                                 ? PlayerAnimation.UNARMED_IDLE
-                                : weaponStyle == 1
-                                        ? rangedIdle()
-                                        : weaponStyle == 2
-                                                ? PlayerAnimation.UNARMED_IDLE
-                                                : PlayerAnimation.MELEE_IDLE;
-        blendLocomotion(
-                getAnimationIndex(recovery.getAnimationName()),
-                locomotionClock * (moving != null ? 70 : 30),
-                weight);
+                                : weaponStyle == 1 ? rangedIdle() : PlayerAnimation.MELEE_IDLE;
+        Integer recoveryIndex = getAnimationIndex(recovery.getAnimationName());
+        if (recoveryIndex != null) {
+            blendLocomotion(recoveryIndex, locomotionClock * (moving != null ? 70 : 30), weight);
+        }
     }
 
     public void attack(boolean hasWeapon) {
@@ -534,6 +581,8 @@ public class Player extends Entity {
     }
 
     public void attack(int combo, boolean heavy, float duration, float impact, float heldCharge) {
+        attackCombo = combo;
+        heavyAttack = heavy;
         lungeAttack = false;
         charging = false;
         attackDuration = duration;
@@ -561,14 +610,24 @@ public class Player extends Entity {
                     crossbow
                             ? crossbowClip(PlayerAnimation.CROSSBOW_SHOOT)
                             : PlayerAnimation.BOW_RELEASE;
-        if (weaponStyle == 2) attackClip = PlayerAnimation.MAGIC_CAST;
+        if (weaponStyle == 2)
+            attackClip =
+                    heavy
+                            ? PlayerAnimation.MAGIC_SHOOT
+                            : combo == 3
+                                    ? PlayerAnimation.MAGIC_RAISE
+                                    : PlayerAnimation.MAGIC_SHOOT;
         beginPoseTransition();
         setAnimation(
                 weaponStyle == 1
                         ? (crossbow
                                 ? crossbowClip(PlayerAnimation.CROSSBOW_IDLE)
                                 : PlayerAnimation.BOW_DRAW)
-                        : weaponStyle == 2 ? PlayerAnimation.MAGIC_RAISE : attackClip);
+                        : weaponStyle == 2
+                                ? (heavy || combo >= 2
+                                        ? PlayerAnimation.MAGIC_CAST
+                                        : PlayerAnimation.MAGIC_RAISE)
+                                : attackClip);
         restartAnimation();
         playAnimationProgress(attackStartPose);
     }
@@ -662,105 +721,6 @@ public class Player extends Entity {
                         : weaponStyle == 1 ? rangedIdle() : PlayerAnimation.MELEE_IDLE);
         restartAnimation();
         updateAnimation(0);
-    }
-
-    /** Present a host snapshot without reading the local keyboard or running combat twice. */
-    public void presentCoop(
-            float dt,
-            float remaining,
-            float duration,
-            float impact,
-            boolean heavy,
-            int combo,
-            float charge,
-            float dodge,
-            float parry,
-            float vx,
-            float vz,
-            float health,
-            float downAge,
-            boolean victory) {
-        float speed = (float) Math.hypot(vx, vz);
-        PlayerAnimation movement =
-                locomotion(vx / Math.max(.01f, speed), vz / Math.max(.01f, speed), false);
-        visualLift = 0;
-        charging = charge > 0;
-        chargePoseTime = charge;
-        dodgeTime = dodge;
-        attackTime = remaining;
-        attackDuration = Math.max(.1f, duration);
-        attackImpact = impact;
-        attackStartPose = 0;
-        activeCoopAttack(heavy, combo);
-        locomotionClock += dt;
-        if (health <= 0) {
-            poseForOutcome(false, downAge);
-            return;
-        }
-        fallenPose = false;
-        lastOutcomeTime = 0;
-        if (victory) {
-            setAnimation(PlayerAnimation.CHEER);
-            updateAnimation(dt);
-            return;
-        }
-        if (dodge > 0) {
-            setAnimation(PlayerAnimation.DODGE_FORWARD);
-            advancePose(dt);
-            playAnimationProgress(1 - dodge / .34f);
-        } else if (remaining > 0) poseAttack(dt, speed > .2f ? movement : null);
-        else if (charge > 0) {
-            setAnimation(
-                    weaponStyle == 1
-                            ? (crossbow
-                                    ? crossbowClip(PlayerAnimation.CROSSBOW_IDLE)
-                                    : PlayerAnimation.BOW_DRAW)
-                            : weaponStyle == 2
-                                    ? PlayerAnimation.MAGIC_RAISE
-                                    : twoHanded
-                                            ? PlayerAnimation.TWO_HANDED_CHOP
-                                            : PlayerAnimation.ATTACK_CHOP);
-            advancePose(dt);
-            playAnimationProgress(
-                    weaponStyle == 0
-                            ? .28f * Math.min(1, charge / .7f)
-                            : Math.min(1, charge / .7f));
-        } else if (parry > 0) {
-            setAnimation(PlayerAnimation.BLOCK_IDLE);
-            advancePose(dt);
-            playAnimationProgress(0);
-        } else if (speed > .2f) {
-            setAnimation(movement);
-            updateAnimation(dt * (speed > 5.5f ? 1.35f : 1.0f));
-        } else {
-            setAnimation(
-                    !hasWeapon
-                            ? PlayerAnimation.UNARMED_IDLE
-                            : weaponStyle == 1
-                                    ? rangedIdle()
-                                    : weaponStyle == 2
-                                            ? PlayerAnimation.UNARMED_IDLE
-                                            : PlayerAnimation.MELEE_IDLE);
-            updateAnimation(dt);
-        }
-    }
-
-    private void activeCoopAttack(boolean heavy, int combo) {
-        attackClip =
-                twoHanded
-                        ? (heavy || combo == 2
-                                ? PlayerAnimation.TWO_HANDED_CHOP
-                                : combo == 3
-                                        ? PlayerAnimation.TWO_HANDED_FINISHER
-                                        : PlayerAnimation.TWO_HANDED_SLICE)
-                        : heavy
-                                ? PlayerAnimation.ATTACK_CHOP
-                                : combo == 3
-                                        ? PlayerAnimation.ATTACK_STAB
-                                        : combo == 2
-                                                ? PlayerAnimation.ATTACK_DIAGONAL
-                                                : PlayerAnimation.ATTACK_HORIZONTAL;
-        lungeAttack = false;
     }
 
     public void movement(float dt) {}

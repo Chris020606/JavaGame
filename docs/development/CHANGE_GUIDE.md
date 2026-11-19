@@ -4,7 +4,6 @@
 | --- | --- | --- |
 | Starting class stats and attack timings | `HeroClass`, `Combat` | `HeroTest`, `CombatTest`, native combat-motion |
 | Solo costs, stamina/mana and defense windows | `Entities/CombatDiscipline`, `Entities/Player`, `Game` | discipline tests, input smoke |
-| Co-op combat or economy | `CoopWorld`, `CoopBalance` | co-op unit/campaign tests, two-client native check |
 | Gear prices, ownership and bonuses | `Progression`, `Entities/ArmorSlot` | ownership/save tests, inventory regression |
 | Inventory layout and item previews | `EquipmentScreen`, `WorldAssets` | native class/ownership/inventory review |
 | Target focus / cast frame | `EnemyFocus`, `TargetFrameScreen`, solo/co-op coordinators | selection unit tests, adventure review, co-op native |
@@ -13,7 +12,6 @@
 | HUD and action belt | `HudScreen`, `HudLayout`, `Menu` | native HUD review at multiple sizes |
 | Keys/settings | `Config/Controls`, `Settings`, settings UI in `Game` | settings and input tests; preserve old defaults |
 | Chapters and wave compositions | `Campaign`, `WaveDirector`, `WaveFormation` | campaign/formation tests and save resume |
-| Enemy AI and attack windows | `Entities/Enemy`, `Entities/SquadTactics`, `Game`, `CoopWorld` | combat and co-op tests; test every affected variant |
 | Boss move rules and hazards | `Entities/BossMove`, `BossHazard`, solo/co-op impact resolution | boss regression, hazard geometry, balance |
 | Place names / subareas | `WorldLandmarks`, `Game.drawCombatCues` | area-boundary tests, map-detail review |
 | Terrain/roads/scenery | `EnvironmentLayout`, `RoadLayout`, `ArenaNavigation`, `WorldAssets` | terrain/navigation tests and art review |
@@ -21,7 +19,6 @@
 | Animation transitions or weapon grips | `Entities/Player`, `Entities/Entity`, `tools/prepare_assets.py` | native combat-motion on each affected tier |
 | Music and effects | `GameAudio`, `resources/audio`, authoring tools | native load logs, mute/volume, listening |
 | Solo persistence | `SaveGame`, `Progression`, `AppData`, `PlayerSaves` | old-save migration and invalid-data tests |
-| Network serialization | `CoopProtocol`, `CoopState`, `CoopInput` | protocol fixtures and two-client check |
 | Portable downloads | `build.gradle`, `tools/archive_release.py`, GitHub workflow | native package smoke and all four CI platforms |
 
 ## Extending an enemy variant

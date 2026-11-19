@@ -68,6 +68,7 @@ public final class CitadelHub implements AutoCloseable {
     }
 
     // Track all loaded models for lighting preparation and safe unloading
+    private final Map<Model, BoundingBox> buildingBounds = new IdentityHashMap<>();
     private final Map<Model, Float> propGroundOffsets = new IdentityHashMap<>();
     private final List<Model> allLoadedModels = new ArrayList<>();
     private Texture lampPostTexture = null;
@@ -206,7 +207,9 @@ public final class CitadelHub implements AutoCloseable {
                 Model model = LoadModel(path);
                 if (model != null && model.meshCount() > 0) {
                     allLoadedModels.add(model);
-                    propGroundOffsets.put(model, -GetModelBoundingBox(model).min().y());
+                    BoundingBox bounds = GetModelBoundingBox(model);
+                    buildingBounds.put(model, bounds);
+                    propGroundOffsets.put(model, -bounds.min().y());
                     return model;
                 }
             }
@@ -1025,9 +1028,6 @@ public final class CitadelHub implements AutoCloseable {
 
         // Market well: match the visible stone rim, keeping the central avenue open.
         collisionObstacles.add(Obstacle.circle(8f, 21f, 1.15f));
-        for (float z : new float[] {9f, 24f})
-            for (int side : new int[] {-1, 1})
-                collisionObstacles.add(Obstacle.circle(side * 4.8f, z, .12f));
         // 4. Market Square
         collisionObstacles.add(Obstacle.box(-11.5f, 10.5f, -5.5f, 14.5f)); // Red Stall
         collisionObstacles.add(Obstacle.box(5.5f, 10.5f, 11.5f, 14.5f)); // Yellow Stall
@@ -1123,6 +1123,9 @@ public final class CitadelHub implements AutoCloseable {
     }
 
     private final Map<CitadelNpc, CitizenRoutine> citizens = new EnumMap<>(CitadelNpc.class);
+    private final Map<CitadelNpc, Float> npcFacing = new EnumMap<>(CitadelNpc.class);
+    private final Map<ModelAnimation, Map<String, Integer>> animationIndices =
+            new IdentityHashMap<>();
 
     /** Update only in the live city. Citizens pause for conversation and nearby players. */
     public void updateCitizens(float dt, float px, float pz, int rescuedCount) {
@@ -1133,9 +1136,34 @@ public final class CitadelHub implements AutoCloseable {
                     npc == activeNpc || Math.hypot(px - citizen.x, pz - citizen.z) < 2.5f,
                     this::citizenWalkable);
         }
+        // Resolve orientation once in simulation, so shadow and color passes use identical poses.
+        for (CitadelNpc npc : CitadelNpc.values()) {
+            CitizenRoutine citizen = citizens.get(npc);
+            float x = citizen == null ? npc.x() : citizen.x;
+            float z = citizen == null ? npc.z() : citizen.z;
+            float desired = citizen == null ? npc.yaw() : citizen.yaw;
+            if (Math.hypot(px - x, pz - z) < 4)
+                desired = (float) Math.toDegrees(Math.atan2(px - x, pz - z));
+            npcFacing.put(
+                    npc, NpcFacing.approach(npcFacing.getOrDefault(npc, npc.yaw()), desired, dt));
+        }
     }
 
     boolean citizenWalkable(float x, float z) {
+        // Rendered porches and house walls can extend beyond the coarse player collision boxes.
+        for (BuildingPlacement building : buildings) {
+            if (building.model == null || building.model.meshCount() == 0) continue;
+            BoundingBox bounds = buildingBounds.get(building.model);
+            double angle = Math.toRadians(-building.yaw);
+            float dx = x - building.x, dz = z - building.z;
+            float lx = (float) (dx * Math.cos(angle) + dz * Math.sin(angle)) / building.scale;
+            float lz = (float) (-dx * Math.sin(angle) + dz * Math.cos(angle)) / building.scale;
+            float margin = .8f / building.scale;
+            if (lx > bounds.min().x() - margin
+                    && lx < bounds.max().x() + margin
+                    && lz > bounds.min().z() - margin
+                    && lz < bounds.max().z() + margin) return false;
+        }
         for (Obstacle o : collisionObstacles) {
             if (o.isBox) {
                 if (x > o.minX - 1.1f
@@ -1158,23 +1186,19 @@ public final class CitadelHub implements AutoCloseable {
     }
 
     public CitadelNpc checkNearbyNpc(float px, float pz, int rescuedCount) {
-        for (CitadelNpc npc :
-                new CitadelNpc[] {
-                    CitadelNpc.COMMANDER,
-                    CitadelNpc.BLACKSMITH,
-                    CitadelNpc.ARCANIST,
-                    CitadelNpc.ARCHER,
-                    CitadelNpc.CARAVAN_TRADER
-                }) {
-            if (npc.isNear(px, pz, 3.2f)) return npc;
+        CitadelNpc nearest = null;
+        double best = 3.2;
+        java.util.List<CitadelNpc> available = new ArrayList<>();
+        for (CitadelNpc npc : CitadelNpc.values()) if (!npc.isSurvivor()) available.add(npc);
+        available.addAll(Arrays.asList(CitadelNpc.rescuedNpcs(rescuedCount)));
+        for (CitadelNpc npc : available) {
+            double distance = Math.hypot(px - npcX(npc), pz - npcZ(npc));
+            if (distance < best) {
+                nearest = npc;
+                best = distance;
+            }
         }
-        for (CitadelNpc npc : CitadelNpc.rescuedNpcs(rescuedCount)) {
-            CitizenRoutine citizen = citizens.get(npc);
-            float x = citizen == null ? npc.x() : citizen.x;
-            float z = citizen == null ? npc.z() : citizen.z;
-            if (Math.hypot(px - x, pz - z) < 3.2f) return npc;
-        }
-        return null;
+        return nearest;
     }
 
     public CitadelNpc checkNearbyNpc(float px, float pz) {
@@ -1223,9 +1247,13 @@ public final class CitadelHub implements AutoCloseable {
         }
     }
 
-    /** Shadow pass: Renders opaque architectural geometry into the shadow map. */
-    public void drawShadowArchitecture() {
-        drawCastleTown(0f);
+    /**
+     * NPCs share the architecture's sun direction and shadow map, with the same pose in both
+     * passes.
+     */
+    public void drawShadowWorld(float time, float playerX, float playerZ, int rescuedCount) {
+        drawCastleTown(time);
+        drawNpcs(time, playerX, playerZ, rescuedCount);
     }
 
     /** Main 3D pass: Renders the entire medieval city, districts, lighting, portal, and NPCs. */
@@ -1248,7 +1276,6 @@ public final class CitadelHub implements AutoCloseable {
         // 3D Animated / Stanced NPCs
         drawNpcs(time, playerX, playerZ, rescuedCount);
 
-        drawMarketPennants(time);
         drawBirds(time);
         // Volumetric low-poly drifting clouds pass
         drawClouds(time);
@@ -1325,7 +1352,13 @@ public final class CitadelHub implements AutoCloseable {
 
         // 2. City Buildings & Fortifications
         for (BuildingPlacement b : buildings) {
-            drawModel(b.model, b.x, 0f, b.z, b.yaw, b.scale);
+            drawModel(
+                    b.model,
+                    b.x,
+                    propGroundOffsets.getOrDefault(b.model, 0f) * b.scale,
+                    b.z,
+                    b.yaw,
+                    b.scale);
         }
 
         // 3. Props, Banners, and Scenery
@@ -1425,32 +1458,6 @@ public final class CitadelHub implements AutoCloseable {
         DrawCircle3D(v(x, .15f, z), 3.5f * (1.2f - timer), v(1, 0, 0), 90f, Menu.GOLD);
     }
 
-    /** Market entrance pennants sway gently above the avenue. */
-    private void drawMarketPennants(float time) {
-        // High bunting frames the market entrances; supports stand outside the walkable avenue.
-        for (float z : new float[] {9f, 24f}) {
-            for (int side : new int[] {-1, 1}) {
-                DrawCylinder(v(side * 4.8f, 2.4f, z), .07f, .1f, 4.8f, 8, Menu.color(94, 67, 43));
-            }
-            for (int i = 0; i < 12; i++) {
-                float x = -4.8f + i * .8f;
-                float h1 = 4.8f - .5f * (1 - Math.abs(x) / 4.8f);
-                float h2 = 4.8f - .5f * (1 - Math.abs(x + .8f) / 4.8f);
-                DrawLine3D(v(x, h1, z), v(x + .8f, h2, z), Menu.color(83, 69, 49));
-                float breeze = (float) Math.sin(time * 1.8f + i * .8f) * .12f;
-                Color cloth =
-                        i % 3 == 0
-                                ? Menu.color(189, 76, 60)
-                                : i % 3 == 1 ? Menu.color(217, 175, 79) : Menu.color(75, 130, 159);
-                Vector3 a = v(x + .12f, h1 - .03f, z),
-                        b = v(x + .68f, h2 - .03f, z),
-                        c = v(x + .4f, (h1 + h2) * .5f - .7f, z + breeze);
-                DrawTriangle3D(a, b, c, cloth);
-                DrawTriangle3D(c, b, a, cloth);
-            }
-        }
-    }
-
     /** Distant birds circle over the wall and fields; tiny wing silhouettes keep the sky moving. */
     private void drawBirds(float time) {
         for (int i = 0; i < 9; i++) {
@@ -1485,8 +1492,7 @@ public final class CitadelHub implements AutoCloseable {
 
     private void drawNpcs(float time, float px, float pz, int rescuedCount) {
         // Goran (Blacksmith) at (-7.5, 0, 1.5)
-        boolean nearGoran = CitadelNpc.BLACKSMITH.isNear(px, pz, 4f);
-        int goranAnim = nearGoran ? 48 : 32; // Cheering vs Melee_Unarmed_Idle
+        int goranAnim = animationIndex(knightAnims, knightAnimCount, "Melee_Unarmed_Idle");
         drawNpcCharacter(
                 CitadelNpc.BLACKSMITH,
                 knightModel,
@@ -1496,11 +1502,10 @@ public final class CitadelHub implements AutoCloseable {
                 time,
                 px,
                 pz,
-                Menu.color(190, 195, 205));
+                WHITE);
 
         // Lady Elyndra (Arcanist) at (7.5, 0, 1.5)
-        boolean nearElyndra = CitadelNpc.ARCANIST.isNear(px, pz, 4f);
-        int elyndraAnim = nearElyndra ? 51 : 49; // Cheering vs Ranged_Magic_Spellcasting
+        int elyndraAnim = animationIndex(mageAnims, mageAnimCount, "Melee_Unarmed_Idle");
         drawNpcCharacter(
                 CitadelNpc.ARCANIST,
                 mageModel,
@@ -1510,10 +1515,10 @@ public final class CitadelHub implements AutoCloseable {
                 time,
                 px,
                 pz,
-                Menu.color(120, 150, 220));
+                WHITE);
 
         // Commander Sean (Expedition Gatekeeper) at the South Wall Exit
-        int seanAnim = 1; // Melee_2H_Idle
+        int seanAnim = animationIndex(commanderAnims, commanderAnimCount, "Melee_2H_Idle");
         drawNpcCharacter(
                 CitadelNpc.COMMANDER,
                 commanderModel,
@@ -1523,11 +1528,10 @@ public final class CitadelHub implements AutoCloseable {
                 time,
                 px,
                 pz,
-                Menu.color(240, 240, 255));
+                WHITE);
 
         // Diana the Huntress (Archer Mentor) at Central Archery Range (-7.5, 0, -5.5)
-        boolean nearArcher = CitadelNpc.ARCHER.isNear(px, pz, 4f);
-        int archerAnim = nearArcher ? 57 : 54; // Cheering vs Ranged_Bow_Idle
+        int archerAnim = animationIndex(rangerAnims, rangerAnimCount, "Ranged_Bow_Idle");
         drawNpcCharacter(
                 CitadelNpc.ARCHER,
                 rangerModel,
@@ -1537,7 +1541,7 @@ public final class CitadelHub implements AutoCloseable {
                 time,
                 px,
                 pz,
-                Menu.color(140, 185, 130));
+                WHITE);
 
         // The merchant must be drawn at the same coordinates used by proximity and the map.
         drawNpcCharacter(
@@ -1545,11 +1549,11 @@ public final class CitadelHub implements AutoCloseable {
                 barbarianModel,
                 barbarianAnims,
                 barbarianAnimCount,
-                1,
+                animationIndex(barbarianAnims, barbarianAnimCount, "Melee_2H_Idle"),
                 time,
                 px,
                 pz,
-                Menu.color(225, 193, 140));
+                WHITE);
 
         // Every returned citizen owns a different mesh and its own remapped clips.
         CitadelNpc[] rescued = CitadelNpc.rescuedNpcs(rescuedCount);
@@ -1564,6 +1568,20 @@ public final class CitadelHub implements AutoCloseable {
                     px,
                     pz,
                     WHITE);
+    }
+
+    private int animationIndex(ModelAnimation source, int count, String name) {
+        if (source == null) return 0;
+        Map<String, Integer> indices = animationIndices.get(source);
+        if (indices == null) {
+            indices = new java.util.HashMap<>();
+            for (int i = 0; i < count; i++) {
+                ModelAnimation clip = getAnimView(source, i, count);
+                if (clip != null) indices.putIfAbsent(clip.name().getString(), i);
+            }
+            animationIndices.put(source, indices);
+        }
+        return indices.getOrDefault(name, 0);
     }
 
     private ModelAnimation getAnimView(ModelAnimation source, int index, int count) {
@@ -1593,23 +1611,11 @@ public final class CitadelHub implements AutoCloseable {
             z = citizen.z;
             yaw = citizen.yaw;
             if (citizen.walking && anims != null) {
-                for (int i = 0; i < animCount; i++) {
-                    ModelAnimation candidate = getAnimView(anims, i, animCount);
-                    if (candidate != null
-                            && candidate.name().getString().toLowerCase().contains("walk")) {
-                        animIndex = i;
-                        break;
-                    }
-                }
+                animIndex = animationIndex(anims, animCount, "Walking_A.001");
             }
         }
 
-        // Slight turn toward player when near
-        boolean near = Math.hypot(px - x, pz - z) < 4f;
-        if (near) {
-            float dx = px - x, dz = pz - z;
-            yaw = (float) Math.toDegrees(Math.atan2(dx, dz));
-        }
+        yaw = npcFacing.getOrDefault(npc, yaw);
 
         if (model != null && model.meshCount() > 0) {
             // Apply native matching animation clip without skeleton mismatch
@@ -1628,18 +1634,12 @@ public final class CitadelHub implements AutoCloseable {
                 }
             }
 
-            // Subtle breathing bounce
-            float bounce = (float) Math.sin(time * 2f + x) * .02f;
-            DrawModelEx(model, v(x, y + bounce, z), v(0, 1, 0), yaw, v(1.0f, 1.0f, 1.0f), tint);
+            // The animation provides breathing; an extra model offset makes feet float above the
+            // street.
+            DrawModelEx(model, v(x, y, z), v(0, 1, 0), yaw, v(1.0f, 1.0f, 1.0f), tint);
         } else {
             DrawCapsule(v(x, y + .2f, z), v(x, y + 1.6f, z), .35f, 8, 8, tint);
             DrawSphere(v(x, y + 1.7f, z), .25f, Menu.GOLD);
-        }
-
-        // Circular floor aura if near
-        if (near) {
-            float pulse = .95f + (float) Math.sin(time * 4f) * .08f;
-            DrawCircle3D(v(x, .04f, z), 1.2f * pulse, v(1, 0, 0), 90f, Menu.GOLD);
         }
     }
 

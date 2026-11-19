@@ -28,6 +28,7 @@ public final class EquipmentScreen implements AutoCloseable {
     private boolean orbit;
     private boolean viewDossier;
     private boolean showUnowned;
+    private boolean upgradesOnly;
 
     private static Color tierColor(int tier) {
         return tier == 3
@@ -42,6 +43,7 @@ public final class EquipmentScreen implements AutoCloseable {
             dragged = lastClicked = -1;
             filter = 0;
             showUnowned = false;
+            upgradesOnly = false;
             viewDossier = false;
         }
         Vector3 position = player.getPosition();
@@ -168,7 +170,8 @@ public final class EquipmentScreen implements AutoCloseable {
     private java.util.List<Integer> visible(Progression p) {
         java.util.ArrayList<Integer> ids = new java.util.ArrayList<>();
         for (int i = 0; i < 17; i++)
-            if ((showUnowned || owned(p, i))
+            if ((!upgradesOnly || GearUpgrade.isUpgrade(p, i))
+                    && (showUnowned || owned(p, i))
                     && (filter == 0
                             || filter == 1 && i < 4
                             || filter == 2 && i >= 4 && i < 16
@@ -236,6 +239,7 @@ public final class EquipmentScreen implements AutoCloseable {
                 if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && filled) {
                     selected = s == 4 ? level : 4 + (level - 1) * 4 + s;
                     filter = 0;
+                    upgradesOnly = false;
                     viewDossier = false;
                 }
                 if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)
@@ -255,8 +259,19 @@ public final class EquipmentScreen implements AutoCloseable {
                 viewDossier ? "BACK TO ITEMS [C]" : "CHARACTER STATS [C]",
                 x + 286,
                 y + 104,
-                356,
+                218,
                 true)) viewDossier = !viewDossier;
+        if (Menu.button(
+                (upgradesOnly ? "ALL ITEMS" : "UPGRADES " + GearUpgrade.count(p)),
+                x + 514,
+                y + 104,
+                128,
+                true)) {
+            upgradesOnly = !upgradesOnly;
+            filter = 0;
+            viewDossier = false;
+            dragged = -1;
+        }
         if (viewDossier) {
             drawStatsSheet(p, x + 286, y + 160, 654, 410);
         } else {
@@ -302,9 +317,16 @@ public final class EquipmentScreen implements AutoCloseable {
                 remove(p, selected);
             Menu.frame(x + 286, y + 204, 356, 356, Menu.color(18, 26, 38), Menu.LINE);
             if (ids.isEmpty()) {
-                Menu.center("NO ITEMS IN THIS CATEGORY", x + 464, y + 338, 13, Menu.MUTED);
                 Menu.center(
-                        "Include unowned to browse forge equipment.",
+                        upgradesOnly ? "NO OWNED UPGRADES" : "NO ITEMS IN THIS CATEGORY",
+                        x + 464,
+                        y + 338,
+                        13,
+                        Menu.MUTED);
+                Menu.center(
+                        upgradesOnly
+                                ? "Your best owned pieces are already equipped."
+                                : "Include unowned to browse forge equipment.",
                         x + 464,
                         y + 366,
                         10,
@@ -329,6 +351,7 @@ public final class EquipmentScreen implements AutoCloseable {
                         cy + 44,
                         10,
                         tierColor(tier(item)));
+                if (GearUpgrade.isUpgrade(p, item)) Menu.text("+", cx + 55, cy + 3, 16, Menu.GOLD);
                 if (!available) Menu.icon("lock", cx + 54, cy + 42, 12, Menu.MUTED);
                 else if (equipped(p, item)) Menu.text("ON", cx + 49, cy + 44, 9, Menu.TEAL);
                 if (hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {

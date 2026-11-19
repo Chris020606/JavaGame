@@ -18,14 +18,6 @@ All main-source Java files, including retained examples. See the [Warden's Journ
 | [CombatMastery](../../src/main/java/CombatMastery.java) | Short-lived class rewards encourage different decisions without adding key bindings. |
 | [CombatVfx](../../src/main/java/CombatVfx.java) | Soft textured particles, weapon ribbons and authored spell decals |
 | [Controls](../../src/main/java/Config/Controls.java) | See implementation and architecture/change guides for its callers. |
-| [CoopBalance](../../src/main/java/CoopBalance.java) | Tuned for two active heroes: more bodies, tougher bosses, unchanged readable attack timing. |
-| [CoopClient](../../src/main/java/CoopClient.java) | UI submits intentions without blocking on network I/O |
-| [CoopGame](../../src/main/java/CoopGame.java) | Complete host/join front end and snapshot presentation for the two-player campaign. |
-| [CoopInput](../../src/main/java/CoopInput.java) | Inputs are intentions only: the host owns position, health, damage and rewards. |
-| [CoopProtocol](../../src/main/java/CoopProtocol.java) | Bounded binary messages; deliberately avoids Java object deserialization over the network. |
-| [CoopServer](../../src/main/java/CoopServer.java) | Two-player private host |
-| [CoopState](../../src/main/java/CoopState.java) | Immutable host snapshots; networking and rendering never mutate the simulation. |
-| [CoopWorld](../../src/main/java/CoopWorld.java) | Fixed-step, host-authoritative cooperative campaign |
 | [CorpsePresentation](../../src/main/java/CorpsePresentation.java) | Fallen characters stay on the ground, then fade in place after the fight. |
 | [DayNightCycle](../../src/main/java/DayNightCycle.java) | Eight-minute solar cycle |
 | [EnemyFocus](../../src/main/java/EnemyFocus.java) | Client-side focus selection |

@@ -48,13 +48,6 @@ public class Game {
     private final ChapterSelectScreen chapterSelectScreen = new ChapterSelectScreen();
     private GameState chapterMapReturn = GameState.PAUSED;
     private boolean pointerAim;
-    private boolean coopRequested;
-
-    boolean consumeCoopRequest() {
-        boolean value = coopRequested;
-        coopRequested = false;
-        return value;
-    }
 
     void pointerAim(boolean enabled) {
         pointerAim = enabled;
@@ -104,7 +97,6 @@ public class Game {
         preparedStep = null;
         playtest = false;
         startPracticeArena();
-        storyTime = 0;
     }
 
     void beginCombatTutorial() {
@@ -131,13 +123,11 @@ public class Game {
         preparedStep = null;
         playtest = false;
         startPracticeArena();
-        storyTime = 0;
     }
 
     private void startPracticeArena() {
         applyHeroModel();
         guardianCooldown = guardianFlash = 0;
-        storyTime = 12;
         hudCharging = false;
         mastery.reset();
         hitPause = hitMarker = 0;
@@ -190,6 +180,7 @@ public class Game {
         player.resetCombat();
         impactPending = false;
         settings.tutorialSeen = true;
+        storyOpening = false;
         persistSettings();
         if (practiceReturn != null) {
             restoreSnapshot(practiceReturn, practiceReturnPlaytest);
@@ -300,7 +291,6 @@ public class Game {
     private int featsChapter;
     private GameState blessingReturn = GameState.PLAYING;
     private GameState pauseReturn = GameState.PLAYING;
-    private float storyTime;
     private Difficulty selectedDifficulty = Difficulty.NORMAL;
     private float lastHeroX, lastHeroZ;
     private final HudScreen hudScreen = new HudScreen();
@@ -412,7 +402,6 @@ public class Game {
     private void start() {
         applyHeroModel();
         guardianCooldown = guardianFlash = 0;
-        storyTime = 12;
         hudCharging = false;
         mastery.reset();
         hitPause = hitMarker = 0;
@@ -462,7 +451,12 @@ public class Game {
         writeCheckpoint();
     }
 
+    CitadelHub getCitadelHub() {
+        return citadelHub;
+    }
+
     public void travelToCitadel() {
+        if (state == GameState.LEVEL_COMPLETE) continueCampaign();
         state = GameState.CITADEL;
         workshop = false;
         inventory = false;
@@ -498,6 +492,7 @@ public class Game {
 
     public void deployFromCitadel() {
         state = GameState.PLAYING;
+        storyOpening = false;
         citadelHub.closeNpc();
         player.resetBounds();
         player.getPosition().x(0).y(0).z(4);
@@ -998,7 +993,10 @@ public class Game {
                         Menu.TEAL);
                 notifyPlayer("Potion used / +" + Math.round(healed) + " HP");
             } else {
-                notifyPlayer("Need missing health and a potion.");
+                notifyPlayer(
+                        progress.potions() == 0
+                                ? "NO POTIONS / Restock with Torvald in the Citadel."
+                                : "HEALTH ALREADY FULL");
             }
         }
         if (workshop) {
@@ -1037,7 +1035,6 @@ public class Game {
         }
         noticeTime = Math.max(0, noticeTime - dt);
         landmarkBannerTime = Math.max(0, landmarkBannerTime - dt);
-        storyTime = Math.max(0, storyTime - dt);
         attackCooldown = Math.max(0, attackCooldown - dt);
         slashTime = Math.max(0, slashTime - dt);
         hurtFlash = Math.max(0, hurtFlash - dt);
@@ -1087,7 +1084,7 @@ public class Game {
         float px = player.getPosition().x(), pz = player.getPosition().z();
         FieldEvent event = progress.fieldEvent();
         FieldEvent.Status previousEventStatus = event.status();
-        event.update(dt, px, pz, settings.controls.down(INTERACT));
+        event.update(dt, px, pz, settings.controls.down(INTERACT), chapterIndex());
         if (event.claim()) {
             if (tutorial == null)
                 progress.chapterFeats().record(chapterIndex(), ChapterFeats.Action.OBJECTIVE);
@@ -1340,12 +1337,12 @@ public class Game {
                 progress.rewardEnemy(enemy.boss());
                 if (enemy.elite) progress.rewardElite();
                 int xpGained = Progression.enemyXp(enemy.boss(), enemy.elite);
-                feedback.add(enemy.x, enemy.z, "+" + xpGained + " XP", Menu.color(140, 80, 210));
+                feedback.reward(enemy.x, enemy.z, xpGained, enemy.reward());
                 if (progress.characterLevel() > lvlBefore) {
                     feedback.add(
                             player.getPosition().x(),
                             player.getPosition().z(),
-                            "LEVEL UP! REACHED LEVEL " + progress.characterLevel(),
+                            "LEVEL " + progress.characterLevel(),
                             Menu.GOLD);
                     audio.play("upgrade");
                     vfx.impact(player.getPosition().x(), player.getPosition().z(), Menu.GOLD, true);
@@ -1361,7 +1358,6 @@ public class Game {
                 if (fallen.size() >= 48) fallen.remove(0);
                 fallen.add(enemy);
                 vfx.impact(enemy.x, enemy.z, enemy.boss() ? Menu.GOLD : Menu.TEAL, enemy.boss());
-                feedback.add(enemy.x, enemy.z, "+" + enemy.reward() + " crystals", Menu.TEAL);
                 if (enemy.boss())
                     notifyPlayer(chapter().title() + " DEFEATED / +120 CRYSTALS / +300 XP");
                 continue;
@@ -1454,13 +1450,7 @@ public class Game {
                                         enemy.z,
                                         false,
                                         enemy);
-                            bossHazards.add(
-                                    new BossHazard(
-                                            BossHazard.Kind.SHOCKWAVE,
-                                            enemy.x,
-                                            enemy.z,
-                                            .25f,
-                                            enemy.meleeDamage(wave) * .7f));
+                            bossHazards.addAll(BossPatterns.shockwaves(enemy, wave));
                         }
                         case SIGILS -> {}
                         case CLEAVE -> {
@@ -1528,19 +1518,7 @@ public class Game {
                 enemy.targetsTraveler = huntsTraveler;
                 if (!enemy.ranged() && enemy.distance(px, pz) < 10) audio.play("swing");
                 if (enemy.boss() && enemy.bossMove == BossMove.SIGILS) {
-                    int count = enemy.enraged() ? 5 : 3;
-                    for (int i = 0; i < count; i++) {
-                        double a = (i - 1) * Math.PI * 2 / (count - 1);
-                        float hx = px + (i == 0 ? 0 : (float) Math.cos(a) * 3),
-                                hz = pz + (i == 0 ? 0 : (float) Math.sin(a) * 3);
-                        bossHazards.add(
-                                new BossHazard(
-                                        BossHazard.Kind.SIGIL,
-                                        hx,
-                                        hz,
-                                        enemy.attackDuration() - .25f + i * .12f,
-                                        enemy.meleeDamage(wave) * .75f));
-                    }
+                    bossHazards.addAll(BossPatterns.sigils(enemy, px, pz, wave));
                 }
             }
         }
@@ -1677,7 +1655,13 @@ public class Game {
                     "EMBER BLESSING EARNED / Return to the sanctuary and press "
                             + settings.controls.label(INTERACT));
         if (tutorial != null) return;
-        WaveDirector.Spawn spawn = director.update(dt, enemies.size());
+        boolean pendingRescue =
+                progress.fieldEvent().kind() == FieldEvent.Kind.SURVIVOR
+                        && progress.fieldEvent().visible();
+        WaveDirector.Spawn spawn =
+                director.update(
+                        pendingRescue && enemies.isEmpty() && director.remaining() == 0 ? 0 : dt,
+                        enemies.size());
         if (director.wave() != wave) {
             wave = director.wave();
             progress.fieldEvent().begin(wave);
@@ -1700,7 +1684,7 @@ public class Game {
                             random.nextFloat(),
                             progress.difficulty()));
         nextWave = director.rest();
-        if (director.levelCleared(enemies.size()) && !player.isAttacking()) {
+        if (director.levelCleared(enemies.size()) && !player.isAttacking() && !pendingRescue) {
             heroShots.clear();
             projectiles.clear();
             bossHazards.clear();
@@ -1769,6 +1753,7 @@ public class Game {
             sceneManager.getOpenScene().getCameraController().impact(isBoss ? .18f : .11f);
             hitPause = Math.max(hitPause, isBoss ? .08f : .05f);
             audio.play("parry");
+            player.triggerDeflectReaction();
             return;
         }
         if (tutorial != null) {
@@ -1817,7 +1802,6 @@ public class Game {
         progress.fieldEvent().resetForTravel();
         player.resetCombat();
         player.getPosition().x(0).y(0).z(4);
-        storyTime = 12;
         outcomeTime = 0;
         inventory = workshop = false;
         state = GameState.PLAYING;
@@ -1832,7 +1816,6 @@ public class Game {
         }
         director.advanceLevel();
         progress.recoveryWisps().clear();
-        storyTime = 12;
         inventory = workshop = false;
         fallen.clear();
         outcomeTime = 0;
@@ -2116,26 +2099,6 @@ public class Game {
             }
             drawHud();
             if (tutorial != null && !inventory && !workshop) drawTutorial();
-            if (tutorial == null
-                    && storyTime > 0
-                    && state == GameState.PLAYING
-                    && !inventory
-                    && !workshop) {
-                int pw = 400;
-                int textW = pw - 36;
-                int textH = Menu.wrappedHeight(chapter().story(), textW, 14);
-                int ph = textH + 68;
-                int px = GetScreenWidth() - pw - 20;
-                int py = 210;
-                Menu.panel(px, py, pw, ph);
-                Menu.text(
-                        "CHAPTER " + (chapterIndex() + 1) + " / " + chapter().title(),
-                        px + 18,
-                        py + 16,
-                        15,
-                        Menu.GOLD);
-                Menu.wrapped(chapter().story(), px + 18, py + 42, textW, 14, Menu.TEXT);
-            }
             if ((state == GameState.LEVEL_COMPLETE || state == GameState.VICTORY) && !inventory)
                 drawChapterEnd();
             if (state == GameState.JOURNAL) drawJournal();
@@ -2205,7 +2168,11 @@ public class Game {
         assets.pass(renderer.shadowShader, true);
         if (state == GameState.CITADEL) {
             citadelHub.prepareLighting(assets);
-            citadelHub.drawShadowArchitecture();
+            citadelHub.drawShadowWorld(
+                    time,
+                    player.getPosition().x(),
+                    player.getPosition().z(),
+                    progress.rescuedSurvivors());
             drawActors(true);
         } else {
             assets.drawEnvironment(chapterIndex(), time);
@@ -2420,30 +2387,12 @@ public class Game {
         }
     }
 
-    /** Waiting for the first arrival is preparation, not a playable "wave zero". */
-    private String waveProgressText(int wavesLeft) {
-        if (tutorial != null)
-            return "LESSON " + (tutorial.step().ordinal() + 1) + " OF " + tutorial.lessonCount();
-        if (wave < chapter().first())
-            return chapter().bossOnly()
-                    ? "BOSS APPROACHING"
-                    : "PREPARING / " + chapter().waves() + " WAVES";
-        if (chapter().bossOnly()) return "BOSS ONLY / " + enemies.size() + " HOSTILES";
-        return "WAVE "
-                + (wave - chapter().first() + 1)
-                + " / "
-                + chapter().waves()
-                + " - "
-                + wavesLeft
-                + " LEFT";
-    }
-
     private void drawHud() {
         int w = GetScreenWidth(), h = GetScreenHeight();
         boolean compact = w < 1000;
         int chapterCenter = compact ? (w + 216 - 140) / 2 : w / 2;
         int top = chapterCenter - (compact ? 116 : 130);
-        Menu.panel(top, 20, compact ? 232 : 260, 82);
+        Menu.panel(top, 20, compact ? 232 : 260, 86);
         Menu.center(
                 tutorial != null
                         ? "TUTORIAL / SAFE PRACTICE"
@@ -2452,32 +2401,44 @@ public class Game {
                 29,
                 compact ? 11 : 14,
                 Menu.GOLD);
-        int left =
-                chapter().waves()
-                        - chapter()
-                                .cleared(
-                                        wave,
-                                        director.remaining(),
-                                        enemies.size(),
-                                        director.total());
-        Menu.center(waveProgressText(left), chapterCenter, 54, compact ? 12 : 14, Menu.TEXT);
+        EncounterStatus encounter =
+                EncounterStatus.of(
+                        chapter(),
+                        wave,
+                        director.remaining(),
+                        enemies.size(),
+                        director.total(),
+                        nextWave,
+                        progress.fieldEvent().kind() == FieldEvent.Kind.SURVIVOR
+                                && progress.fieldEvent().visible(),
+                        state == GameState.LEVEL_COMPLETE || state == GameState.VICTORY);
         Menu.center(
                 tutorial != null
-                        ? "No raids / Your campaign is safe"
-                        : state == GameState.LEVEL_COMPLETE || state == GameState.VICTORY
-                                ? "THE PRIMORDIAL BEACON ENDURES"
-                                : director.remaining() > 0
-                                        ? director.remaining() + " frost legions approaching"
-                                        : enemies.isEmpty()
-                                                ? WaveFormation.label(wave + 1)
-                                                        + " / "
-                                                        + (int) Math.ceil(nextWave)
-                                                        + "s"
-                                                : "Hold the sanctuary perimeter",
+                        ? "LESSON "
+                                + (tutorial.step().ordinal() + 1)
+                                + " OF "
+                                + tutorial.lessonCount()
+                        : encounter.title(),
                 chapterCenter,
-                77,
-                compact ? 9 : 11,
-                Menu.MUTED);
+                54,
+                compact ? 12 : 14,
+                Menu.TEXT);
+        String encounterDetail =
+                tutorial != null ? "No raids / Your campaign is safe" : encounter.detail();
+        int detailSize = compact ? 11 : 13;
+        while (detailSize > 10 && Menu.measure(encounterDetail, detailSize) > (compact ? 208 : 236))
+            detailSize--;
+        Menu.center(encounterDetail, chapterCenter, 77, detailSize, Menu.MUTED);
+        if (tutorial == null) {
+            int barWidth = compact ? 204 : 232;
+            DrawRectangle(chapterCenter - barWidth / 2, 96, barWidth, 3, Fade(Menu.LINE, .35f));
+            DrawRectangle(
+                    chapterCenter - barWidth / 2,
+                    96,
+                    Math.round(barWidth * encounter.clearedFraction()),
+                    3,
+                    Menu.TEAL);
+        }
         int currencyY = 20;
         Menu.panel(w - 156, currencyY, 140, 48);
         Menu.icon("crystal", w - 144, currencyY + 14, 20, Menu.GOLD);
@@ -2538,7 +2499,7 @@ public class Game {
                         : "BEACON " + String.format("%.0f", sanctuaryDistance()) + "m / RADAR";
         Menu.text(sanctuaryCue, 28, sy + 62, compact ? 8 : 9, nearBase() ? Menu.TEAL : Menu.MUTED);
         boolean hasSpire = progress.baseLevel() >= 2 || progress.spireLevel() >= 2;
-        if (hasSpire && !compact && storyTime <= 0) {
+        if (hasSpire && !compact) {
             float maxCooldown = SanctuaryWard.interval(progress.spireLevel());
             float range = SanctuaryWard.range(progress.spireLevel());
             Menu.panel(16, sy + 86, 208, 43);
@@ -3101,7 +3062,6 @@ public class Game {
     private void drawMainMenu() {
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(Menu.INK, .55f));
         switch (mainMenuScreen.draw(settings.playerName, Files.exists(savePath), menuMessage)) {
-            case PLAY_TOGETHER -> coopRequested = true;
             case NEW_GAME -> requestNewGame();
             case LOAD_GAME -> loadCurrent();
             case QUIT -> quitRequested = true;
@@ -3827,13 +3787,15 @@ public class Game {
     }
 
     private void closeSettings() {
+        soundPreviewPending = false;
         persistSettings();
         rebinding = null;
         state = settingsReturn;
     }
 
     private void applySettings() {
-        audio.configure(settings.volume, settings.muted);
+        audio.configure(
+                settings.volume, settings.musicVolume, settings.effectsVolume, settings.muted);
         sceneManager.getOpenScene().getCameraController().setSensitivity(settings.sensitivity);
         renderer.quality(settings.highQuality);
         if (IsWindowFullscreen() != settings.fullscreen) ToggleFullscreen();
@@ -3848,47 +3810,49 @@ public class Game {
         }
     }
 
+    private boolean soundPreviewPending;
+    private final SettingsSlider masterSlider = new SettingsSlider();
+    private final SettingsSlider musicSlider = new SettingsSlider();
+    private final SettingsSlider effectsSlider = new SettingsSlider();
+
     private void drawSettings() {
         dim();
         int x = (GetScreenWidth() - 820) / 2, y = (GetScreenHeight() - 650) / 2;
         Menu.panel(x - 20, y - 12, 860, 674);
         Menu.text("SETTINGS", x, y, 34, Menu.TEXT);
-        Menu.text(
-                "Master audio " + Math.round(settings.volume * 100) + "%",
-                x,
-                y + 68,
-                20,
-                Menu.TEXT);
-        if (Menu.button("-", x + 240, y + 54, 50, true)) {
-            settings.volume = Math.max(0, settings.volume - .1f);
+        float master = masterSlider.draw("MASTER", x, y + 64, 350, settings.volume);
+        float music = musicSlider.draw("MUSIC", x + 430, y + 64, 350, settings.musicVolume);
+        float effects =
+                effectsSlider.draw("SOUND EFFECTS", x, y + 118, 350, settings.effectsVolume);
+        if (master != settings.volume
+                || music != settings.musicVolume
+                || effects != settings.effectsVolume) {
+            soundPreviewPending |= master != settings.volume || effects != settings.effectsVolume;
+            settings.volume = master;
+            settings.musicVolume = music;
+            settings.effectsVolume = effects;
             applySettings();
         }
-        if (Menu.button("+", x + 300, y + 54, 50, true)) {
-            settings.volume = Math.min(1, settings.volume + .1f);
-            applySettings();
+        if (soundPreviewPending && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             audio.play("hit");
+            soundPreviewPending = false;
         }
-        if (Menu.button(settings.muted ? "UNMUTE" : "MUTE", x + 430, y + 54, 180, true)) {
+        if (Menu.button(settings.muted ? "UNMUTE" : "MUTE", x + 640, y, 180, true)) {
             settings.muted = !settings.muted;
             applySettings();
         }
         Menu.text(
-                "Camera speed " + Math.round(settings.sensitivity * 100),
-                x,
-                y + 122,
-                20,
+                "CAMERA SPEED / " + Math.round(settings.sensitivity * 100),
+                x + 430,
+                y + 132,
+                14,
                 Menu.TEXT);
-        if (Menu.button("-", x + 240, y + 108, 50, true)) {
+        if (Menu.button("-", x + 650, y + 116, 50, true)) {
             settings.sensitivity = Math.max(.05f, settings.sensitivity - .05f);
             applySettings();
         }
-        if (Menu.button("+", x + 300, y + 108, 50, true)) {
+        if (Menu.button("+", x + 710, y + 116, 50, true)) {
             settings.sensitivity = Math.min(.5f, settings.sensitivity + .05f);
-            applySettings();
-        }
-        if (Menu.button(
-                settings.fullscreen ? "WINDOWED" : "FULLSCREEN", x + 430, y + 108, 260, true)) {
-            settings.fullscreen = !settings.fullscreen;
             applySettings();
         }
         Menu.text(
@@ -3900,13 +3864,16 @@ public class Game {
         Controls.Action[] actions = Controls.Action.values();
         for (int i = 0; i < actions.length; i++) {
             Controls.Action action = actions[i];
+            int columns =
+                    i / 3 == actions.length / 3 && actions.length % 3 != 0 ? actions.length % 3 : 3;
+            int buttonWidth = (820 - (columns - 1) * 20) / columns;
             if (Menu.button(
                     action.label
                             + " / "
                             + (rebinding == action ? "PRESS KEY" : settings.controls.label(action)),
-                    x + (i % 3) * 280,
+                    x + (i % 3) * (buttonWidth + 20),
                     y + 210 + (i / 3) * 46,
-                    260,
+                    buttonWidth,
                     rebinding == null)) {
                 rebinding = action;
                 menuMessage = "Press a key for " + action.label + " (ESC cancels).";
@@ -3925,10 +3892,21 @@ public class Game {
             applySettings();
         }
         Menu.text(menuMessage, x, y + 542, 15, Menu.GOLD);
+        if (Menu.button(
+                settings.fullscreen ? "WINDOWED" : "FULLSCREEN",
+                x + 580,
+                y + 580,
+                240,
+                rebinding == null)) {
+            settings.fullscreen = !settings.fullscreen;
+            applySettings();
+        }
+
         if (Menu.button("BACK / SAVE", x, y + 580, 260, rebinding == null)) closeSettings();
         if (Menu.button("RESTORE DEFAULTS", x + 280, y + 580, 280, rebinding == null)) {
             settings.controls.reset();
             settings.volume = .6f;
+            settings.musicVolume = settings.effectsVolume = 1;
             settings.sensitivity = .15f;
             settings.muted = false;
             settings.fullscreen = false;
@@ -4142,6 +4120,11 @@ public class Game {
     void openWorkshop() {
         workshop = true;
         workshopScreen.setMentor(progress != null ? progress.heroClass() : null);
+    }
+
+    void openSupplies() {
+        workshop = true;
+        workshopScreen.setMentor(null);
     }
 
     boolean isInventoryOpen() {

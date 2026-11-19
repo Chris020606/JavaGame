@@ -64,6 +64,10 @@ public final class CombatDiscipline {
         return parry > 0;
     }
 
+    public float parryWindow() {
+        return parry;
+    }
+
     public float recovery() {
         return recovery;
     }

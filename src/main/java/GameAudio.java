@@ -5,10 +5,11 @@ import java.util.HashMap;
 /** Streamed original chapter scores with smooth scene/intensity crossfades. */
 public final class GameAudio implements AutoCloseable {
     private final HashMap<String, Sound> sounds = new HashMap<>();
+    private final AudioCueGate cues = new AudioCueGate();
     private final Music[] music = new Music[8];
     private final float[] gains = new float[8];
     private boolean ready, muted;
-    private float volume = .6f, duck, enrageIntensity;
+    private float volume = .6f, musicVolume = 1, effectsVolume = 1, duck, enrageIntensity;
     private int variation, theme = 4;
     private java.util.function.Consumer<String> cueObserver;
 
@@ -46,7 +47,7 @@ public final class GameAudio implements AutoCloseable {
             Sound sound = LoadSound(assets.AssetPaths.path("resources/audio/" + name + ".wav"));
             if (sound.frameCount() > 0) {
                 sounds.put(name, sound);
-                SetSoundVolume(sound, volume * .65f);
+                SetSoundVolume(sound, volume * effectsVolume * .65f);
             }
         }
         String[] themes = {
@@ -70,6 +71,7 @@ public final class GameAudio implements AutoCloseable {
 
     public void update(
             float dt, int chapter, boolean title, boolean battle, boolean boss, boolean enraged) {
+        cues.update(dt);
         theme = title ? 4 : boss ? 6 : Math.max(0, Math.min(3, chapter));
         duck = Math.max(0, duck - dt);
         float blend = 1 - (float) Math.exp(-Math.max(0, dt) * 2.4f);
@@ -77,7 +79,6 @@ public final class GameAudio implements AutoCloseable {
         for (int i = 0; i < music.length; i++)
             if (music[i] != null) {
                 if (i == 6) SetMusicPitch(music[i], 1 + enrageIntensity * .035f);
-                UpdateMusicStream(music[i]);
                 float target =
                         i == theme
                                 ? (battle && !boss && !title ? 0 : 1)
@@ -85,11 +86,20 @@ public final class GameAudio implements AutoCloseable {
                                         ? 0
                                         : i == 5 && battle && !boss && !title ? 1 : 0;
                 gains[i] += (target - gains[i]) * blend;
+                // Only decode audible tracks and the two sides of a crossfade.
+                if (target > 0 || gains[i] > .001f) {
+                    if (!IsMusicStreamPlaying(music[i])) PlayMusicStream(music[i]);
+                    UpdateMusicStream(music[i]);
+                } else {
+                    gains[i] = 0;
+                    if (IsMusicStreamPlaying(music[i])) StopMusicStream(music[i]);
+                }
                 SetMusicVolume(
                         music[i],
                         muted
                                 ? 0
                                 : volume
+                                        * musicVolume
                                         * (i == 7 ? .34f : i == 5 ? .72f : .65f)
                                         * gains[i]
                                         * (duck > 0 ? .78f : 1));
@@ -99,7 +109,7 @@ public final class GameAudio implements AutoCloseable {
     public void play(String name) {
         if (name.equals("swing") || name.equals("hit")) name += variation++ % 3;
         if (cueObserver != null) cueObserver.accept(name);
-        if (muted || !ready) return;
+        if (muted || !ready || !cues.allow(name)) return;
         Sound sound = sounds.get(name);
         if (sound != null) {
             if (name.equals("bow") || name.equals("magic"))
@@ -110,10 +120,16 @@ public final class GameAudio implements AutoCloseable {
     }
 
     public void configure(float volume, boolean mute) {
+        configure(volume, musicVolume, effectsVolume, mute);
+    }
+
+    public void configure(float volume, float musicVolume, float effectsVolume, boolean mute) {
         this.volume = volume;
+        this.musicVolume = musicVolume;
+        this.effectsVolume = effectsVolume;
         muted = mute;
         for (Sound sound : sounds.values()) {
-            SetSoundVolume(sound, volume * .65f);
+            SetSoundVolume(sound, volume * effectsVolume * .65f);
             if (muted) StopSound(sound);
         }
         // Apply immediately, including while a menu or paused overlay is open.
@@ -121,7 +137,12 @@ public final class GameAudio implements AutoCloseable {
             if (music[i] != null)
                 SetMusicVolume(
                         music[i],
-                        muted ? 0 : volume * (i == 7 ? .34f : i == 5 ? .72f : .65f) * gains[i]);
+                        muted
+                                ? 0
+                                : volume
+                                        * musicVolume
+                                        * (i == 7 ? .34f : i == 5 ? .72f : .65f)
+                                        * gains[i]);
     }
 
     public void toggle() {
@@ -151,8 +172,16 @@ public final class GameAudio implements AutoCloseable {
     }
 
     boolean musicStreaming() {
-        for (Music track : music) if (track != null && !IsMusicStreamPlaying(track)) return false;
+        for (int i = 0; i < music.length; i++)
+            if (music[i] != null && gains[i] > .001f && !IsMusicStreamPlaying(music[i]))
+                return false;
         return loadedMusic() == music.length;
+    }
+
+    int activeStreams() {
+        int active = 0;
+        for (Music track : music) if (track != null && IsMusicStreamPlaying(track)) active++;
+        return active;
     }
 
     @Override

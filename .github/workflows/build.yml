@@ -80,6 +80,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           pattern: Outpost-*
@@ -90,4 +91,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" release/* --verify-tag --title "Outpost $RELEASE_TAG" --generate-notes
+        run: |
+          NOTES="docs/releases/$RELEASE_TAG.md"
+          if [ -f "$NOTES" ]; then
+            gh release create "$RELEASE_TAG" release/* --verify-tag --title "Outpost $RELEASE_TAG" --notes-file "$NOTES"
+          else
+            gh release create "$RELEASE_TAG" release/* --verify-tag --title "Outpost $RELEASE_TAG" --generate-notes
+          fi

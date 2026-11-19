@@ -16,7 +16,6 @@ These open a real Raylib window and may take minutes. Run native scenarios **seq
 
 ```sh
 ./gradlew inputSmokeTest
-./gradlew coopNativeTest
 ```
 
 The full input smoke uses temporary player data and covers menus, tutorials, combat, inventory, saves and class presentation. Co-op native checks launch two game processes and exercise multiple class pairings. They are automated scenarios, not a replacement for a two-human balance session.
@@ -33,10 +32,8 @@ Focused scenarios are available when iterating:
 ./gradlew inputSmokeTest --args=--art-review
 ./gradlew inputSmokeTest --args=--ownership-review
 ./gradlew inputSmokeTest --args=--boss-regression
-./gradlew coopNativeTest --args=--quick
 ```
 
-See the flag dispatch in `InputSmokeTest` for all supported scenarios. Captures are written under `build/`; inspect them rather than assuming a successful render means a good layout. The two-client tests also save their capture/log paths there.
 
 To launch a short packaged smoke on macOS:
 

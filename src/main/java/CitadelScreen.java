@@ -51,7 +51,7 @@ public final class CitadelScreen {
                 Menu.TEAL);
 
         if (hub.activeNpc() == null && !hub.isTeleporting()) {
-            CitadelGuide.Destination destination = CitadelGuide.destination(progress);
+            CitadelGuide.Destination destination = CityMinimap.destination(progress);
             int guideWidth = 340, gx = 16;
             Menu.panel(gx, 88, guideWidth, 90);
             Menu.text("NEXT STEP", gx + 16, 99, 11, Menu.TEAL);
@@ -115,16 +115,14 @@ public final class CitadelScreen {
             // Check for nearby NPC or Portal prompt
             CitadelNpc nearby = hub.checkNearbyNpc(playerX, playerZ, progress.rescuedSurvivors());
             if (nearby != null) {
-                drawInteractionPrompt(
+                if (drawInteractionPrompt(
                         "["
                                 + controls.label(Controls.Action.INTERACT)
                                 + "] TALK TO "
-                                + nearby.npcName().toUpperCase()
-                                + " ["
-                                + nearby.title()
-                                + "]",
+                                + nearby.npcName().toUpperCase(),
                         w,
-                        h);
+                        h,
+                        true)) hub.openNpc(nearby, progress);
             } else if (hub.isNearPortal(playerX, playerZ)) {
                 if (!progress.hasWeapon()) {
                     drawInteractionPrompt(
@@ -157,36 +155,71 @@ public final class CitadelScreen {
     }
 
     private void drawInteractionPrompt(String text, int w, int h) {
+        drawInteractionPrompt(text, w, h, false);
+    }
+
+    private boolean drawInteractionPrompt(String text, int w, int h, boolean clickable) {
         int pw = Menu.measure(text, 14) + 64;
         int px = (w - pw) / 2;
         int py = h - 110;
         Menu.panel(px, py, pw, 46);
         Menu.icon("crown", px + 14, py + 12, 20, Menu.GOLD);
-        Menu.text(text, px + 44, py + 14, 14, Menu.GOLD);
+        Vector2 pointer = GetMousePosition();
+        boolean hover =
+                clickable
+                        && pointer.x() >= px
+                        && pointer.x() <= px + pw
+                        && pointer.y() >= py
+                        && pointer.y() <= py + 46;
+        if (hover) DrawRectangleLines(px - 1, py - 1, pw + 2, 48, Menu.GOLD);
+        Menu.text(text, px + 44, py + 14, 14, hover ? Menu.TEXT : Menu.GOLD);
+        return hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     }
 
     private Action drawDialogueModal(
             CitadelHub hub, CitadelNpc npc, Progression progress, int w, int h, int chapterIndex) {
         Action action = Action.NONE;
-        int mw = 740, mh = 350;
+        int mw = Math.min(740, w - 48);
+        int textSize = 18;
+        int bodyHeight = Menu.wrappedHeight(hub.npcDialogue(), mw - 48, textSize);
+        int mh = Math.min(h - 48, Math.max(350, bodyHeight + 244));
+        while (textSize > 14 && bodyHeight > mh - 244) {
+            textSize--;
+            bodyHeight = Menu.wrappedHeight(hub.npcDialogue(), mw - 48, textSize);
+        }
         int mx = (w - mw) / 2, my = (h - mh) / 2;
 
         DrawRectangle(0, 0, w, h, Fade(Menu.INK, .45f));
         Menu.panel(mx, my, mw, mh);
 
         // Header
-        Menu.icon("sword", mx + 24, my + 20, 24, Menu.GOLD);
+        String symbol =
+                switch (npc) {
+                    case BLACKSMITH -> "sword";
+                    case ARCANIST -> "staff";
+                    case ARCHER -> "bow";
+                    case CARAVAN_TRADER -> "bag";
+                    case COMMANDER -> "crown";
+                    default -> "heart";
+                };
+        Menu.icon(symbol, mx + 24, my + 20, 24, Menu.GOLD);
         Menu.text(npc.npcName().toUpperCase(), mx + 56, my + 20, 20, Menu.GOLD);
-        Menu.text("<" + npc.title() + ">", mx + 56, my + 44, 12, Menu.TEAL);
+        Menu.text(npc.title(), mx + 56, my + 46, 13, Menu.TEAL);
         DrawLine(mx + 20, my + 68, mx + mw - 20, my + 68, Menu.LINE);
 
         // Spoken Dialogue
-        Menu.wrapped(hub.npcDialogue(), mx + 24, my + 86, mw - 48, 16, Menu.TEXT);
+        Menu.wrapped(hub.npcDialogue(), mx + 24, my + 86, mw - 48, textSize, Menu.TEXT);
 
-        DrawLine(mx + 20, my + 204, mx + mw - 20, my + 204, Menu.LINE);
+        int btnY = my + mh - 132;
+        DrawLine(mx + 20, btnY - 14, mx + mw - 20, btnY - 14, Menu.LINE);
 
-        // Interactive Options
-        int btnY = my + 218;
+        // Interactive options stay below the measured paragraph, never over its last lines.
+        Vector2 pointer = GetMousePosition();
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)
+                && (pointer.x() < mx
+                        || pointer.x() > mx + mw
+                        || pointer.y() < my
+                        || pointer.y() > my + mh)) return Action.CLOSE_DIALOGUE;
         boolean matchesMentor = npc.mentorClass() == progress.heroClass();
 
         switch (npc) {
@@ -207,7 +240,12 @@ public final class CitadelScreen {
                                         + " armor!");
                         }
                     } else {
-                        Menu.button("BLOCKED", mx + 24, btnY, 330, false);
+                        Menu.button(
+                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
+                                mx + 24,
+                                btnY,
+                                330,
+                                false);
                     }
                 } else {
                     if (matchesMentor) {
@@ -215,13 +253,18 @@ public final class CitadelScreen {
                             action = Action.OPEN_FORGE;
                         }
                     } else {
-                        Menu.button("BLOCKED", mx + 24, btnY, 330, false);
+                        Menu.button(
+                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
+                                mx + 24,
+                                btnY,
+                                330,
+                                false);
                     }
                 }
-                if (Menu.button("LORE", mx + 386, btnY, 330, true)) {
+                if (Menu.button("TALK", mx + 386, btnY, 330, true)) {
                     hub.setLoreDialogue(npc.lore());
                 }
-                if (Menu.button("FAREWELL [ESC]", mx + 24, btnY + 54, 692, true)) {
+                if (Menu.button("LEAVE [ESC]", mx + 24, btnY + 54, 692, true)) {
                     action = Action.CLOSE_DIALOGUE;
                 }
             }
@@ -241,7 +284,12 @@ public final class CitadelScreen {
                                             + " craft greater staves.");
                         }
                     } else {
-                        Menu.button("BLOCKED", mx + 24, btnY, 330, false);
+                        Menu.button(
+                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
+                                mx + 24,
+                                btnY,
+                                330,
+                                false);
                     }
                 } else {
                     if (matchesMentor) {
@@ -249,13 +297,18 @@ public final class CitadelScreen {
                             action = Action.OPEN_FORGE;
                         }
                     } else {
-                        Menu.button("BLOCKED", mx + 24, btnY, 330, false);
+                        Menu.button(
+                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
+                                mx + 24,
+                                btnY,
+                                330,
+                                false);
                     }
                 }
-                if (Menu.button("LORE", mx + 386, btnY, 330, true)) {
+                if (Menu.button("TALK", mx + 386, btnY, 330, true)) {
                     hub.setLoreDialogue(npc.lore());
                 }
-                if (Menu.button("FAREWELL [ESC]", mx + 24, btnY + 54, 692, true)) {
+                if (Menu.button("LEAVE [ESC]", mx + 24, btnY + 54, 692, true)) {
                     action = Action.CLOSE_DIALOGUE;
                 }
             }
@@ -263,10 +316,10 @@ public final class CitadelScreen {
                 if (Menu.primaryButton("BROWSE TORVALD'S GOODS", mx + 24, btnY, 330)) {
                     action = Action.OPEN_SUPPLIES;
                 }
-                if (Menu.button("LORE", mx + 386, btnY, 330, true)) {
+                if (Menu.button("TALK", mx + 386, btnY, 330, true)) {
                     hub.setLoreDialogue(npc.lore());
                 }
-                if (Menu.button("FAREWELL [ESC]", mx + 24, btnY + 54, 692, true)) {
+                if (Menu.button("LEAVE [ESC]", mx + 24, btnY + 54, 692, true)) {
                     action = Action.CLOSE_DIALOGUE;
                 }
             }
@@ -286,7 +339,12 @@ public final class CitadelScreen {
                                         + " craft heavier recurve bows and crossbows.");
                         }
                     } else {
-                        Menu.button("BLOCKED", mx + 24, btnY, 330, false);
+                        Menu.button(
+                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
+                                mx + 24,
+                                btnY,
+                                330,
+                                false);
                     }
                 } else {
                     if (matchesMentor) {
@@ -294,19 +352,29 @@ public final class CitadelScreen {
                             action = Action.OPEN_FORGE;
                         }
                     } else {
-                        Menu.button("BLOCKED", mx + 24, btnY, 330, false);
+                        Menu.button(
+                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
+                                mx + 24,
+                                btnY,
+                                330,
+                                false);
                     }
                 }
-                if (Menu.button("LORE", mx + 386, btnY, 330, true)) {
+                if (Menu.button("TALK", mx + 386, btnY, 330, true)) {
                     hub.setLoreDialogue(npc.lore());
                 }
-                if (Menu.button("FAREWELL [ESC]", mx + 24, btnY + 54, 692, true)) {
+                if (Menu.button("LEAVE [ESC]", mx + 24, btnY + 54, 692, true)) {
                     action = Action.CLOSE_DIALOGUE;
                 }
             }
             case COMMANDER -> {
                 if (!progress.hasWeapon()) {
-                    Menu.button("BLOCKED", mx + 24, btnY, 692, false);
+                    Menu.button(
+                            "RECEIVE YOUR FIRST WEAPON BEFORE DEPLOYING",
+                            mx + 24,
+                            btnY,
+                            692,
+                            false);
                 } else {
                     String deployLabel =
                             "DEPLOY EXPEDITION: CHAPTER "
@@ -317,15 +385,15 @@ public final class CitadelScreen {
                         action = Action.DEPLOY_MISSION;
                     }
                 }
-                if (Menu.button("SCOUT INTEL", mx + 24, btnY + 52, 330, true)) {
+                if (Menu.button("TALK", mx + 24, btnY + 52, 330, true)) {
                     hub.setLoreDialogue(npc.lore());
                 }
-                if (Menu.button("FAREWELL [ESC]", mx + 386, btnY + 52, 330, true)) {
+                if (Menu.button("LEAVE [ESC]", mx + 386, btnY + 52, 330, true)) {
                     action = Action.CLOSE_DIALOGUE;
                 }
             }
             default -> {
-                if (Menu.primaryButton("HEAR SURVIVOR'S STORY", mx + 24, btnY, 330)) {
+                if (Menu.primaryButton("TALK", mx + 24, btnY, 330)) {
                     hub.setLoreDialogue(npc.lore());
                 }
                 if (Menu.button("OFFER WARDEN'S BLESSING", mx + 386, btnY, 330, true)) {
@@ -334,7 +402,7 @@ public final class CitadelScreen {
                                     + " Primordial Beacon and your courage keep us alive,"
                                     + " Warden!'");
                 }
-                if (Menu.button("FAREWELL [ESC]", mx + 24, btnY + 52, 692, true)) {
+                if (Menu.button("LEAVE [ESC]", mx + 24, btnY + 52, 692, true)) {
                     action = Action.CLOSE_DIALOGUE;
                 }
             }

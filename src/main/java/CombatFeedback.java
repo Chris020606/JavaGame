@@ -10,8 +10,9 @@ public final class CombatFeedback {
         final Color color;
         final float lane;
         final boolean crit;
+        boolean reward;
         final float initialTime;
-        final int critWidth, largeWidth, smallWidth;
+        final int critWidth, largeWidth, smallWidth, rewardWidth;
         float time;
 
         Popup(float x, float z, String text, Color color, float lane) {
@@ -27,6 +28,7 @@ public final class CombatFeedback {
             this.crit = crit;
             this.initialTime = crit ? 1.35f : 1.05f;
             this.time = this.initialTime;
+            this.rewardWidth = Menu.measure(text, 15);
             this.critWidth = Menu.measure(text, 32);
             this.largeWidth = Menu.measure(text, 26);
             this.smallWidth = Menu.measure(text, 21);
@@ -46,6 +48,12 @@ public final class CombatFeedback {
         labels.add(new Popup(x, z, text, color, (serial++ % 3 - 1) * .28f, crit));
     }
 
+    /** Rewards use a quieter lane below damage and take one label rather than two per kill. */
+    public void reward(float x, float z, int xp, int crystals) {
+        add(x, z, "+" + xp + " XP  /  +" + crystals + " CRYSTALS", Menu.TEAL);
+        labels.getLast().reward = true;
+    }
+
     public void update(float dt) {
         labels.removeIf(p -> {
             p.time -= dt;
@@ -62,7 +70,15 @@ public final class CombatFeedback {
         for (Popup p : labels) {
             float age = p.initialTime - p.time;
             float alpha = Math.min(1.0f, p.time * 2.8f);
-            if (p.crit) {
+            if (p.reward) {
+                Vector2 point =
+                        GetWorldToScreen(anchor.x(p.x + p.lane).y(1.5f + age * .8f).z(p.z), camera);
+                int size = 15;
+                int x = Math.round(point.x()) - p.rewardWidth / 2;
+                int y = Math.round(point.y());
+                Menu.text(p.text, x + 1, y + 1, size, Fade(Menu.INK, alpha));
+                Menu.text(p.text, x, y, size, Fade(p.color, alpha));
+            } else if (p.crit) {
                 // WoW-style crit arc: leaps higher and arches slightly outward
                 float yUp = 2.4f + age * 2.2f - (age * age * 0.9f);
                 float xDrift = p.x + p.lane * (1.0f + age * 0.9f);

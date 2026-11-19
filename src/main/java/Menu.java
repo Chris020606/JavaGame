@@ -127,6 +127,19 @@ public class Menu {
         DrawTextEx(font(), text, new Vector2().x(x).y(y), size * 1.15f, .5f, color);
     }
 
+    /**
+     * Fit narrow UI labels without letting long enemy names or translated copy cross their frame.
+     */
+    public static void fittedText(String value, int x, int y, int width, int size, Color color) {
+        while (size > 10 && measure(value, size) > width) size--;
+        if (measure(value, size) > width) {
+            while (value.length() > 1 && measure(value + "...", size) > width)
+                value = value.substring(0, value.length() - 1);
+            value += "...";
+        }
+        text(value, x, y, size, color);
+    }
+
     public static void wrapped(String text, int x, int y, int width, int size, Color color) {
         String line = "";
         int row = y;

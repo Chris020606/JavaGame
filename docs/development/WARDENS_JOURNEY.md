@@ -196,3 +196,157 @@ Inventory preview now has an aspect-matched 960x1040 render target and revised f
 Prop placement subtracts cached model-bound minimum Y (scaled), grounding props without changing terrain/building origins. City trees within 4.8m of road-tile centres are removed. Citizen collision clearance around buildings is widened; blocked starting positions search for nearby clear ground. CitizenRoutineTest simulates all six routines for a minute and verifies every position stays outside the city obstacles. Existing Antigravity EnemyCombatBehavior code is preserved.
 
 Validation: full unit suite, native city/inventory inspection and packaging; field-survivor-shared-model.png exercises the new mission render path. Historical boss-loot assumptions in any other native scenarios must be updated before claiming the entire historical input suite passes.
+
+## Optional city service tracking
+
+Clicking a city radar service marker now tracks that NPC in the existing direction/distance guide. A gold ring and line identify the target on the radar; right-clicking within the circle clears tracking. Hit testing chooses the nearest marker inside eight pixels. Gatekeeper selection points to the actual portal rather than the NPC's offset position. Survivor markers are not service targets. Unarmed characters retain their mandatory mentor objective even if a service marker is selected. Tracking resets when the Progression owner changes and is not saved or tied to purchases.
+
+CityNavigationTest covers merchant guidance, clearing, unchanged currency and starter guidance. CitadelVisualInspection injects mouse clicks to select Torvald, verifies the destination, captures city-tracked-merchant.png, then clears tracking with a right-click. This work does not modify enemy, combat or escort simulation files.
+
+## Merchant upgrade previews
+
+CaravanOffer derives displayed values and purchase labels from existing Progression prices, ranks and actual class resource. Cards show current-to-next maximum health, stamina/mana capacity or resource recovery. Unaffordable buttons state the exact missing crystal amount; maxed ranks show no further gain. Hover text explains permanence and that no equipment slot is consumed. Purchase feedback names the acquired rank and confirms activation. This changes neither prices nor gameplay effects. CaravanOfferTest verifies class labels, non-mutating previews, purchase agreement and cap presentation.
+
+## Owned upgrade discovery
+
+Inventory header now has an Upgrades count/filter alongside Character Stats. GearUpgrade considers only owned weapons with higher actual armed power or owned armor with higher protection than the currently equipped slot. It excludes supplies, unowned items and equal/downgrade pieces. Better owned items carry a gold plus marker. The filter changes no equipment automatically; equip still requires the normal action. Clicking equipped slots exits the filter so inspecting current gear remains reliable.
+
+GearUpgradeTest covers ownership, supplies, downgrade exclusion and count changes after equipping. CitadelVisualInspection clicks the upgrade filter, equips the suggested owned helmet via the detail action, asserts the slot, captures inventory-upgrades.png and restores the slot. No enemy/escort changes.
+
+## Inventory summary cards (2026-11-14)
+
+Replaced the paired health/power bars beneath the character preview with two compact numeric cards. Each shows its stat label, current value and exact next-level gain, using existing Progression methods. Only XP retains a thin progress line. Values shrink for unusually large saved stats to stay inside the cards. This is an InventoryGrowth presentation change; progression, equipment comparison and combat bars are unchanged. Native inspection and packaging verify the new inventory layout.
+
+## Distinct boss phase patterns
+
+BossPatterns now generates shared solo/co-op ground attacks. The Ash Warden casts a locked eruption line aligned with the boss-to-target direction (3 fields, 5 when enraged). The Hollow King casts a centre marker and an incomplete crown (5 fields, 7 when enraged), leaving an escape sector. Targets lock when cast; fields do not follow players. Normal+ warnings last at least 0.9s with 0.18s stagger; Easy uses three fields, at least 1.15s warning and 0.26s stagger, without the enrage count increase. Target centres clamp within the arena.
+
+Slams release expanding rings at 0.85s intervals: one normally, two for enraged Warden, three for enraged King. Easy keeps one. Solo and co-op use the same generator; co-op sigils target living heroes. Boss HP, rewards, move IDs and protocol are unchanged. Existing direct slam hits and other attacks remain.
+
+BossPatternsTest covers phase counts, warning/stagger, Easy constraints, arena bounds, sideways escape from the line, ring spacing and an open crown sector. Native --boss-pattern-review checks both bosses/phase casts and no damage during warning. --boss-regression preserves native enrage timing; coopNativeTest --quick covers two-client gameplay. Updated historical king-sigil count expectations to 5/7.
+
+## City return and interrupted-rescue fixes
+
+Visiting the Citadel from LEVEL_COMPLETE now performs continueCampaign once before city travel. This resets the director's completed-chapter marker and writes the next checkpoint, preventing redeployment from awarding/showing the same result again. Returning during an unfinished expedition does not consume a chapter transition.
+
+When a survivor event is still visible and the wave is otherwise clear, the wave director's inter-wave clock pauses and chapter completion is deferred. The event still updates, so it can complete or fail normally. This prevents waves 4 and 9 ending their chapters while the final rescue is unresolved, and prevents the next wave replacing an active rescue. Six opportunities remain; this does not automatically grant rescues or resurrect failed escorts.
+
+Removed the overhead market pennants and their support collisions. Buildings, as well as props, align their lowest model bound to the ground. Citizen movement now checks cached model-space building bounds (with inverse yaw/scale), in addition to coarse collision obstacles; blocked-start recovery remains active. Nearby interaction chooses the nearest eligible NPC, using moving citizen coordinates, rather than always preferring mentors over citizens.
+
+Native CitadelVisualInspection regression now verifies chapter-result/city/redeploy does not repeat completion, processes each of waves 2/4/6/7/8/9 with an unresolved rescue after the last enemy dies, completes all six escorts, and checks citizens against actual rendered building bounds. The scripted escort section exercises event completion and transitions rather than claiming a full manually played campaign. 194 unit tests and native regression/package pass.
+
+### Single-player focus and winter title screen
+
+Removed the multiplayer launcher, host/join screens, networking simulation, protocol fixtures and dedicated Gradle task. Existing single-player saves remain untouched. Updated current README and technical guides to describe the solo runtime; older development entries remain historical.
+
+Redesigned the title screen with a moonlit citadel silhouette, layered mountains and deterministic drifting snow. The primary action follows save availability, with secondary actions grouped below. Native inspection captures both 1280x800 and the minimum 1000x680 layout.
+
+### Winter title presentation refinement (2026-11-15)
+
+Expanded the single-player home screen scenery with snow-edged fortress roofs, warm animated windows, fluttering banners, a beacon glow, a mountain causeway, foreground pines, faint stars and a slowly moving aurora. Added a title crest and more restrained panel framing. The profile header now indicates saved/new journey state and truncates long names without crossing the status label. Native inspection covers new and saved appearances at 1000x680 and 1280x800 respectively. No assets, save formats or gameplay rules changed.
+
+### Interactive title sky (2026-11-15)
+
+Removed the Single Player footer label. TitleSky owns an independent three-minute menu day/night clock, sun/moon ellipse projection and mouse capture. Grabbing either body preserves the current phase; dragging through the horizon switches day/night, and release resumes time. A centre dead zone prevents angle snapping. Sky, mountain, castle and tree colors blend with daylight; stars/aurora/window glow recede during the day. No campaign clock/save changes.
+
+TitleSkyTest covers clock wrap/stall limits, opposite body visibility, lighting, both-body drag/release, off-target clicks and centre stability. Native inspection captures dawn/day/dusk/night and exercises real Raylib mouse events for both bodies without menu activation.
+
+### Fortress illustration and quiet interaction (2026-11-15)
+
+Removed the sky-drag instructional text while preserving sun/moon interaction. Rebuilt the home-screen fortress with unequal towers, a tall rear keep, roof facets and snow ledges, sparse masonry, arched mullioned windows, a crenellated curtain wall, buttresses and a portcullis gatehouse. A cliff foundation and viaduct connect it to the foreground ridge; irregular tiered pines replace repeated triangular silhouettes. Existing daylight tinting remains shared across the architecture. No new player-facing hints or labels.
+
+### Castle clearing composition (2026-11-15)
+
+Replaced the title's mountain backdrop, cliff foundation and viaduct with level snowy ground. A perspective stone path meets the gate and widens toward the foreground. Snow-edged evergreen clusters flank the castle and approach, leaving the entrance visible. Existing day/night tint and sun/moon controls are preserved. Verified title captures at both supported sizes and daylight phases via native inspection; rebuilt the desktop app.
+
+### Restore previous title composition (2026-11-15)
+
+Reverted the flat-clearing composition at the player's request. Restored the layered background mountains, original rock foundation, right-hand approach bridge/ridge and foreground pines around the detailed fortress. Day/night dragging remains, with no instruction text. This supersedes the preceding clearing entry.
+
+### Descending mountain approach, fixed castle (2026-11-15)
+
+Changed only the foreground terrain beneath the existing castle: the vertical rock/bridge becomes a broad mountain shoulder with a descending switchback path. Small 13–34px evergreens follow staggered contour elevations and increase modestly toward the foreground. Castle geometry and coordinates were compared directly against the prior file and remain identical; background mountains, title UI and sky behavior remain unchanged. Native inspection covers both sizes and day/night views; desktop package rebuilt.
+
+### Denser slope, consistent citizens and shorter introduction (2026-11-15)
+
+Expanded the title mountain's tree population from 24 to 40, with sizes 22–47px instead of 13–34px; retained castle geometry and sky/background. Citadel service NPCs now use their authored texture colors instead of extra class-colored tints. Included NPC models in the same directional shadow pass as city architecture, using matching timestamps and poses; removed nearby ground rings and artificial vertical breathing offsets.
+
+Replaced the four-page prologue with one brief card. Removed the timed chapter-story panel during combat and its legacy timer; full chapter lore remains in the journal. The spire HUD no longer waits for that removed panel's timer. Native city/title/story captures and all unit tests cover the revised build.
+
+### Encounter, audio and combat-readability polish (2026-11-15)
+
+- Added independent master/music/effects sliders with pointer capture, live mixing, release preview, saved values and legacy defaults of 1 for the two new buses. Settings remains version 1 with optional keys. Balanced incomplete key-binding rows across the full available width.
+- GameAudio stops decoding inactive music after fades settle, restarts selected streams on demand and retains crossfades. AudioCueGate limits simultaneous hit/kill/hurt sound restarts while leaving boss, parry and upgrade cues available.
+- EncounterStatus extracts read-only preparation/active/cleared/rescue-held status from Game. The existing chapter card shows enemies present/incoming and wave-clear progress; pending survivors no longer show a false next-wave countdown.
+- Kill rewards now use one compact XP/crystal label with cached measurement rather than two competing full-size labels. Level-up text is shorter. Potion failure distinguishes empty inventory from full health.
+- Target frames fit long names and cast descriptions within their width, reset ghost health when focus clears and identify an idle enraged boss.
+
+PolishSystemsTest also covers shortest-arc NPC turns across +/-180 degrees and frame stalls. City mentors use cached clip-name lookup, calm idles and gradual attention turns instead of proximity-triggered celebration loops. Civilian walk lookup is cached rather than scanning native clip names in both render passes.
+
+PolishSystemsTest covers settings migration/round trips/invalid values, slider capture, sound priority limits and encounter queue/rescue/preparation states. Native inspection exercises actual sliders at 1280x800/1000x680, save persistence, inactive stream shutdown and encounter/reward/king-cast captures. Boss native regression and package build remain required for this pass.
+
+Validation completed: 194 unit tests; native city/rescue/slider/audio/encounter review; both-boss enrage regression; Java format check; desktop package; packaged 120-frame smoke launch from outside the repository. All passed. Native review images are under build/citadel_views/polish-*.png. No FPS benchmark is implied by the audio-stream optimization.
+
+### Fuller title evergreens (2026-11-16)
+
+Scaled the mountain-approach trees by 1.5 in height and branch width. Added shaded crown faces and snow shelves, retaining varied elevations and the existing castle/path composition. Verified through native inspection and desktop packaging.
+
+### Roadside evergreens (2026-11-16)
+
+Enlarged existing mountain trees another 35% and added trees following the winding approach road. Shared crown rendering keeps their snow and shading consistent; roadside offsets leave room for the path. Castle placement and background remain unchanged.
+
+### Dense forest with clear road and correct layering (2026-11-16)
+
+Added dense woodland beside the winding approach. Cached layout generation keeps full tree crowns clear of the road and anchors trunks on the mountain shoulder. Foreground trees draw after the castle in ground-depth order, fixing clipped treetops at its lower edge. TitleForestTest checks density, ordering and path clearance at 680px and 800px heights.
+
+### Forest silhouette variety (2026-11-16)
+
+Expanded title woodland density with irregular spacing and height variation. Added sparse firs, layered spruce, rounded wind-shaped pines and bare birches; foliage colors and snow coverage vary deterministically. Conservative crown clearance preserves the visible road and existing castle composition.
+
+### Snow-covered peaks and two tree types (2026-11-16)
+
+Added snow caps with uneven lower edges to the background mountains. Restricted the title forest to rounded pines and cone-shaped evergreens, preserving varied sizes/colors, clear road and existing castle placement.
+
+### Drifting title clouds (2026-11-16)
+
+Replaced the night sky's rectangular aurora bands with rounded drifting clouds in two depth layers. Clouds move independently of the draggable sun/moon and blend between daytime and nighttime colors. Existing scene placement is retained.
+
+### Unified cloud silhouettes (2026-11-16)
+
+Refined title clouds with continuous irregular outlines and unified lighting instead of visible overlapping translucent ellipses. Extended cloud envelopes avoid clipped ends; existing drift and day/night adaptation remain.
+
+### Valley floor beneath the castle mountain (2026-11-16)
+
+Added horizontal snowy ground and staggered woodland at the mountain foot, behind the existing elevated approach. Snow banks and small drifts establish the valley plane. Castle, mountain slope and winding road geometry remain unchanged.
+
+### River through the lower valley (2026-11-16)
+
+Added a winding blue river, snowy banks, moving ripples and snow-capped bank rocks. Increased valley woodland density while excluding trunks from the water channel. The river continues beyond the view and beneath the mountain shoulder; the castle approach remains unchanged.
+
+### Coherent landscape composition (2026-11-16)
+
+Redesigned the title landscape as a shared valley plane rather than successive decorative strips. A perspective river narrows into the distance and broadens toward the foreground, with scaled ripples and sparse bank rocks. Rounded slope contours and a continuous snow-to-valley palette replace the mountain's cut-out facets. Irregular woodland stands and clearings replace row-based placement on both the slope and valley. Tree positions/clearance are cached for the current viewport. Castle architecture, elevation, menu, sky interaction and existing clear approach are preserved.
+
+Review covers both window sizes, day/night, river visibility and path clearance, plus existing native controls/city regressions. Final validation log: /tmp/outpost-landscape-design-final.log.
+
+### Finish title landscape composition (2026-11-19)
+
+Resumed the incomplete landscape pass and rebuilt it for visual review. Preserved the perspective river, clustered woodland/clearings, curved terrain transition and fixed castle position. Added subtle contact shadows under slope trees, a deeper inner river current, and low snow shelves embedded in the banks. These details reinforce the shared ground plane instead of adding new standalone decorations. Verification log: /tmp/outpost-login-finished.log.
+
+### Balanced woodland coverage (2026-11-19)
+
+Spread valley trees across the available ground and enforced minimum spacing to prevent dense piles. Thinned the mountain woodland to bring its density closer to the valley, retaining river/road clearance. Forest tests now assert trunk separation at both supported sizes as well as depth sorting and road clearance.
+
+### Landscape depth and grounding (2026-11-19)
+
+Added subtle shaded mountain faces and snow-cap facets, a distance veil fading out at both edges, foliage highlights and snow cushions around tree trunks. Preserved balanced placement, road/river visibility and castle geometry.
+
+### Natural NPC conversation presentation (2026-11-19)
+
+Replaced player-facing Lore/Scout Intel/Hear Story actions with Talk. Dialogues use measured paragraph height and larger text, keeping actions below the text. Role-specific header icons and plain role labels replace the generic sword/angle-bracket styling. Disabled mentor actions identify the supported class; the gate explains that a first weapon is required. Simplified the nearby interaction prompt and added click-outside dismissal alongside existing keyboard exits. Native inspection exercises Talk and dismissal and captures normal/minimum window layouts.
+
+The nearby Talk prompt also accepts mouse clicks with hover feedback, preserving keyboard controls. Native inspection opens the NPC from that prompt, selects Talk, checks both layouts and dismisses back to the city.
+
+### v4.5.0 publication preparation (2026-11-19)
+
+Updated the player-facing repository page with current title/city/inventory screenshots and curated Road Home release notes. Removed remaining active co-op copy, added a player bug-report form and taught tagged releases to use the curated notes. Local verification: unit tests, Java and tracked Python formatting, full native city/conversation/audio/rescue inspection, both-boss enrage regression and desktop package all passed. Private notes and unrelated teaser tooling are excluded from publication.

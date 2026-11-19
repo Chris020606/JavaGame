@@ -20,6 +20,7 @@ public final class FieldEvent {
     private Status status = Status.NONE;
     private int wave;
     private float x, z, time, progress, health = 100, facing;
+    private float hurtCooldown;
     private boolean rewarded;
 
     public Kind kind() {
@@ -90,6 +91,7 @@ public final class FieldEvent {
         status = Status.NONE;
         progress = time = facing = 0;
         health = 100;
+        hurtCooldown = 0;
         rewarded = false;
     }
 
@@ -100,6 +102,7 @@ public final class FieldEvent {
         progress = 0;
         health = 100;
         facing = 0;
+        hurtCooldown = 0;
         if (Campaign.chapter(wave).bossOnly() || wave < 1) {
             status = Status.NONE;
             return;
@@ -119,7 +122,12 @@ public final class FieldEvent {
     }
 
     public void update(float dt, float px, float pz, boolean interact) {
+        update(dt, px, pz, interact, 0);
+    }
+
+    public void update(float dt, float px, float pz, boolean interact, int chapterIndex) {
         if (!visible()) return;
+        hurtCooldown = Math.max(0, hurtCooldown - dt);
         time = Math.max(0, time - dt);
         if (time <= 0 || health <= 0) {
             status = Status.FAILED;
@@ -139,11 +147,25 @@ public final class FieldEvent {
                 progress += dt;
                 if (progress >= 14) status = Status.COMPLETE;
             } else {
-                if (d > 2 && d < 11) {
-                    facing = (float) Math.toDegrees(Math.atan2(px - x, pz - z));
-                    float step = Math.min(d - 2, 2.9f * dt);
-                    x += (px - x) / d * step;
-                    z += (pz - z) / d * step;
+                if (d > 2 && d < 16) {
+                    ArenaNavigation.Position steer =
+                            ArenaNavigation.steering(chapterIndex, x, z, px, pz);
+                    float dirX = (px - x) / d + steer.x() * 0.45f;
+                    float dirZ = (pz - z) / d + steer.z() * 0.45f;
+                    float dirLen = (float) Math.hypot(dirX, dirZ);
+                    if (dirLen > 0.001f) {
+                        dirX /= dirLen;
+                        dirZ /= dirLen;
+                        facing = (float) Math.toDegrees(Math.atan2(dirX, dirZ));
+                    }
+                    float baseSpeed = d > 6 ? 3.8f : 2.9f;
+                    float step = Math.min(d - 2, baseSpeed * dt);
+                    float targetX = x + dirX * step;
+                    float targetZ = z + dirZ * step;
+                    ArenaNavigation.Position moved =
+                            ArenaNavigation.move(chapterIndex, x, z, targetX, targetZ, 0.45f);
+                    x = moved.x();
+                    z = moved.z();
                 }
                 progress = Math.max(0, 1 - (float) Math.hypot(x, z) / 17);
                 if (Math.hypot(x, z) < 5.5f) status = Status.COMPLETE;
@@ -157,6 +179,8 @@ public final class FieldEvent {
 
     public void damage(float amount) {
         if (vulnerable()) {
+            if (hurtCooldown > 0) return;
+            hurtCooldown = 0.35f;
             health = Math.max(0, health - Math.max(0, amount));
             if (health <= 0) status = Status.FAILED;
         }

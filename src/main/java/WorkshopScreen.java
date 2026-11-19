@@ -238,31 +238,34 @@ public final class WorkshopScreen {
         Menu.text("CARAVAN PROVISIONS", col2 + 48, y + 148, 17, Menu.GOLD);
         Menu.text("Supplies imported by Torvald's caravan.", col2 + 16, y + 176, 12, Menu.MUTED);
 
-        String[] names = {"HEARTWOOD CHARM", "TRAVELER'S FLASK", "RESTORATION INCENSE"};
-        String[] effects = {
-            "Permanent +5 maximum health",
-            "Permanent +5 stamina or mana",
-            "Permanent +1 resource recovery / sec"
-        };
         for (int i = 0; i < 3; i++) {
+            CaravanOffer offer = CaravanOffer.forItem(p, i);
             int top = y + 200 + i * 100;
             Menu.frame(col2 + 12, top, 310, 94, Menu.color(18, 26, 40), Menu.LINE);
             Menu.text(
-                    names[i] + " / " + p.caravanRank(i) + " OF 5",
+                    offer.name() + " / " + p.caravanRank(i) + " OF 5",
                     col2 + 24,
                     top + 8,
                     12,
                     Menu.GOLD);
-            Menu.text(effects[i], col2 + 24, top + 29, 11, Menu.MUTED);
-            if (Menu.button(
-                            p.caravanRank(i) == 5
-                                    ? "MASTERED"
-                                    : "BUY / " + p.caravanPrice(i) + " CRYSTALS",
-                            col2 + 24,
-                            top + 47,
-                            282,
-                            p.canBuyCaravan(i))
-                    && p.buyCaravan(i)) audio.play("upgrade");
+            Menu.text(offer.preview(), col2 + 24, top + 29, 12, Menu.TEAL);
+            Vector2 pointer = GetMousePosition();
+            if (pointer.x() >= col2 + 12
+                    && pointer.x() < col2 + 322
+                    && pointer.y() >= top
+                    && pointer.y() < top + 94) hoverAdvice = offer.explanation();
+            if (Menu.button(offer.action(), col2 + 24, top + 47, 282, p.canBuyCaravan(i))
+                    && p.buyCaravan(i)) {
+                audio.play("upgrade");
+                purchaseMessage =
+                        "PURCHASED "
+                                + offer.name()
+                                + " / Rank "
+                                + p.caravanRank(i)
+                                + " of 5 / bonus active.";
+                purchaseMessageUntil = GetTime() + 4;
+                hoverAdvice = purchaseMessage;
+            }
         }
     }
 }

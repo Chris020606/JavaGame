@@ -13,7 +13,11 @@ public final class TargetFrameScreen {
     }
 
     public void draw(Enemy target, float distance, String focusKey, boolean practice) {
-        if (target == null || GetScreenWidth() < 1000) return;
+        if (target == null || GetScreenWidth() < 1000) {
+            lastTarget = null;
+            targetGhostHealth = -1;
+            return;
+        }
         float dt = Math.max(0, Math.min(.1f, GetFrameTime()));
         if (target != lastTarget || targetGhostHealth < 0 || target.health >= targetGhostHealth) {
             targetGhostHealth = target.health;
@@ -41,15 +45,16 @@ public final class TargetFrameScreen {
                         : target.boss()
                                 ? (target.king ? "HOLLOW KING" : "ASH WARDEN")
                                 : target.label();
-        Menu.text(
+        Menu.fittedText(
                 badge + name,
                 x + 12,
                 y + 10,
+                250,
                 15,
                 target.boss() || target.elite ? Menu.GOLD : Menu.TEXT);
         // Training uses inflated health internally; never present it as a real enemy stat.
         String classification = practice ? "TRAINING" : (target.undead ? "[UNDEAD]" : "[HUMANOID]");
-        Menu.text(
+        Menu.fittedText(
                 practice
                         ? "SAFE PRACTICE / " + Math.round(distance) + "m"
                         : classification
@@ -62,6 +67,7 @@ public final class TargetFrameScreen {
                                 + "m",
                 x + 12,
                 y + 34,
+                250,
                 11,
                 Menu.MUTED);
         Menu.bar(x + 12, y + 55, 250, target.health, targetGhostHealth, target.maxHealth, Menu.RED);
@@ -80,10 +86,11 @@ public final class TargetFrameScreen {
                     target.healingTarget != null
                             ? Menu.TEAL
                             : target.boss() && !target.bossMove.parryable ? Menu.RED : Menu.GOLD;
-            Menu.text(
+            Menu.fittedText(
                     move + " / " + String.format("%.1fs", target.attackTime - .25f),
                     x + 12,
                     y + 76,
+                    250,
                     11,
                     castColor);
             Menu.bar(
@@ -93,6 +100,15 @@ public final class TargetFrameScreen {
                     target.attackDuration() - target.attackTime,
                     Math.max(.01f, target.attackDuration() - .25f),
                     castColor);
-        } else Menu.text(focusKey + " / CYCLE TARGET", x + 12, y + 82, 12, Menu.MUTED);
+        } else
+            Menu.fittedText(
+                    target.boss() && target.enraged()
+                            ? "ENRAGED / " + focusKey + " TO CYCLE"
+                            : focusKey + " / CYCLE TARGET",
+                    x + 12,
+                    y + 82,
+                    250,
+                    12,
+                    target.boss() && target.enraged() ? Menu.RED : Menu.MUTED);
     }
 }

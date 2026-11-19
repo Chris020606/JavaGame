@@ -8,7 +8,7 @@ The unfinished larger experiment remains at **`archive/roadmap-before-readabilit
 
 1. [Architecture and frame lifecycle](ARCHITECTURE.md)
 2. [Where to change things](CHANGE_GUIDE.md)
-3. [Saves and multiplayer protocol](DATA_FORMATS.md)
+3. [Save formats](DATA_FORMATS.md)
 4. [Assets, animation and native resources](ASSETS.md)
 5. [Checks, packaging and release](TESTING.md)
 6. [Source index](SOURCE_INDEX.md)

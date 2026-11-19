@@ -211,7 +211,8 @@ public class InputSmokeTest {
             click(game, x + 510, y + 370);
             check(game.isInventoryOpen(), "Chapter button did not open inventory for " + hero);
             for (int i = 0; i < 3; i++) frame(game);
-            check(game.getProgression().weaponUnlocked() == 1, "Boss loot missing from inventory");
+            check(game.getProgression().crystals() >= 120, "Boss crystals missing from reward");
+            check(game.getProgression().characterLevel() >= 3, "Boss level-up missing from reward");
             key(game, KEY_ESCAPE);
             check(!game.isInventoryOpen(), "Inventory did not close");
             click(game, x + 510, y + 370);
@@ -907,7 +908,7 @@ public class InputSmokeTest {
         check(game.tutorial() != null, "First adventure did not offer interactive practice");
         game.finishTutorial();
         check(
-                game.getState() == GameState.PLAYING,
+                game.getState() == GameState.CITADEL || game.getState() == GameState.PLAYING,
                 "First practice did not return to new adventure");
         game.setState(GameState.MAIN_MENU);
         key(game, KEY_ENTER);
@@ -1709,6 +1710,32 @@ public class InputSmokeTest {
                 chapterInventoryRegression(game, profile);
                 return;
             }
+            if (java.util.Arrays.asList(args).contains("--boss-pattern-review")) {
+                for (int wave : new int[] {5, 10}) {
+                    for (boolean enraged : new boolean[] {false, true}) {
+                        Entities.Enemy boss = encounter(game, profile, wave, 5, 14);
+                        if (enraged) boss.health = boss.maxHealth * .4f;
+                        do {
+                            boss.beginAttack(0, 8, true);
+                        } while (boss.bossMove != Entities.BossMove.SLAM);
+                        while (boss.bossMove != Entities.BossMove.CHARGE)
+                            boss.beginAttack(0, 8, true);
+                        boss.stun = boss.attackTime = boss.cooldown = 0;
+                        boss.impactPending = false;
+                        frame(game);
+                        int expected = wave == 10 ? (enraged ? 7 : 5) : (enraged ? 5 : 3);
+                        check(game.getBossHazards().size() == expected, "Wrong boss phase pattern");
+                        float health = game.getProgression().health();
+                        for (int f = 0; f < 5; f++) frame(game);
+                        check(game.getProgression().health() == health, "Warning inflicted damage");
+                        capture("boss-pattern-" + wave + (enraged ? "-enraged" : "-first"));
+                    }
+                }
+                System.out.println(
+                        "PASS: both bosses cast distinct first/second phase patterns with harmless"
+                                + " warnings");
+                return;
+            }
             if (java.util.Arrays.asList(args).contains("--boss-regression")) {
                 bossEnrageRegression(game, profile);
                 return;
@@ -2354,8 +2381,13 @@ public class InputSmokeTest {
             liveBoss.health = 1;
             key(game, KEY_Q);
             for (int i = 0; i < 35; i++) frame(game);
-            check(game.getProgression().weaponUnlocked() == 1, "Boss did not unlock loot");
+            check(
+                    game.getProgression().weaponUnlocked() == 0,
+                    "Boss should not grant weapon unlock");
             check(game.getProgression().crystals() == 120, "Boss crystal reward incorrect");
+            check(game.getProgression().characterLevel() == 3, "Boss level-up incorrect");
+            for (int i = 0; i < 2; i++) game.getProgression().rewardEnemy(false);
+            check(game.getProgression().buyWeapon(1), "Purchasing tier 1 weapon failed");
             key(game, KEY_TAB);
             int ix = (GetScreenWidth() - 960) / 2, iy = (GetScreenHeight() - 640) / 2;
             click(game, ix + 420, iy + 246);
@@ -2700,7 +2732,7 @@ public class InputSmokeTest {
             frame(game);
             check(
                     sigilBoss.bossMove == Entities.BossMove.SIGILS
-                            && game.getBossHazards().size() == 3,
+                            && game.getBossHazards().size() == 5,
                     "King did not cast a warned sigil pattern");
             for (int i = 0; i < 5; i++) frame(game);
             check(
@@ -2728,7 +2760,7 @@ public class InputSmokeTest {
             sigilBoss.impactPending = false;
             frame(game);
             check(
-                    game.getBossHazards().size() == 5,
+                    game.getBossHazards().size() == 7,
                     "Enraged King did not expand its sigil pattern");
             for (int i = 0; i < 4; i++) frame(game);
             capture("modern-enraged-sigils");
@@ -2781,8 +2813,15 @@ public class InputSmokeTest {
                             && equipment.maxHealth() > equipment.heroClass().health
                             && equipment.damage() > 25,
                     "Automatic leveling stats upgrade failed");
-            click(game, ex + 820, ey + 315);
-            click(game, ex + 820, ey + 460);
+            // Switch to Tier 3 (Dawnsteel)
+            click(game, ex + 803, ey + 145);
+            // Buy Tier 3 weapon
+            click(game, ex + 351, ey + 475);
+            // Buy Tier 3 armor pieces (Head, Chest, Legs, Boots)
+            click(game, ex + 577, ey + 311);
+            click(game, ex + 803, ey + 311);
+            click(game, ex + 577, ey + 479);
+            click(game, ex + 803, ey + 479);
             check(
                     equipment.weaponUnlocked() == 3 && equipment.armorUnlocked() == 3,
                     "Forge purchase failed");
@@ -2792,14 +2831,18 @@ public class InputSmokeTest {
                             && !equipment.ownsWeapon(1)
                             && !equipment.ownsWeapon(2),
                     "Forge granted unpurchased lower tiers");
-            click(game, ex + 350, ey + 460);
+            // Switch to Tier 1 (Iron)
+            click(game, ex + 351, ey + 145);
+            // Buy Tier 1 Head armor piece
+            click(game, ex + 577, ey + 311);
             check(
                     equipment.ownsArmor(1) && !equipment.ownsArmor(2),
                     "Separate lower-tier forge purchase failed");
             capture("expansion-forge");
-            click(game, ex + 110, ey + 202);
+            key(game, KEY_ESCAPE);
+            game.openSupplies();
             int beforeRestock = equipment.potions();
-            click(game, ex + 350, ey + 295);
+            click(game, ex + 411, ey + 295);
             check(
                     equipment.potions() == beforeRestock + 1,
                     "Supplies sidebar or potion purchase failed");
@@ -2812,7 +2855,7 @@ public class InputSmokeTest {
             click(game, ix + 800, iy + 428);
             check(equipment.weaponTier() == 3, "Legendary weapon grid selection failed");
             // Tier-three helmet: drag from the grid into the head slot.
-            event(MOUSE_POSITION, ix + 506, iy + 314);
+            event(MOUSE_POSITION, ix + 592, iy + 246);
             event(MOUSE_DOWN, MOUSE_BUTTON_LEFT, 0);
             frame(game);
             event(MOUSE_POSITION, ix + 43, iy + 430);
@@ -2830,10 +2873,10 @@ public class InputSmokeTest {
                     equipment.armorTier(Entities.ArmorSlot.HEAD) == 0,
                     "Right-click did not remove armor");
             int[][] t3ArmorCells = {
-                {ix + 506, iy + 314},
-                {ix + 592, iy + 314},
-                {ix + 334, iy + 382},
-                {ix + 420, iy + 382}
+                {ix + 592, iy + 246},
+                {ix + 334, iy + 314},
+                {ix + 420, iy + 314},
+                {ix + 506, iy + 314}
             };
             for (int[] pos : t3ArmorCells) {
                 click(game, pos[0], pos[1]);
@@ -2851,7 +2894,7 @@ public class InputSmokeTest {
             click(game, ix + 334, iy + 246);
             key(game, KEY_ENTER);
             check(equipment.armorTier(Entities.ArmorSlot.HEAD) == 1, "Armor filter equip failed");
-            click(game, ix + 334, iy + 314);
+            click(game, ix + 420, iy + 246);
             key(game, KEY_ENTER);
             check(
                     equipment.defense() == 21,

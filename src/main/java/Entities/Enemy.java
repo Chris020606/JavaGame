@@ -39,10 +39,10 @@ public class Enemy {
     }
 
     public void launchCharge() {
-        chargeTime = .5f;
+        chargeTime = (enraged() && difficulty != Difficulty.EASY) ? .40f : .5f;
         chargeHit = false;
-        chargeVx = (chargeEndX - x) / .5f;
-        chargeVz = (chargeEndZ - z) / .5f;
+        chargeVx = (chargeEndX - x) / chargeTime;
+        chargeVz = (chargeEndZ - z) / chargeTime;
     }
 
     public boolean targetsPlayer, impactPending;
@@ -159,10 +159,12 @@ public class Enemy {
                 EnemyCombatBehavior.planMotion(this, tx, tz, separationX, separationZ);
         action = motion.action();
 
+        float effectiveSpeed =
+                (boss() && enraged() && difficulty != Difficulty.EASY) ? speed * 1.15f : speed;
         float safeDt = Math.min(dt, 0.15f);
         float blend = Math.min(1.0f, safeDt * 9.0f);
-        velocityX += (motion.vx() * speed - velocityX) * blend;
-        velocityZ += (motion.vz() * speed - velocityZ) * blend;
+        velocityX += (motion.vx() * effectiveSpeed - velocityX) * blend;
+        velocityZ += (motion.vz() * effectiveSpeed - velocityZ) * blend;
 
         x = Math.max(-22.0f, Math.min(22.0f, x + velocityX * safeDt));
         z = Math.max(-22.0f, Math.min(22.0f, z + velocityZ * safeDt));
@@ -214,10 +216,9 @@ public class Enemy {
         // Enrage speeds up the next attack, never the animation already in flight.
         startedAttackDuration = nextAttackDuration();
         attackTime = startedAttackDuration;
+        float bossCooldownBase = enraged() ? (difficulty == Difficulty.EASY ? .65f : .48f) : 1.1f;
         cooldown =
-                (boss()
-                                        ? startedAttackDuration + (enraged() ? .65f : 1.1f)
-                                        : variant == 2 ? 1.5f : 1.3f)
+                (boss() ? startedAttackDuration + bossCooldownBase : variant == 2 ? 1.5f : 1.3f)
                                 * difficulty.cadence
                         + personality * .35f;
         impactPending = true;
