@@ -13,13 +13,13 @@
 
 The gates of Aethelgard are still holding. Six people are stranded beyond them. Choose a Warrior, Archer, or Mage and lead them back to the Beacon before the valley falls.
 
-## Watch Bram’s Way Home
+## Watch The Ash Warden
 
-An archer leaves the south gate to bring a woodcutter home. Watch the 32-second gameplay film in 1080p.
+Face the Ash Warden with sword in hand. Watch 32 seconds of uninterrupted Warrior gameplay in 1080p.
 
-[![Play Bram’s Way Home](docs/media/brams-way-home.jpg)](https://chris020606.github.io/JavaGame/)
+[![Play The Ash Warden](docs/media/ash-warden.jpg)](https://chris020606.github.io/JavaGame/)
 
-[Download the film](https://github.com/Chris020606/JavaGame/raw/refs/heads/master/docs/media/brams-way-home.mp4)
+[Download the film](https://github.com/Chris020606/JavaGame/raw/refs/heads/master/docs/media/ash-warden.mp4)
 
 ## Your next watch
 

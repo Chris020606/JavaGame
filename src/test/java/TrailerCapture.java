@@ -634,6 +634,45 @@ public final class TrailerCapture {
         } else hold(KEY_Q, false);
     }
 
+    private static void duelInput(Game game, int frame) {
+        for (int key : taps) hold(key, false);
+        taps.clear();
+        if (game.getState() != GameState.PLAYING || game.getEnemies().isEmpty()) {
+            release();
+            return;
+        }
+        Enemy boss = game.getEnemies().getFirst();
+        Player hero = game.getPlayer();
+        float distance = boss.distance(hero.getPosition().x(), hero.getPosition().z());
+        if (frame == 2) tap(KEY_T);
+        boolean danger = boss.impactPending && boss.attackTime < .57f && distance < 5;
+        boolean evade = danger && !boss.bossMove.parryable;
+        hold(KEY_D, evade);
+        hold(KEY_W, distance > 2.5f && !danger && frame < 32);
+        if (evade) {
+            hold(KEY_Q, false);
+            if (!hero.isDodging()) tap(KEY_LEFT_CONTROL);
+            return;
+        }
+        if (danger && boss.attackTime < .44f && hero.canParry()) {
+            hold(KEY_Q, false);
+            tap(KEY_F);
+            return;
+        }
+        if (distance > 3) {
+            steer(game, boss.x, boss.z, false);
+        } else {
+            for (int key : new int[] {KEY_W, KEY_S, KEY_A, KEY_D}) hold(key, false);
+        }
+        if (hero.isAttacking() || hero.isDodging() || hero.discipline().parrying()) return;
+        boolean charge =
+                frame % 151 >= 44 && frame % 151 < 70 && distance < 4 && !boss.impactPending;
+        hold(KEY_Q, charge);
+        if (!charge && !danger && distance < 3.7f && frame % 13 == 0) tap(KEY_SPACE);
+        if (game.getProgression().health() < game.getProgression().maxHealth() * .55f
+                && frame % 30 == 0) tap(KEY_H);
+    }
+
     private static void camera(Game game, Shot shot, float t) {
         Camera3D c = game.getSceneManager().getOpenScene().getCameraController().getCamera();
         boolean scenic = shot.mode.equals("scenic") || shot.mode.equals("ending");
@@ -662,7 +701,8 @@ public final class TrailerCapture {
 
     public static void main(String[] args) throws Exception {
         boolean homeward = Arrays.asList(args).contains("--homeward");
-        if (homeward) {
+        boolean duel = Arrays.asList(args).contains("--duel");
+        if (homeward || duel) {
             WIDTH = 1920;
             HEIGHT = 1080;
             FPS = 30;
@@ -728,7 +768,19 @@ public final class TrailerCapture {
                                     "Choose your warden. Bring back the dawn.",
                                     "title")
                         }
-                        : homeward ? HOMEWARD : SHOTS;
+                        : duel
+                                ? new Shot[] {
+                                    new Shot(
+                                            "ash-warden",
+                                            48,
+                                            HeroClass.WARRIOR,
+                                            5,
+                                            "boss",
+                                            "",
+                                            "",
+                                            "boss")
+                                }
+                                : homeward ? HOMEWARD : SHOTS;
         boolean preview = Arrays.asList(args).contains("--preview");
         int from = 0;
         Set<Integer> only = new HashSet<>();
@@ -739,13 +791,15 @@ public final class TrailerCapture {
         }
         Path out =
                 Path.of(
-                                homeward
-                                        ? "build/homeward"
-                                        : shortVideo
-                                                ? "build/marketing-short"
-                                                : preview
-                                                        ? "build/marketing-preview"
-                                                        : "build/marketing")
+                                duel
+                                        ? "build/duel"
+                                        : homeward
+                                                ? "build/homeward"
+                                                : shortVideo
+                                                        ? "build/marketing-short"
+                                                        : preview
+                                                                ? "build/marketing-preview"
+                                                                : "build/marketing")
                         .toAbsolutePath();
         Files.createDirectories(out.resolve("raw"));
         profile = Files.createTempDirectory(Path.of("build"), "trailer-profile-").toAbsolutePath();
@@ -787,6 +841,16 @@ public final class TrailerCapture {
                 activeFrame = -1;
                 if (homeward) homewardSetup(game, shot);
                 else setup(game, shot);
+                if (duel) {
+                    game.photoMode(false);
+                    game.getProgression().equipWeapon(3);
+                    game.dayPhase(.65f);
+                    var cam = game.getSceneManager().getOpenScene().getCameraController();
+                    cam.setYaw(158);
+                    cam.setPitch(23);
+                    cam.setDistance(13);
+                    cam.update(0);
+                }
                 int frames = (preview ? Math.min(3, shot.seconds) : shot.seconds) * FPS;
                 Path clip = out.resolve("raw/" + shot.id + ".mp4");
                 Process encoder =
@@ -838,10 +902,11 @@ public final class TrailerCapture {
                             throw new IOException("Trailer capture window was closed");
                         activeFrame = f;
                         if (homeward) homewardInput(game, shot, f);
+                        else if (duel) duelInput(game, f);
                         else direct(game, shot, f, frames);
                         game.update(1f / FPS);
                         if (homeward) homewardCamera(game, shot.mode, f / (float) FPS);
-                        else camera(game, shot, f / (float) FPS);
+                        else if (!duel) camera(game, shot, f / (float) FPS);
                         BeginDrawing();
                         ClearBackground(Menu.INK);
                         game.render();
