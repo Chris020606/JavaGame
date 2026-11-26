@@ -67,7 +67,7 @@ class CampaignBalancePlaytestTest {
                 } else {
                     float bossHits = enemy.maxHealth / playerDamage;
                     assertTrue(
-                            bossHits >= 4.0f && bossHits <= 16.0f,
+                            bossHits >= 12.0f && bossHits <= 80.0f,
                             "Boss durability should feel substantial but fair (hits="
                                     + bossHits
                                     + ")");

@@ -16,6 +16,8 @@ public final class CitadelHub implements AutoCloseable {
     public static final float PORTAL_Z = 29.5f;
     public static final float PORTAL_RADIUS = 2.2f;
 
+    static final float MIN_X = -33.5f, MAX_X = 33.5f, MIN_Z = -43.5f, MAX_Z = 31.35f;
+
     // Hexagon grid parameters (flat-topped orientation, scale 4.08f for seamless overlap)
     public static final float GRID_SCALE = 4.08f;
     public static final float COL_SPACING = (float) (Math.sqrt(3.0) * 4.0f); // ~6.9282f
@@ -1085,8 +1087,8 @@ public final class CitadelHub implements AutoCloseable {
         }
 
         // Firm perimeter safety bounds: Prevent player from ever clipping through fortress walls
-        px = Math.max(-33.5f, Math.min(33.5f, px));
-        pz = Math.max(-43.5f, Math.min(31.35f, pz));
+        px = Math.max(MIN_X, Math.min(MAX_X, px));
+        pz = Math.max(MIN_Z, Math.min(MAX_Z, pz));
         player.getPosition().x(px).z(pz);
     }
 
@@ -1129,21 +1131,17 @@ public final class CitadelHub implements AutoCloseable {
 
     /** Update only in the live city. Citizens pause for conversation and nearby players. */
     public void updateCitizens(float dt, float px, float pz, int rescuedCount) {
-        for (CitadelNpc npc : CitadelNpc.rescuedNpcs(rescuedCount)) {
-            CitizenRoutine citizen = citizens.computeIfAbsent(npc, CitizenRoutine::new);
-            citizen.update(
-                    dt,
-                    npc == activeNpc || Math.hypot(px - citizen.x, pz - citizen.z) < 2.5f,
-                    this::citizenWalkable);
-        }
-        // Resolve orientation once in simulation, so shadow and color passes use identical poses.
         for (CitadelNpc npc : CitadelNpc.values()) {
-            CitizenRoutine citizen = citizens.get(npc);
-            float x = citizen == null ? npc.x() : citizen.x;
-            float z = citizen == null ? npc.z() : citizen.z;
-            float desired = citizen == null ? npc.yaw() : citizen.yaw;
-            if (Math.hypot(px - x, pz - z) < 4)
-                desired = (float) Math.toDegrees(Math.atan2(px - x, pz - z));
+            if (npc.isSurvivor()
+                    && npc.ordinal() - CitadelNpc.SURVIVOR_BRAM.ordinal() >= rescuedCount) continue;
+            CitizenRoutine citizen = citizens.computeIfAbsent(npc, CitizenRoutine::new);
+            float dx = px - citizen.x, dz = pz - citizen.z;
+            boolean attending = citizen.attend((float) Math.hypot(dx, dz), npc == activeNpc);
+            citizen.update(dt, attending, this::citizenWalkable);
+            float desired =
+                    attending && dx * dx + dz * dz > .01f
+                            ? (float) Math.toDegrees(Math.atan2(dx, dz))
+                            : citizen.yaw;
             npcFacing.put(
                     npc, NpcFacing.approach(npcFacing.getOrDefault(npc, npc.yaw()), desired, dt));
         }
@@ -1154,7 +1152,8 @@ public final class CitadelHub implements AutoCloseable {
         for (BuildingPlacement building : buildings) {
             if (building.model == null || building.model.meshCount() == 0) continue;
             BoundingBox bounds = buildingBounds.get(building.model);
-            double angle = Math.toRadians(-building.yaw);
+            // Undo Raylib's rotation about the positive Y axis.
+            double angle = Math.toRadians(building.yaw);
             float dx = x - building.x, dz = z - building.z;
             float lx = (float) (dx * Math.cos(angle) + dz * Math.sin(angle)) / building.scale;
             float lz = (float) (-dx * Math.sin(angle) + dz * Math.cos(angle)) / building.scale;
@@ -1479,7 +1478,10 @@ public final class CitadelHub implements AutoCloseable {
         ModelAnimation clip =
                 getAnimView(
                         citizenAnimations[index],
-                        event.status() == FieldEvent.Status.ACTIVE ? 1 : 0,
+                        animationIndex(
+                                citizenAnimations[index],
+                                citizenAnimationCounts[index],
+                                event.walking() ? "Walking_A.001" : "Melee_Unarmed_Idle"),
                         citizenAnimationCounts[index]);
         if (model == null || model.meshCount() == 0) return;
         if (clip != null && IsModelAnimationValid(model, clip))
@@ -1626,7 +1628,9 @@ public final class CitadelHub implements AutoCloseable {
                         int frame =
                                 (int)
                                         Entities.AnimationFrames.looping(
-                                                time * 30f + npc.ordinal() * 12f,
+                                                citizen != null && citizen.walking
+                                                        ? citizen.strideFrame
+                                                        : time * 30f + npc.ordinal() * 12f,
                                                 clip.keyframeCount());
                         UpdateModelAnimation(model, clip, frame);
                     }

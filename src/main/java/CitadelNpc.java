@@ -235,77 +235,64 @@ public enum CitadelNpc {
 
     public String dynamicGreeting(Progression progress) {
         if (progress == null) return greeting;
-        boolean matches = mentorClass() == progress.heroClass();
+        CitadelNpc mentor = CitadelGuide.mentor(progress.heroClass());
+        if (mentorClass() != null && this != mentor)
+            return "Your mentor is "
+                    + mentor.npcName()
+                    + ". "
+                    + switch (mentor) {
+                        case BLACKSMITH -> "Follow the sound of the hammer west of the main road.";
+                        case ARCANIST -> "Look east of the main road for her sanctum.";
+                        default -> "Look for the archery targets northwest of the square.";
+                    };
         if (!progress.hasWeapon()) {
             return switch (this) {
                 case BLACKSMITH ->
-                        matches
-                                ? "Greetings, recruit! You walk the Citadel barehanded. Take this"
-                                      + " tempered Longsword—no Warrior steps into the frost wilds"
-                                      + " without steel in hand! Speak with me whenever you have"
-                                      + " crystals to forge greater weapons."
-                                : "Hold, recruit. You carry no weapon, but your calling is not the"
-                                        + " blade. Visit your class mentor ("
-                                        + progress.heroClass().label
-                                        + ") to receive your starter weapon!";
+                        "Try the grip. I wrapped it in leather so your hand won't stick to the"
+                                + " steel out there.";
                 case ARCANIST ->
-                        matches
-                                ? "Welcome, apprentice of the arcane! Before you step outside these"
-                                      + " walls, take this primed Sun-Wand to channel the Beacon's"
-                                      + " embers into your spells! Return to me when you gather"
-                                      + " crystals to attune greater staves."
-                                : "May the Beacon guide you, traveler. But your spirit is not"
-                                        + " attuned to the arcane. Visit your class mentor ("
-                                        + progress.heroClass().label
-                                        + ") to receive your starter weapon.";
+                        "Here, hold this staff near the ember. See the grain catch the light?"
+                                + " That's how you'll find your aim in the dark.";
                 case ARCHER ->
-                        matches
-                                ? "Welcome to the range, hunter! You'll need more than quick feet"
-                                      + " out there—take this Hunting Bow. Keep your eye sharp and"
-                                      + " your aim steady! Return to me when you are ready to craft"
-                                      + " heavier recurves and crossbows."
-                                : "Stand down, recruit. I only train archers and fletch bows. Visit"
-                                        + " your class mentor ("
-                                        + progress.heroClass().label
-                                        + ") in the Citadel to claim your weapon.";
+                        "I strung this one indoors. Give the string a pull before you take it out"
+                                + " into the cold.";
                 case COMMANDER ->
-                        "HALT, RECRUIT! The wilds beyond the Citadel walls are teeming with frost"
-                            + " beasts! You cannot pass through this gate unarmed! Go speak with"
-                            + " your class mentor ("
-                                + progress.heroClass().label
-                                + ") to receive your weapon before deploying!";
+                        "Pick up your weapon from "
+                                + mentor.npcName()
+                                + " first. I'll hold the gate.";
                 default -> greeting;
             };
         }
         return switch (this) {
-            case BLACKSMITH ->
-                    matches
-                            ? "Welcome back to the forge, Warrior! Bring me crystals and raise your"
-                                    + " combat rank to forge heavier blades and dawnsteel armor."
-                            : "Hold, traveler. I am the mentor of Warriors. I only forge steel"
-                                    + " swords and heavy armor for Warriors! For "
-                                    + progress.heroClass().label
-                                    + " equipment, visit your own mentor.";
+            case BLACKSMITH -> "Lay your kit on the bench. Let's see what those crystals will buy.";
             case ARCANIST ->
-                    matches
-                            ? "The Beacon shines bright today, Mage. Let us attune your staves and"
-                                    + " weave your enchanted robes."
-                            : "Greetings, traveler. I am the mentor of Mages. I only attune"
-                                    + " conduits and staves for Mages. For "
-                                    + progress.heroClass().label
-                                    + " equipment, visit your own mentor.";
+                    "Set your staff by the brazier. I can work the crystals into the wood or weave"
+                            + " them into a robe.";
             case ARCHER ->
-                    matches
-                            ? "Back from the hunt, Archer? Bring me crystals and raise your rank to"
-                                    + " craft heavier bows and hunting crossbows."
-                            : "Greetings, traveler. I am the mentor of Archers. I only craft bows,"
-                                    + " crossbows, and ranger armor for Archers. For "
-                                    + progress.heroClass().label
-                                    + " equipment, visit your own mentor.";
-            case COMMANDER ->
-                    "Warden! The gateway is aligned and charged with Beacon energy. Step through"
-                            + " the gate or into the portal to deploy.";
+                    "Bowstrings fray in this cold. Let me see yours while you look over the bows"
+                            + " and leathers.";
             default -> greeting;
+        };
+    }
+
+    String blessingReply() {
+        return switch (this) {
+            case SURVIVOR_BRAM ->
+                    "I'll split another stack before dark. Nobody under this roof ought to wake up"
+                            + " cold.";
+            case SURVIVOR_KAELEN ->
+                    "I'll take the dawn watch. If anyone makes it down that road, I'll see them.";
+            case SURVIVOR_ROWAN ->
+                    "Here, smell that. The mint I brought through the gate has put out its first"
+                            + " leaves.";
+            case SURVIVOR_THERON ->
+                    "See that pale stone in the wall? My first patch since I came home. It'll"
+                            + " hold.";
+            case SURVIVOR_MIRA ->
+                    "I saved a length of blue wool for the next little one through the gate.";
+            case SURVIVOR_OWEN ->
+                    "Come by when the ovens cool. I kept you the heel of the first loaf.";
+            default -> throw new IllegalStateException("Only rescued citizens receive a blessing");
         };
     }
 

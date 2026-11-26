@@ -23,6 +23,8 @@ public final class GameAudio implements AutoCloseable {
         if (!ready) return;
         for (String name :
                 new String[] {
+                    "menu",
+                    "error",
                     "swing",
                     "hit",
                     "hurt",
@@ -47,7 +49,11 @@ public final class GameAudio implements AutoCloseable {
             Sound sound = LoadSound(assets.AssetPaths.path("resources/audio/" + name + ".wav"));
             if (sound.frameCount() > 0) {
                 sounds.put(name, sound);
-                SetSoundVolume(sound, volume * effectsVolume * .65f);
+                SetSoundVolume(
+                        sound,
+                        volume
+                                * effectsVolume
+                                * (name.equals("menu") || name.equals("error") ? .28f : .65f));
             }
         }
         String[] themes = {
@@ -128,8 +134,11 @@ public final class GameAudio implements AutoCloseable {
         this.musicVolume = musicVolume;
         this.effectsVolume = effectsVolume;
         muted = mute;
-        for (Sound sound : sounds.values()) {
-            SetSoundVolume(sound, volume * effectsVolume * .65f);
+        for (var entry : sounds.entrySet()) {
+            Sound sound = entry.getValue();
+            float level =
+                    entry.getKey().equals("menu") || entry.getKey().equals("error") ? .28f : .65f;
+            SetSoundVolume(sound, volume * effectsVolume * level);
             if (muted) StopSound(sound);
         }
         // Apply immediately, including while a menu or paused overlay is open.

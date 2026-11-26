@@ -43,12 +43,12 @@ class BossEquipmentTest {
         Enemy boss = new Enemy(0, 2, 5, 5, .5f), raider = new Enemy(0, 2, 5);
         assertTrue(boss.boss());
         assertFalse(boss.ranged());
-        assertEquals(450, boss.maxHealth);
+        assertEquals(1440, boss.maxHealth);
         assertTrue(boss.speed < raider.speed);
         assertTrue(boss.meleeDamage(5) > raider.meleeDamage(5));
         boss.beginAttack(0, 0, true);
         boss.hit(25, 0, 0, 1);
-        assertEquals(425, boss.health);
+        assertEquals(boss.maxHealth - 25, boss.health);
         assertTrue(boss.impactPending);
         assertEquals(1.2f, boss.attackTime);
         assertEquals(0, boss.stun);

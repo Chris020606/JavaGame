@@ -428,6 +428,16 @@ public class InputSmokeTest {
             } else if (wave == 2) {
                 key(game, KEY_G);
                 check(e.vulnerable(), "Survivor did not join escort");
+                game.getPlayer().getPosition().x(e.x() + 19).z(e.z());
+                float waitingX = e.x();
+                for (int i = 0; i < 8; i++) frame(game);
+                check(e.x() == waitingX, "Separated survivor moved without a call");
+                event(KEY_DOWN, KEY_G, 0);
+                for (int i = 0; i < 15; i++) frame(game);
+                capture("living-survivor-call");
+                event(KEY_UP, KEY_G, 0);
+                frame(game);
+                check(e.x() > waitingX + .2f, "Survivor ignored the interact key at calling range");
                 Entities.Enemy attacker = game.getEnemies().get(0);
                 attacker.x = e.x() + 1;
                 attacker.z = e.z();
@@ -756,6 +766,71 @@ public class InputSmokeTest {
         for (int i = 0; i < 3; i++) frame(game);
         capture("ironwood-workshop");
         key(game, KEY_ESCAPE);
+        // Exercise real siege damage, then compare the field quote with the actual debit.
+        var raider = game.getEnemies().getFirst();
+        raider.x = .9f;
+        raider.z = 0;
+        raider.stun = 0;
+        raider.beginAttack(0, 0, false);
+        Progression defenses = game.getProgression();
+        float integrity = defenses.baseHealth();
+        for (int i = 0; i < 100 && defenses.baseHealth() == integrity; i++) frame(game);
+        check(defenses.baseHealth() < integrity, "Raider did not strike the beacon");
+        raider.stun = 100;
+        frame(game);
+        capture("beacon-defense");
+        int price = defenses.repairCost(), wallet = defenses.crystals();
+        key(game, KEY_E);
+        key(game, KEY_G);
+        check(defenses.crystals() == wallet, "Interact spent crystals through the open pack");
+        key(game, KEY_ESCAPE);
+        key(game, KEY_G);
+        check(
+                defenses.baseHealth() == defenses.maxBaseHealth()
+                        && defenses.crystals() == wallet - price,
+                "Field repair did not honor the displayed quote");
+        var bow = encounter(game, profile, 1, 3, 10);
+        bow.beginAttack(0, 0, false);
+        frame(game);
+        capture("beacon-archer-aiming");
+        bow.attackTime = .24f;
+        key(game, KEY_F);
+        for (int i = 0; i < 20; i++) frame(game);
+        check(game.getPlayer().discipline().riposteReady(), "Guard missed an incoming siege arrow");
+        capture("beacon-interception");
+        for (int i = 0; i < 60; i++) frame(game);
+        check(
+                game.getProgression().baseHealth() == game.getProgression().maxBaseHealth(),
+                "Intercepted siege arrow still damaged the beacon");
+        // Repeat from the opposite facing. A rearward parry leaves the original target exposed.
+        bow = encounter(game, profile, 1, 3, 10);
+        game.getPlayer().getRotation().y(180);
+        bow.beginAttack(0, 0, false);
+        bow.attackTime = .24f;
+        key(game, KEY_F);
+        for (int i = 0; i < 75; i++) frame(game);
+        check(
+                game.getProgression().baseHealth() < game.getProgression().maxBaseHealth(),
+                "A backwards parry blocked a siege arrow");
+
+        bow = encounter(game, profile, 2, 3, 10);
+        FieldEvent escort = game.getProgression().fieldEvent();
+        escort.begin(2);
+        escort.update(0, escort.x(), escort.z(), true);
+        game.getPlayer().getPosition().x(escort.x()).z(escort.z() + 1.5f);
+        game.getPlayer().getRotation().y(0);
+        bow.x = escort.x();
+        bow.z = escort.z() + 3.5f;
+        bow.beginAttack(escort.x(), escort.z(), false);
+        bow.targetsTraveler = true;
+        bow.attackTime = .24f;
+        key(game, KEY_F);
+        for (int i = 0; i < 35; i++) frame(game);
+        check(
+                escort.vulnerable()
+                        && escort.health() == 100
+                        && game.getPlayer().discipline().riposteReady(),
+                "A timely parry did not protect the escorted survivor");
         System.out.println(
                 "PASS: six clickable belt actions, held charge capture, gap/input isolation,"
                         + " inventory and responsive HUD layouts");
@@ -1121,12 +1196,60 @@ public class InputSmokeTest {
                     for (int f = 0; f < 3; f++) frame(game);
                     capture("entry-create-" + width);
                     int x = (GetScreenWidth() - 940) / 2, y = (GetScreenHeight() - 600) / 2;
+                    click(game, x + 300, y + 238);
+                    for (int f = 0; f < 3; f++) frame(game);
+                    capture("entry-archer-" + width);
                     click(game, x + 480, y + 238);
                     for (int f = 0; f < 3; f++) frame(game);
                     capture("entry-mage-" + width);
                 }
+                int formX = (GetScreenWidth() - 940) / 2, formY = (GetScreenHeight() - 600) / 2;
+                click(game, formX + 365, formY + 398);
+                click(game, formX + 170, formY + 548);
+                check(
+                        game.getState() == GameState.CITADEL
+                                && game.tutorial() != null
+                                && game.getProgression().heroClass() == HeroClass.MAGE
+                                && game.getProgression().difficulty() == Entities.Difficulty.HARD,
+                        "Character sheet did not create the selected Warden");
+                for (int f = 0; f < 3; f++) frame(game);
+                capture("opening-story-1000");
+                key(game, KEY_ENTER);
+                for (int f = 0; f < 3; f++) frame(game);
+                capture("first-steps-1000");
+                game.getPlayer()
+                        .getPosition()
+                        .x(CitadelNpc.ARCANIST.x() + .5f)
+                        .z(CitadelNpc.ARCANIST.z());
+                key(game, KEY_J);
+                check(game.getState() == GameState.CITADEL, "J interrupted the city");
+                key(game, KEY_G);
+                check(
+                        game.getCitadelHub().activeNpc() == CitadelNpc.ARCANIST
+                                && !game.getProgression().hasWeapon(),
+                        "Opening the mentor conversation skipped the greeting");
+                key(game, KEY_ONE);
+                check(
+                        game.getProgression().hasWeapon() && !game.isWorkshopOpen(),
+                        "Keyboard starter claim failed");
+                key(game, KEY_TWO);
+                check(
+                        game.getCitadelHub().npcDialogue().equals(CitadelNpc.ARCANIST.lore()),
+                        "Keyboard Talk failed");
+                key(game, KEY_ONE);
+                check(game.isWorkshopOpen(), "Keyboard forge action failed");
+                key(game, KEY_ESCAPE);
+                check(
+                        !game.isWorkshopOpen()
+                                && game.getCitadelHub().activeNpc() == CitadelNpc.ARCANIST,
+                        "Closing the forge lost its conversation");
+                key(game, KEY_ESCAPE);
+                check(
+                        game.getCitadelHub().activeNpc() == null,
+                        "Leave did not close the conversation");
                 System.out.println(
-                        "PASS: title and character creation render at both supported layouts");
+                        "PASS: three class portraits, both layouts, selected class/difficulty,"
+                                + " keyboard mentor gift, Talk and forge");
                 return;
             }
             if (java.util.Arrays.asList(args).contains("--quality-review")) {
@@ -1419,35 +1542,17 @@ public class InputSmokeTest {
                 check(
                         game.getProgression().rewardChapterFeats(1) == 0,
                         "Reload duplicated feat reward");
-                game.setState(GameState.JOURNAL);
-                for (int f = 0; f < 3; f++) frame(game);
-                int x = (GetScreenWidth() - 760) / 2, y = (GetScreenHeight() - 610) / 2;
-                click(game, x + 520, y + 68);
-                for (int f = 0; f < 3; f++) frame(game);
-                capture("chapter-feats");
-                SetWindowSize(1000, 680);
-                for (int f = 0; f < 3; f++) frame(game);
-                capture("chapter-feats-compact");
-                click(
-                        game,
-                        (GetScreenWidth() - 760) / 2 + 730,
-                        (GetScreenHeight() - 610) / 2 + 560);
-                for (int f = 0; f < 3; f++) frame(game);
-                capture("chapter-feats-next");
-                click(game, (GetScreenWidth() - 760) / 2 + 120, (GetScreenHeight() - 610) / 2 + 68);
-                for (int f = 0; f < 3; f++) frame(game);
-                capture("chapter-story-tabs");
                 game.setState(GameState.LEVEL_COMPLETE);
                 for (int f = 0; f < 120; f++) frame(game);
                 capture("chapter-feats-complete");
                 System.out.println(
-                        "PASS: chapter feat reward/save idempotency, feat/story tabs, compact"
-                                + " journal and completion presentation");
+                        "PASS: chapter feat rewards, save idempotency and completion presentation");
                 return;
             }
             if (java.util.Arrays.asList(args).contains("--ranged-assist-review")) {
+                game.pointerAim(false);
                 for (HeroClass hero : new HeroClass[] {HeroClass.ARCHER, HeroClass.MAGE}) {
-                    Entities.Enemy target = new Entities.Enemy(1.3f, 12, 1);
+                    Entities.Enemy target = new Entities.Enemy(1.55f, 12, 1);
                     SaveGame.write(
                             profile.resolve("save.properties"),
                             new SaveGame.Snapshot(
@@ -1456,13 +1561,19 @@ public class InputSmokeTest {
                                     4,
                                     0,
                                     new Progression(hero),
-                                    new WaveDirector.State(1, 0, 1, 8, 0, 21, 0),
-                                    java.util.List.of(target),
+                                    new WaveDirector.State(1, 0, 2, 8, 0, 21, 0),
+                                    java.util.List.of(target, new Entities.Enemy(0, 14.5f, 1)),
                                     Arena.HIGHLANDS));
                     check(game.loadCurrent(), "Ranged aim fixture failed");
                     key(game, KEY_ENTER);
+                    key(game, KEY_J);
+                    check(game.getState() == GameState.PLAYING, "J interrupted combat");
                     target = game.getEnemies().getFirst();
-                    target.stun = target.cooldown = 100;
+                    for (var foe : game.getEnemies()) foe.stun = foe.cooldown = 100;
+                    key(game, KEY_T);
+                    check(
+                            game.focusedEnemy() == target,
+                            "Expected nearer marked enemy in the crowd");
                     for (int f = 0; f < 22; f++)
                         frame(game); // Let the save-load input grace period finish.
                     float before = target.health;
@@ -1483,8 +1594,8 @@ public class InputSmokeTest {
                                     + game.getHeroShots().size());
                 }
                 System.out.println(
-                        "PASS: Archer and Mage near-heading attacks land through actual launch"
-                                + " assistance");
+                        "PASS: Archer and Mage both hit the marked enemy beside a more centered"
+                                + " target");
                 return;
             }
             if (java.util.Arrays.asList(args).contains("--recovery-review")) {
@@ -2613,17 +2724,6 @@ public class InputSmokeTest {
             capture("ui-campaign-victory");
             key(game, KEY_ENTER);
             check(game.getState() == GameState.MAIN_MENU, "Victory did not return to menu");
-            int mx = (GetScreenWidth() - 640) / 2, my = (GetScreenHeight() - 420) / 2;
-            event(MOUSE_POSITION, mx + 140, my + 424);
-            event(MOUSE_DOWN, MOUSE_BUTTON_LEFT, 0);
-            frame(game);
-            event(MOUSE_UP, MOUSE_BUTTON_LEFT, 0);
-            frame(game);
-            check(game.getState() == GameState.JOURNAL, "Chronicle button failed");
-            for (int i = 0; i < 3; i++) frame(game);
-            capture("ui-chronicle");
-            key(game, KEY_ENTER);
-            check(game.getState() == GameState.MAIN_MENU, "Chronicle return failed");
             // New combat mechanics through real input and live damage resolution.
             Entities.Enemy parryTarget = encounter(game, profile, 1, 0, 9.8f);
             parryTarget.beginAttack(0, 8, true);

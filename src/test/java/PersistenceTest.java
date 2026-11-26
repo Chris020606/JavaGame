@@ -74,6 +74,25 @@ class PersistenceTest {
     }
 
     @Test
+    void legacySavesKeepTheirExpeditionBoundsAndCitySavesUseTheWallBounds() throws Exception {
+        Path file = directory.resolve("location.properties");
+        SaveGame.write(file, snapshot());
+        Properties values = AppData.read(file);
+        values.remove("cityVisit");
+        AppData.write(file, values);
+        assertEquals(SaveGame.CityVisit.AWAY, SaveGame.read(file).cityVisit());
+        values.setProperty("player.z", "31.35");
+        AppData.write(file, values);
+        assertThrows(java.io.IOException.class, () -> SaveGame.read(file));
+        values.setProperty("cityVisit", "EXPLORING");
+        AppData.write(file, values);
+        assertEquals(31.35f, SaveGame.read(file).z());
+        values.setProperty("player.z", "32");
+        AppData.write(file, values);
+        assertThrows(java.io.IOException.class, () -> SaveGame.read(file));
+    }
+
+    @Test
     void corruptOrFutureSavesAreRejected() throws Exception {
         Path file = directory.resolve("save.properties");
         SaveGame.write(file, snapshot());
@@ -154,6 +173,9 @@ class PersistenceTest {
         Projectile arrow = new Projectile(e, 3);
         arrow.update(.5f);
         assertTrue(arrow.hits(0, 2, .5f));
+        assertEquals(.3f, arrow.contact(0, 2, .5f), .0001f);
+        assertEquals(0f, arrow.contact(0, 0, .5f));
+        assertEquals(Float.POSITIVE_INFINITY, arrow.contact(0, -2, .5f));
         assertFalse(arrow.hits(2, 2, .5f));
         assertTrue(e.ranged());
         assertEquals(8, e.attackRange());

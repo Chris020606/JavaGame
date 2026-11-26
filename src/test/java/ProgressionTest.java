@@ -83,6 +83,22 @@ class ProgressionTest {
     }
 
     @Test
+    void smallRepairsChargeOnlyForMissingIntegrityAndNeverOverspend() {
+        Progression p = new Progression();
+        p.damageBase(23.5f);
+        assertEquals(8, p.repairCost());
+        assertFalse(p.repairBase());
+        assertEquals(376.5f, p.baseHealth());
+        p.rewardKill();
+        assertTrue(p.repairBase());
+        assertEquals(400, p.baseHealth());
+        assertEquals(7, p.crystals());
+        assertEquals(0, p.repairCost());
+        assertFalse(p.repairBase());
+        assertEquals(7, p.crystals());
+    }
+
+    @Test
     void enemyApproachDoesNotOvershootOrDivideByZero() {
         Enemy e = new Enemy(10, 0, 1);
         e.approach(0, 0, 100);

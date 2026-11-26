@@ -8,6 +8,17 @@ public final class CityNavigation {
         return true;
     }
 
+    public boolean visit(CitadelNpc citizen, Progression progress) {
+        if (!progress.hasWeapon()) return false;
+        for (CitadelNpc home : CitadelNpc.rescuedNpcs(progress.rescuedSurvivors())) {
+            if (home == citizen) {
+                tracked = citizen;
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void clear() {
         tracked = null;
     }
@@ -26,7 +37,9 @@ public final class CityNavigation {
                         ? "Enter the portal when ready"
                         : tracked == CitadelNpc.CARAVAN_TRADER
                                 ? "Potions and caravan upgrades"
-                                : "Class weapons and armor",
+                                : tracked.isSurvivor()
+                                        ? "Visit them in the city"
+                                        : "Class weapons and armor",
                 gate ? CitadelHub.PORTAL_X : tracked.x(),
                 gate ? CitadelHub.PORTAL_Z : tracked.z());
     }

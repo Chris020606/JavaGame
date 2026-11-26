@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Films actual game simulation directly from its framebuffer, never the user's desktop. */
 public final class TrailerCapture {
-    private static final int WIDTH = 1600, HEIGHT = 900;
+    private static int WIDTH = 1600, HEIGHT = 900;
     private static int FPS = 24;
     private static boolean shortTake;
     private static final Set<Integer> held = new HashSet<>(), taps = new HashSet<>();
@@ -178,6 +178,178 @@ public final class TrailerCapture {
                 "Try the latest development build and the all-gear playtest.",
                 "title")
     };
+
+    // A single rescue, filmed at normal speed with the game's follow camera.
+    private static final Shot[] HOMEWARD = {
+        new Shot("gate", 7, HeroClass.ARCHER, 2, "gate", "", "", "title"),
+        new Shot("contact", 11, HeroClass.ARCHER, 2, "contact", "", "", "meadow"),
+        new Shot("rescue", 12, HeroClass.ARCHER, 2, "rescue", "", "", "meadow"),
+        new Shot("home", 9, HeroClass.ARCHER, 2, "home", "", "", "title"),
+        new Shot("stranded", 5, HeroClass.ARCHER, 2, "stranded", "", "", "meadow"),
+        new Shot("guard", 7, HeroClass.ARCHER, 2, "guard", "", "", "battle"),
+        new Shot("skyline", 5, HeroClass.ARCHER, 2, "skyline", "", "", "title")
+    };
+
+    private static void homewardSetup(Game game, Shot shot) throws IOException {
+        release();
+        Progression p = new Progression(HeroClass.ARCHER);
+        p.grantStarterWeapon();
+        var enemies = new ArrayList<Enemy>();
+        boolean city =
+                shot.mode.equals("gate") || shot.mode.equals("home") || shot.mode.equals("skyline");
+        if (!city) p.fieldEvent().begin(2);
+        float x = -10, z = 12;
+        if (shot.mode.equals("contact")) {
+            enemies.add(new Enemy(-9, 3, 2, 1, .35f));
+            enemies.add(new Enemy(-12, 1, 2, 0, .65f));
+        }
+        if (shot.mode.equals("guard")) {
+            x = p.fieldEvent().x();
+            z = p.fieldEvent().z() + 1.5f;
+            p.fieldEvent().update(0, x, z, true);
+            enemies.add(new Enemy(x, z + 2f, 2, 4, .5f));
+        }
+        if (shot.mode.equals("stranded")) {
+            x = 0;
+            z = 4;
+        }
+        if (shot.mode.equals("home")) p.rescueSurvivor();
+        SaveGame.write(
+                profile.resolve("save.properties"),
+                new SaveGame.Snapshot(
+                        "Wren",
+                        x,
+                        z,
+                        180,
+                        p,
+                        new WaveDirector.State(2, 0, Math.max(1, enemies.size()), 8, 0, 21, 0),
+                        enemies,
+                        Arena.HIGHLANDS,
+                        100,
+                        .32f));
+        if (!game.loadCurrent()) throw new IOException("Homeward scene failed to load");
+        game.setState(GameState.PLAYING);
+        if (city) game.travelToCitadel();
+        var camera = game.getSceneManager().getOpenScene().getCameraController();
+        switch (shot.mode) {
+            case "gate" -> {
+                game.getPlayer().getPosition().x(.6f).z(8);
+                camera.setYaw(180);
+                camera.setDistance(10);
+                camera.setPitch(14);
+                game.dayPhase(.27f);
+            }
+            case "contact" -> {
+                camera.setYaw(7);
+                camera.setDistance(12);
+                camera.setPitch(20);
+            }
+            case "rescue" -> {
+                game.getPlayer().getPosition().x(-13.5f).z(9.3f);
+                camera.setYaw(-57);
+                camera.setDistance(10);
+                camera.setPitch(17);
+            }
+            case "home" -> {
+                game.getPlayer().getPosition().x(-1.6f).z(7.7f);
+                camera.setYaw(80);
+                camera.setDistance(8);
+                camera.setPitch(15);
+                game.dayPhase(.66f);
+            }
+        }
+        if (shot.mode.equals("skyline")) game.dayPhase(.695f);
+        if (shot.mode.equals("home")) {
+            CitadelHub hub = game.getCitadelHub();
+            hub.updateCitizens(.03f, 30, 0, 1);
+            float xHome = hub.npcX(CitadelNpc.SURVIVOR_BRAM),
+                    zHome = hub.npcZ(CitadelNpc.SURVIVOR_BRAM);
+            // Approach along the public street; use the resident's actual collision-safe position.
+            double angle = Math.atan2(-xHome, -zHome * .15f);
+            float dx = (float) Math.sin(angle), dz = (float) Math.cos(angle);
+            game.getPlayer().getPosition().x(xHome + dx * 4.4f).z(zHome + dz * 4.4f);
+            game.getPlayer().aimAt(xHome, zHome);
+            camera.setYaw((float) Math.toDegrees(angle));
+            System.out.printf(Locale.ROOT, "Bram at %.2f, %.2f%n", xHome, zHome);
+        }
+        game.pointerAim(false);
+        game.photoMode(true);
+        camera.update(0);
+        // Settle lighting, idle poses and the follow spring before the first recorded frame.
+        for (int n = 0; n < 12; n++) game.update(1f / FPS);
+    }
+
+    private static void homewardInput(Game game, Shot shot, int frame) {
+        for (int key : taps) hold(key, false);
+        taps.clear();
+        float t = frame / (float) FPS;
+        switch (shot.mode) {
+            case "gate" -> hold(KEY_W, t > .45f && game.getPlayer().getPosition().z() < 28);
+            case "contact" -> {
+                if (frame == 3) tap(KEY_T);
+                hold(KEY_Q, t >= .4f && t < 1.25f);
+                if (frame == 54
+                        || frame == 86
+                        || frame == 131
+                        || frame == 169
+                        || frame == 209
+                        || frame == 248) tap(KEY_SPACE);
+                hold(KEY_D, t >= 2.2f && t < 2.95f);
+                if (frame == 69) tap(KEY_LEFT_CONTROL);
+                hold(KEY_A, t > 6 && t < 6.55f);
+                if (frame == 59 && game.getEnemies().size() == 1) tap(KEY_T);
+            }
+            case "rescue" -> {
+                if (frame == 18) tap(KEY_G);
+                hold(KEY_W, t > 1.1f && game.getPlayer().getPosition().x() < -2.1f);
+            }
+            case "guard" -> {
+                if (frame == 0) {
+                    Enemy attacker = game.getEnemies().getFirst();
+                    FieldEvent escort = game.getProgression().fieldEvent();
+                    attacker.beginAttack(escort.x(), escort.z(), false);
+                    attacker.targetsTraveler = true;
+                    attacker.attackTime = .60f;
+                    game.getPlayer().getPosition().x(escort.x()).z(escort.z() + 1.5f);
+                    attacker.x = escort.x();
+                    attacker.z = escort.z() + 3.5f;
+                    game.getPlayer().getRotation().y(0);
+                    game.getPlayer().aimAt(attacker.x, attacker.z);
+                    tap(KEY_T);
+                }
+                if (frame == 12) tap(KEY_F);
+                if (frame == 39 || frame == 70 || frame == 101) tap(KEY_SPACE);
+            }
+            case "home" -> {
+                hold(KEY_W, t >= .25f && t < .72f);
+                if (frame == 54)
+                    game.getPlayer()
+                            .aimAt(
+                                    game.getCitadelHub().npcX(CitadelNpc.SURVIVOR_BRAM),
+                                    game.getCitadelHub().npcZ(CitadelNpc.SURVIVOR_BRAM));
+            }
+        }
+    }
+
+    private static void homewardCamera(Game game, String mode, float seconds) {
+        Camera3D c = game.getSceneManager().getOpenScene().getCameraController().getCamera();
+        if (mode.equals("stranded")) {
+            float dolly = .12f * seconds;
+            c._position().x(-8.4f - dolly).y(1.6f).z(13.2f - dolly);
+            c.target().x(-12.4f).y(1.03f).z(8);
+        } else if (mode.equals("skyline")) {
+            c._position().x(4 + seconds * .19f).y(10.5f + seconds * .2f).z(25);
+            c.target().x(-1).y(5).z(-16);
+        } else if (mode.equals("home")) {
+            float x = game.getCitadelHub().npcX(CitadelNpc.SURVIVOR_BRAM);
+            float z = game.getCitadelHub().npcZ(CitadelNpc.SURVIVOR_BRAM);
+            c._position().x(x + 4.7f).y(1.65f).z(z + 2.9f + seconds * .08f);
+            c.target().x(x + 1.0f).y(.95f).z(z);
+        } else if (mode.equals("guard")) {
+            c._position().x(-5.3f - seconds * .08f).y(3.3f).z(11.8f);
+            c.target().x(-12).y(1f).z(10.8f);
+        }
+    }
 
     private static void event(int type, int a, int b) {
         try (AutomationEvent e = new AutomationEvent().type(type)) {
@@ -489,6 +661,12 @@ public final class TrailerCapture {
     }
 
     public static void main(String[] args) throws Exception {
+        boolean homeward = Arrays.asList(args).contains("--homeward");
+        if (homeward) {
+            WIDTH = 1920;
+            HEIGHT = 1080;
+            FPS = 30;
+        }
         boolean shortVideo = Arrays.asList(args).contains("--short");
         shortTake = shortVideo;
         if (shortVideo) FPS = 60;
@@ -550,7 +728,7 @@ public final class TrailerCapture {
                                     "Choose your warden. Bring back the dawn.",
                                     "title")
                         }
-                        : SHOTS;
+                        : homeward ? HOMEWARD : SHOTS;
         boolean preview = Arrays.asList(args).contains("--preview");
         int from = 0;
         Set<Integer> only = new HashSet<>();
@@ -561,9 +739,13 @@ public final class TrailerCapture {
         }
         Path out =
                 Path.of(
-                                shortVideo
-                                        ? "build/marketing-short"
-                                        : preview ? "build/marketing-preview" : "build/marketing")
+                                homeward
+                                        ? "build/homeward"
+                                        : shortVideo
+                                                ? "build/marketing-short"
+                                                : preview
+                                                        ? "build/marketing-preview"
+                                                        : "build/marketing")
                         .toAbsolutePath();
         Files.createDirectories(out.resolve("raw"));
         profile = Files.createTempDirectory(Path.of("build"), "trailer-profile-").toAbsolutePath();
@@ -603,7 +785,8 @@ public final class TrailerCapture {
                 if (!only.isEmpty() && !only.contains(index)) continue;
                 Shot shot = shots[index];
                 activeFrame = -1;
-                setup(game, shot);
+                if (homeward) homewardSetup(game, shot);
+                else setup(game, shot);
                 int frames = (preview ? Math.min(3, shot.seconds) : shot.seconds) * FPS;
                 Path clip = out.resolve("raw/" + shot.id + ".mp4");
                 Process encoder =
@@ -654,9 +837,11 @@ public final class TrailerCapture {
                         if (WindowShouldClose())
                             throw new IOException("Trailer capture window was closed");
                         activeFrame = f;
-                        direct(game, shot, f, frames);
+                        if (homeward) homewardInput(game, shot, f);
+                        else direct(game, shot, f, frames);
                         game.update(1f / FPS);
-                        camera(game, shot, f / (float) FPS);
+                        if (homeward) homewardCamera(game, shot.mode, f / (float) FPS);
+                        else camera(game, shot, f / (float) FPS);
                         BeginDrawing();
                         ClearBackground(Menu.INK);
                         game.render();

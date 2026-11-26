@@ -5,16 +5,29 @@ public final class CityMinimap {
     private static final CityNavigation navigation = new CityNavigation();
     private static Progression owner;
 
-    public static CitadelGuide.Destination destination(Progression p) {
+    public static CitadelGuide.Destination destination(Progression p, CitadelHub hub) {
+        syncOwner(p);
+        CitadelGuide.Destination target = navigation.destination(p);
+        CitadelNpc npc = p.hasWeapon() ? navigation.tracked() : CitadelGuide.mentor(p.heroClass());
+        if (npc == null || npc == CitadelNpc.COMMANDER) return target;
+        return new CitadelGuide.Destination(
+                target.title(), target.instruction(), hub.npcX(npc), hub.npcZ(npc));
+    }
+
+    static boolean visit(CitadelNpc citizen, Progression p) {
+        syncOwner(p);
+        return navigation.visit(citizen, p);
+    }
+
+    private static void syncOwner(Progression p) {
         if (owner != p) {
             owner = p;
             navigation.clear();
         }
-        return navigation.destination(p);
     }
 
-    public static void draw(Progression p, float px, float pz) {
-        destination(p);
+    public static void draw(CitadelHub hub, Progression p, float px, float pz) {
+        destination(p, hub);
         int x = GetScreenWidth() - 184, y = 82;
         Menu.panel(x, y, 160, 160);
         Menu.text("AETHELGARD", x + 12, y + 10, 11, Menu.GOLD);
@@ -35,17 +48,23 @@ public final class CityMinimap {
             if (npc.isSurvivor()) continue;
             if (npc == CitadelNpc.CARAVAN_TRADER) {
                 DrawPoly(
-                        new Vector2().x(mapX(x, npc.x())).y(mapY(y, npc.z())), 4, 5, 45, Menu.GOLD);
+                        new Vector2().x(mapX(x, hub.npcX(npc))).y(mapY(y, hub.npcZ(npc))),
+                        4,
+                        5,
+                        45,
+                        Menu.GOLD);
             }
             double distance =
-                    Math.hypot(pointer.x() - mapX(x, npc.x()), pointer.y() - mapY(y, npc.z()));
+                    Math.hypot(
+                            pointer.x() - mapX(x, hub.npcX(npc)),
+                            pointer.y() - mapY(y, hub.npcZ(npc)));
             if (distance < closest) {
                 hovered = npc;
                 closest = distance;
             }
             DrawCircle(
-                    mapX(x, npc.x()),
-                    mapY(y, npc.z()),
+                    mapX(x, hub.npcX(npc)),
+                    mapY(y, hub.npcZ(npc)),
                     3,
                     npc.mentorClass() == p.heroClass() ? Menu.GOLD : Menu.MUTED);
         }
@@ -53,7 +72,7 @@ public final class CityMinimap {
         if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)
                 && Math.hypot(pointer.x() - cx, pointer.y() - cy) <= 59) navigation.clear();
         if (navigation.tracked() != null && p.hasWeapon()) {
-            CitadelGuide.Destination target = navigation.destination(p);
+            CitadelGuide.Destination target = destination(p, hub);
             int tx = mapX(x, target.x()), tz = mapY(y, target.z());
             DrawLine(mapX(x, px), mapY(y, pz), tx, tz, Fade(Menu.GOLD, .6f));
             DrawCircleLines(tx, tz, 7, Menu.GOLD);

@@ -41,6 +41,35 @@ public final class CombatVfx implements AutoCloseable {
     }
 
     private int serial;
+    private float recallX, recallZ, recallTime;
+    private static final float RECALL_DURATION = 1.3f;
+
+    public void rescue(float x, float z) {
+        recallX = x;
+        recallZ = z;
+        recallTime = RECALL_DURATION;
+    }
+
+    /** The traveler's light crosses the ring and gathers at the beacon. */
+    private void drawRescue(Camera3D camera) {
+        if (recallTime <= 0) return;
+        float age = RECALL_DURATION - recallTime;
+        for (int i = 0; i < 20; i++) {
+            float t = (age - i * .017f) / .94f;
+            if (t < 0 || t >= 1) continue;
+            float eased = t * t * (3 - 2 * t);
+            double a = 2.4 * i + t * 5;
+            float radius = (1 - t) * .38f;
+            float x = recallX * (1 - eased) + radius * (float) Math.cos(a);
+            float z = recallZ * (1 - eased) + radius * (float) Math.sin(a);
+            float y =
+                    .3f
+                            + (i % 6) * .22f * (1 - t)
+                            + 2.6f * eased
+                            + 1.8f * (float) Math.sin(Math.PI * t);
+            glow(camera, x, y, z, .34f, i % 3 == 0 ? Menu.GOLD : Menu.TEAL, .8f * (1 - t));
+        }
+    }
 
     private static final class Particle {
         float x, y, z, vx, vy, vz, life, total, size;
@@ -60,11 +89,13 @@ public final class CombatVfx implements AutoCloseable {
 
     public void clear() {
         particleCount = replacement = 0;
+        recallTime = 0;
         blade.clear();
     }
 
     public void update(float dt) {
         blade.update(dt);
+        recallTime = Math.max(0, recallTime - dt);
         for (int i = 0; i < particleCount; ) {
             Particle p = particles[i];
             p.life -= dt;
@@ -82,6 +113,21 @@ public final class CombatVfx implements AutoCloseable {
     }
 
     public void impact(float x, float z, Color color, boolean heavy) {
+        emitImpact(x, z, color, heavy, x, z, false);
+    }
+
+    public void strike(float x, float z, float sourceX, float sourceZ, Color color, boolean heavy) {
+        emitImpact(x, z, color, heavy, sourceX, sourceZ, true);
+    }
+
+    private void emitImpact(
+            float x,
+            float z,
+            Color color,
+            boolean heavy,
+            float sourceX,
+            float sourceZ,
+            boolean directional) {
         for (int i = 0; i < (heavy ? 24 : 12); i++) {
             Particle p;
             if (particleCount < MAX_PARTICLES) p = particles[particleCount++];
@@ -89,8 +135,11 @@ public final class CombatVfx implements AutoCloseable {
                 p = particles[replacement];
                 replacement = (replacement + 1) % MAX_PARTICLES;
             }
-            double a = (serial++ * 2.399963);
-            float force = 1.4f + (i % 5) * .45f;
+            double a =
+                    directional
+                            ? ImpactDirection.angle(sourceX, sourceZ, x, z, i)
+                            : serial++ * 2.399963;
+            float force = (1.4f + (i % 5) * .45f) * (directional && heavy ? 1.35f : 1);
             p.x = x;
             p.y = .8f;
             p.z = z;
@@ -99,7 +148,7 @@ public final class CombatVfx implements AutoCloseable {
             p.vy = .8f + (i % 4) * .65f;
             p.total = p.life = .24f + (i % 5) * .08f;
             p.size = heavy ? .14f : .10f;
-            p.color = color;
+            p.color = directional && i % 6 == 0 ? Menu.TEXT : color;
         }
     }
 
@@ -229,7 +278,8 @@ public final class CombatVfx implements AutoCloseable {
     }
 
     public void enemy(Camera3D camera, Enemy e, float time) {
-        float phase = Math.max(0, Math.min(1, 1 - e.attackTime / e.attackDuration()));
+        float clipPhase = Math.max(0, Math.min(1, 1 - e.attackTime / e.attackDuration()));
+        float phase = AttackTelegraph.progress(e.attackTime, e.attackDuration());
         if (e.healingTarget != null) {
             for (int i = 0; i < 18; i++) {
                 float t = (i / 18f + time * .7f) % 1;
@@ -248,29 +298,10 @@ public final class CombatVfx implements AutoCloseable {
             return;
         }
         if (e.attackTime <= 0) return;
-        Color color =
-                e.boss()
-                        ? (e.bossMove.parryable ? Menu.GOLD : Menu.RED)
-                        : e.ranged() ? Menu.GOLD : Menu.RED;
+        Color color = e.boss() ? (e.bossMove.parryable ? Menu.GOLD : Menu.RED) : Menu.GOLD;
         if (!e.boss() || e.bossMove == BossMove.CLEAVE) {
             if (e.ranged()) {
-                glow(
-                        camera,
-                        e.x,
-                        1.4f,
-                        e.z,
-                        .4f + phase * .6f,
-                        e.variant == 4 ? Menu.TEAL : Menu.GOLD,
-                        phase * .6f);
-                ribbon(
-                        e.x,
-                        e.z,
-                        e.facing,
-                        Math.min(8, e.distance(e.attackX, e.attackZ)),
-                        6,
-                        .06f,
-                        color,
-                        .24f);
+                if (e.impactPending) rangedWindup(camera, e, phase);
             } else {
                 float angle = e.boss() ? 100 : 65;
                 ribbon(e.x, e.z, e.facing, e.meleeRange(), angle, .07f, color, .18f + phase * .20f);
@@ -278,12 +309,12 @@ public final class CombatVfx implements AutoCloseable {
                     ribbon(
                             e.x,
                             e.z,
-                            e.facing - 50 + phase * 100,
+                            e.facing - 50 + clipPhase * 100,
                             e.meleeRange() * .82f,
                             angle * .6f,
                             .9f,
                             color,
-                            .9f * (1 - phase));
+                            .9f * (1 - clipPhase));
             }
         } else
             switch (e.bossMove) {
@@ -324,6 +355,40 @@ public final class CombatVfx implements AutoCloseable {
                 }
                 default -> {}
             }
+    }
+
+    /**
+     * The marks follow the committed firing line, including the archer's lead on a moving target.
+     */
+    private void rangedWindup(Camera3D camera, Enemy e, float phase) {
+        Color tint = e.variant == 4 ? Menu.TEAL : Menu.GOLD;
+        glow(camera, e.x, 1.4f, e.z, .35f + phase * .6f, tint, .25f + phase * .45f);
+        float dx = e.attackX - e.x, dz = e.attackZ - e.z;
+        float length = (float) Math.hypot(dx, dz);
+        if (length < .6f) return;
+        dx /= length;
+        dz /= length;
+        float start = Math.min(.65f, length * .3f);
+        Vector3 tip = v(e.attackX, .12f, e.attackZ);
+        DrawCylinderEx(
+                v(e.x + dx * start, .12f, e.z + dz * start),
+                tip,
+                .035f,
+                .022f,
+                5,
+                Fade(tint, .28f + phase * .32f));
+        // The leading chevron travels to the aim point as the shot approaches release.
+        float t = start + (length - start) * phase;
+        float x = e.x + dx * t, z = e.z + dz * t;
+        Vector3 arrow = v(x, .13f, z);
+        for (int side = -1; side <= 1; side += 2)
+            DrawCylinderEx(
+                    v(x - dx * .3f + side * dz * .19f, .13f, z - dz * .3f - side * dx * .19f),
+                    arrow,
+                    .035f,
+                    .045f,
+                    5,
+                    Fade(tint, .82f));
     }
 
     public void hazard(Camera3D camera, BossHazard h, float time) {
@@ -388,6 +453,9 @@ public final class CombatVfx implements AutoCloseable {
             Color color,
             float time,
             float height) {
+        float speed = (float) Math.hypot(vx, vz);
+        if (speed < .001f) return;
+        float sideX = -vz / speed, sideZ = vx / speed;
         if (magic) {
             for (int i = 5; i >= 0; i--)
                 glow(
@@ -398,6 +466,30 @@ public final class CombatVfx implements AutoCloseable {
                         .24f + (5 - i) * .07f,
                         color,
                         .20f + (5 - i) * .08f);
+            // Wind paired sparks around the flight axis so the cast reads from either side.
+            for (int i = 0; i < 7; i++) {
+                float phase = time * 18 - i * .77f;
+                float radius = .13f * (1 - i / 9f);
+                float side = radius * (float) Math.cos(phase);
+                float rise = radius * (float) Math.sin(phase);
+                float tx = x - vx * i * .015f, tz = z - vz * i * .015f;
+                glow(
+                        camera,
+                        tx + sideX * side,
+                        height + rise,
+                        tz + sideZ * side,
+                        .12f,
+                        Menu.TEXT,
+                        .75f - i * .08f);
+                glow(
+                        camera,
+                        tx - sideX * side,
+                        height - rise,
+                        tz - sideZ * side,
+                        .15f,
+                        color,
+                        .85f - i * .08f);
+            }
             glow(camera, x, height, z, .18f, Menu.TEXT, .9f);
         } else {
             DrawCylinderEx(
@@ -409,12 +501,33 @@ public final class CombatVfx implements AutoCloseable {
                     Menu.TEXT);
             DrawCylinderEx(
                     v(x, height, z), v(x + vx * .012f, height, z + vz * .012f), .05f, 0, 5, color);
+            // Swept vanes meet the shaft ahead of its tail.
+            for (int sign = -1; sign <= 1; sign += 2) {
+                DrawCylinderEx(
+                        v(
+                                x - vx * .05f + sign * sideX * .09f,
+                                height + .045f,
+                                z - vz * .05f + sign * sideZ * .09f),
+                        v(x - vx * .032f, height, z - vz * .032f),
+                        .028f,
+                        .008f,
+                        4,
+                        color);
+            }
+            DrawCylinderEx(
+                    v(x - vx * .12f, height, z - vz * .12f),
+                    v(x - vx * .049f, height, z - vz * .049f),
+                    .004f,
+                    .029f,
+                    5,
+                    Fade(color, .52f));
             for (int i = 1; i < 4; i++)
                 glow(camera, x - vx * i * .025f, height, z - vz * i * .025f, .10f, color, .18f / i);
         }
     }
 
     public void particles(Camera3D camera) {
+        drawRescue(camera);
         for (int i = 0; i < particleCount; i++) {
             Particle p = particles[i];
             float fade = p.life / p.total;

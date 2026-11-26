@@ -95,6 +95,28 @@ class ExpeditionTest {
     }
 
     @Test
+    void wardsChooseVisibleUnclaimedPatientsAndKeepTheirOwnCastTime() {
+        Enemy healer = new Enemy(0, 0, 6, 4, .5f), other = new Enemy(2, 0, 6, 4, .5f);
+        Enemy behindCover = new Enemy(3, 0, 6),
+                claimed = new Enemy(2, 1, 6),
+                available = new Enemy(-3, 0, 6);
+        behindCover.health = 1;
+        claimed.health = 2;
+        available.health = 3;
+        var group = List.of(healer, other, behindCover, claimed, available);
+        other.beginWard(claimed);
+        assertSame(available, SquadTactics.woundedAlly(healer, group, ally -> ally != behindCover));
+        healer.beginAttack(0, 4, true);
+        healer.beginWard(available);
+        assertEquals(-90f, healer.facing, .001f);
+        assertEquals(.9f, healer.attackDuration());
+        assertFalse(healer.targetsPlayer);
+        healer.hit(1, 0, 0, 0);
+        assertFalse(healer.impactPending);
+        assertNull(healer.healingTarget);
+    }
+
+    @Test
     void independentTrainingAndEquipmentHaveTransactionalCapsAndBonuses() {
         Progression p = funded();
         int damage = p.damage(), hp = p.maxHealth();

@@ -22,6 +22,19 @@ class RangedAimTest {
     }
 
     @Test
+    void focusWinsInsideTheSameVisibleConeAndFallsBackOnceLost() {
+        Enemy center = new Enemy(0, 8, 1), marked = new Enemy(1.5f, 8, 1);
+        var crowd = List.of(center, marked);
+        assertSame(marked, RangedAim.target(0, 0, 0, 15, crowd, marked, e -> true));
+        assertSame(center, RangedAim.target(0, 0, 0, 15, crowd, marked, e -> e != marked));
+        marked.x = 6;
+        assertSame(center, RangedAim.target(0, 0, 0, 15, crowd, marked, e -> true));
+        marked.x = 0;
+        marked.health = 0;
+        assertSame(center, RangedAim.target(0, 0, 0, 15, crowd, marked, e -> true));
+    }
+
+    @Test
     void widerSweepsCatchNearMissesWithoutHittingFarAwayOrTwice() {
         var attack = new Combat.Attack(.5f, .2f, 14, 10, 1, "SHOT");
         for (boolean magic : new boolean[] {false, true}) {

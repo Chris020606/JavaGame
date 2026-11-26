@@ -38,38 +38,28 @@ public final class TargetFrameScreen {
         int x = GetScreenWidth() - 290;
         int y = GetScreenHeight() - 222;
         Menu.panel(x, y, 274, 120);
-        String badge = practice ? "" : target.boss() ? "[BOSS] " : target.elite ? "[ELITE] " : "";
+        String badge = practice ? "" : target.boss() ? "BOSS / " : "";
         String name =
                 practice
                         ? "PRACTICE PARTNER"
                         : target.boss()
                                 ? (target.king ? "HOLLOW KING" : "ASH WARDEN")
                                 : target.label();
-        Menu.fittedText(
-                badge + name,
-                x + 12,
-                y + 10,
-                250,
-                15,
-                target.boss() || target.elite ? Menu.GOLD : Menu.TEXT);
-        // Training uses inflated health internally; never present it as a real enemy stat.
-        String classification = practice ? "TRAINING" : (target.undead ? "[UNDEAD]" : "[HUMANOID]");
-        Menu.fittedText(
-                practice
-                        ? "SAFE PRACTICE / " + Math.round(distance) + "m"
-                        : classification
-                                + " "
-                                + Math.round(target.health)
-                                + " / "
-                                + Math.round(target.maxHealth)
-                                + " HP / "
-                                + Math.round(distance)
-                                + "m",
+        Color heading = target.boss() || target.elite ? Menu.GOLD : Menu.TEXT;
+        Menu.fittedText(badge + name, x + 12, y + 9, 206, 17, heading);
+        String range = Math.round(distance) + "m";
+        Menu.text(range, x + 261 - Menu.measure(range, 13), y + 12, 13, Menu.MUTED);
+        // Training partners use artificial health internally.
+        Menu.text(
+                practice ? "Safe practice" : target.undead ? "Undead" : "Humanoid",
                 x + 12,
                 y + 34,
-                250,
-                11,
+                13,
                 Menu.MUTED);
+        if (!practice) {
+            String hp = Math.round(target.health) + " / " + Math.round(target.maxHealth) + " HP";
+            Menu.text(hp, x + 261 - Menu.measure(hp, 13), y + 34, 13, Menu.TEXT);
+        }
         Menu.bar(x + 12, y + 55, 250, target.health, targetGhostHealth, target.maxHealth, Menu.RED);
         if (target.attackTime > .25f) {
             // Damage resolves with .25 seconds remaining; display time until impact, not clip end.
@@ -81,24 +71,29 @@ public final class TargetFrameScreen {
                                             + (target.bossMove.parryable
                                                     ? " [PARRYABLE]"
                                                     : " [UNBLOCKABLE]")
-                                    : target.ranged() ? "RANGED SHOT" : "MELEE STRIKE";
+                                    : (target.variant == 4
+                                                    ? "HEX BOLT"
+                                                    : target.ranged() ? "ARROW" : "STRIKE")
+                                            + " / "
+                                            + (target.targetsPlayer
+                                                    ? "AT YOU"
+                                                    : target.targetsTraveler
+                                                            ? "AT OBJECTIVE"
+                                                            : "AT BEACON");
             Color castColor =
                     target.healingTarget != null
                             ? Menu.TEAL
                             : target.boss() && !target.bossMove.parryable ? Menu.RED : Menu.GOLD;
-            Menu.fittedText(
-                    move + " / " + String.format("%.1fs", target.attackTime - .25f),
-                    x + 12,
-                    y + 76,
-                    250,
-                    11,
-                    castColor);
+            int tenths = (int) Math.ceil((target.attackTime - .25f) * 10);
+            String timer = tenths / 10 + "." + tenths % 10 + "s";
+            Menu.text(timer, x + 261 - Menu.measure(timer, 13), y + 74, 13, castColor);
+            Menu.fittedText(move, x + 12, y + 74, 208, 14, castColor);
             Menu.bar(
                     x + 12,
                     y + 101,
                     250,
-                    target.attackDuration() - target.attackTime,
-                    Math.max(.01f, target.attackDuration() - .25f),
+                    AttackTelegraph.progress(target.attackTime, target.attackDuration()),
+                    1,
                     castColor);
         } else
             Menu.fittedText(

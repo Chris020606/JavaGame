@@ -6,7 +6,6 @@ public enum GameState {
     RELIC_CHOICE,
     LEVEL_COMPLETE,
     VICTORY,
-    JOURNAL,
     GAME_OVER,
     IDLE,
     PAUSED,

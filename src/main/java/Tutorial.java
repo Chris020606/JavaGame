@@ -95,8 +95,11 @@ public final class Tutorial {
             case FOCUS ->
                     "Press "
                             + controls.label(Config.Controls.Action.FOCUS)
-                            + " to focus the practice partner. The target frame shows health and"
-                            + " attack timing. Focus does not aim your attacks.";
+                            + " to focus the practice partner. "
+                            + (hero == HeroClass.WARRIOR
+                                    ? "Watch their attack timer before you parry."
+                                    : "Aim close to your marked enemy to pick them out of a"
+                                            + " crowd.");
             case STRIKE ->
                     "Point at the practice partner and click, or face them and press "
                             + controls.label(Config.Controls.Action.SLASH)

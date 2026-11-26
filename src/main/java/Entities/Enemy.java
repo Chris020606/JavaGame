@@ -94,7 +94,8 @@ public class Enemy {
                                         : variant == 1 || variant == 3
                                                 ? .8f
                                                 : variant == 4 ? 1.1f : 1)
-                        * difficulty.health;
+                        * difficulty.health
+                        * (variant == 5 ? BossBalance.endurance(difficulty, king) : 1);
         health = maxHealth;
         speed =
                 Math.min(3.5f, 1.4f + wave * .12f)
@@ -199,6 +200,17 @@ public class Enemy {
         return Math.abs(Math.IEEEremainder(target - facing, 360)) < 35;
     }
 
+    public void beginWard(Enemy ally) {
+        healingTarget = ally;
+        facing = (float) Math.toDegrees(Math.atan2(ally.x - x, ally.z - z));
+        startedAttackDuration = .9f;
+        attackTime = startedAttackDuration;
+        impactPending = true;
+        healCooldown = 8;
+        cooldown = 1.5f;
+        targetsPlayer = targetsTraveler = false;
+    }
+
     public void beginAttack(float px, float pz, boolean player) {
         attackX = px;
         attackZ = pz;
@@ -216,7 +228,7 @@ public class Enemy {
         // Enrage speeds up the next attack, never the animation already in flight.
         startedAttackDuration = nextAttackDuration();
         attackTime = startedAttackDuration;
-        float bossCooldownBase = enraged() ? (difficulty == Difficulty.EASY ? .65f : .48f) : 1.1f;
+        float bossCooldownBase = BossBalance.recovery(difficulty, king, enraged());
         cooldown =
                 (boss() ? startedAttackDuration + bossCooldownBase : variant == 2 ? 1.5f : 1.3f)
                                 * difficulty.cadence

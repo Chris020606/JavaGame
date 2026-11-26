@@ -4,10 +4,11 @@ import static com.raylib.Raylib.*;
 public final class OpeningStory {
     public static final String[][] PAGES = {
         {
-            "THE LAST LIGHT",
-            "Corrupt wardens broke the seals. The Hollow Frost took the realm.",
-            "Aethelgard is our last refuge. Claim your weapon, rescue the missing, and defend the"
-                    + " Beacon that brings them home."
+            "The last light",
+            "The gate wardens sold their keys. When the seals broke, the Hollow Frost swept through"
+                    + " the kingdom.",
+            "Some families are still beyond the walls. Find them. Keep the Beacon burning long"
+                    + " enough to bring them home."
         }
     };
 
@@ -20,7 +21,7 @@ public final class OpeningStory {
         Menu.wrapped(PAGES[page][1], x, y + 100, width, 21, Menu.TEXT);
         Menu.wrapped(PAGES[page][2], x, y + 168, width, 20, Menu.TEXT);
         Menu.text(
-                page == PAGES.length - 1 ? "ENTER / BEGIN YOUR WATCH" : "ENTER / CONTINUE",
+                page == PAGES.length - 1 ? "Begin your watch [Enter]" : "Continue [Enter]",
                 x,
                 y + 274,
                 15,

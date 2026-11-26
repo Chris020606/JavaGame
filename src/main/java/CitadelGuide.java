@@ -14,12 +14,18 @@ public final class CitadelGuide {
         }
     }
 
+    public static CitadelNpc mentor(HeroClass hero) {
+        return switch (hero) {
+            case WARRIOR -> CitadelNpc.BLACKSMITH;
+            case ARCHER -> CitadelNpc.ARCHER;
+            case MAGE -> CitadelNpc.ARCANIST;
+        };
+    }
+
     public static Destination destination(Progression progress) {
         if (!progress.hasWeapon()) {
-            for (CitadelNpc npc : CitadelNpc.values())
-                if (npc.mentorClass() == progress.heroClass())
-                    return new Destination(
-                            npc.npcName(), "Claim your starter weapon", npc.x(), npc.z());
+            CitadelNpc npc = mentor(progress.heroClass());
+            return new Destination(npc.npcName(), "Claim your starter weapon", npc.x(), npc.z());
         }
         return new Destination(
                 "Expedition Gate",

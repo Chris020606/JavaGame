@@ -6,6 +6,15 @@ import java.util.*;
 
 /** Versioned, validated data only: never Java object deserialization. */
 public final class SaveGame {
+    // A city visit also remembers the onboarding prompt that was visible when saving.
+    public enum CityVisit {
+        AWAY,
+        EXPLORING,
+        OPENING,
+        MOVEMENT,
+        MENTOR
+    }
+
     public record Snapshot(
             String name,
             float x,
@@ -16,7 +25,33 @@ public final class SaveGame {
             List<Enemy> enemies,
             Arena arena,
             float stamina,
-            float dayPhase) {
+            float dayPhase,
+            CityVisit cityVisit) {
+        public Snapshot(
+                String name,
+                float x,
+                float z,
+                float facing,
+                Progression progression,
+                WaveDirector.State wave,
+                List<Enemy> enemies,
+                Arena arena,
+                float stamina,
+                float dayPhase) {
+            this(
+                    name,
+                    x,
+                    z,
+                    facing,
+                    progression,
+                    wave,
+                    enemies,
+                    arena,
+                    stamina,
+                    dayPhase,
+                    CityVisit.AWAY);
+        }
+
         public Snapshot(
                 String name,
                 float x,
@@ -81,6 +116,7 @@ public final class SaveGame {
     public static void write(Path file, Snapshot s) throws IOException {
         Properties p = new Properties();
         p.setProperty("arena", s.arena.name());
+        p.setProperty("cityVisit", s.cityVisit.name());
         p.setProperty("stamina", s.stamina + "");
         p.setProperty("dayPhase", s.dayPhase + "");
         p.setProperty("version", "2");
@@ -104,6 +140,7 @@ public final class SaveGame {
             p.setProperty(prefix + "x", e.x + "");
             p.setProperty(prefix + "z", e.z + "");
             p.setProperty(prefix + "health", e.health + "");
+            p.setProperty(prefix + "maxHealth", e.maxHealth + "");
             p.setProperty(prefix + "variant", e.variant + "");
             p.setProperty(prefix + "personality", e.personality + "");
             p.setProperty(prefix + "facing", e.facing + "");
@@ -161,16 +198,28 @@ public final class SaveGame {
                             integer(p, k + "variant", 0, legacy ? 4 : 5),
                             number(p, k + "personality", 0, 1),
                             progress.difficulty());
-            e.health = number(p, k + "health", .001f, e.maxHealth);
+            // Preserve boss progress across the endurance rebalance, including pre-update saves.
+            float savedMaximum =
+                    p.containsKey(k + "maxHealth")
+                            ? number(p, k + "maxHealth", 1, 100000)
+                            : e.boss()
+                                    ? (40 + wave * 10) * 5 * progress.difficulty().health
+                                    : e.maxHealth;
+            float savedHealth = number(p, k + "health", .001f, savedMaximum);
+            e.health =
+                    Math.max(
+                            .001f, Math.min(e.maxHealth, savedHealth / savedMaximum * e.maxHealth));
             e.facing = number(p, k + "facing", -360, 360);
             // Resume with a short grace period; interrupted windups/projectiles are cancelled.
             e.cooldown = Math.max(.6f, number(p, k + "cooldown", 0, 5));
             enemies.add(e);
         }
+        CityVisit visit = CityVisit.valueOf(p.getProperty("cityVisit", "AWAY"));
+        boolean city = visit != CityVisit.AWAY;
         return new Snapshot(
                 Settings.cleanName(p.getProperty("name")),
-                number(p, "player.x", -22, 22),
-                number(p, "player.z", -22, 22),
+                number(p, "player.x", city ? CitadelHub.MIN_X : -22, city ? CitadelHub.MAX_X : 22),
+                number(p, "player.z", city ? CitadelHub.MIN_Z : -22, city ? CitadelHub.MAX_Z : 22),
                 number(p, "player.facing", -360, 360),
                 progress,
                 director,
@@ -181,6 +230,7 @@ public final class SaveGame {
                 p.containsKey("stamina") ? number(p, "stamina", 0, progress.maxStamina()) : 100,
                 p.containsKey("dayPhase")
                         ? number(p, "dayPhase", 0, Math.nextDown(1f))
-                        : DayNightCycle.initial(Campaign.index(total == 0 ? wave + 1 : wave)));
+                        : DayNightCycle.initial(Campaign.index(total == 0 ? wave + 1 : wave)),
+                visit);
     }
 }

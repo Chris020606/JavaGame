@@ -11,13 +11,15 @@
   <a href="https://github.com/Chris020606/JavaGame/releases">Release notes</a>
 </p>
 
-The kingdom fell when corrupt wardens and outlaw syndicates broke its ancient seals. Aethelgard still stands. Beyond its walls, families are waiting for someone to bring them home.
+The gates of Aethelgard are still holding. Six people are stranded beyond them. Choose a Warrior, Archer, or Mage and lead them back to the Beacon before the valley falls.
 
-Become a Warden, venture into the frozen valleys, and defend the Beacon that carries you and the survivors back to safety.
+## Watch Bram’s Way Home
 
-Choose a Warrior, Archer, or Mage. Explore a four-chapter single-player campaign.
+An archer leaves the south gate to bring a woodcutter home. Watch the 32-second gameplay film in 1080p.
 
-![A moonlit Aethelgard beneath snowy peaks](docs/images/player-title-night.png)
+[![Play Bram’s Way Home](docs/media/brams-way-home.jpg)](https://chris020606.github.io/JavaGame/)
+
+[Download the film](https://github.com/Chris020606/JavaGame/raw/refs/heads/master/docs/media/brams-way-home.mp4)
 
 ## Your next watch
 
@@ -41,9 +43,13 @@ The wave display tracks enemies in the field and incoming reinforcements. Enemie
 
 Return to your class mentor in Aethelgard to forge weapons and individual armor pieces. Goran equips Warriors, Lady Elyndra equips Mages, and Diana equips Archers. Mix your gear and compare its power or defense before equipping it.
 
-Torvald sells potions and permanent caravan upgrades in Market Square. Rescue six stranded citizens across the campaign and watch them settle into the city. The rescue ledger records who is safely home. Boss victories award XP and crystals; new equipment comes from your mentor.
+Torvald sells potions and permanent caravan upgrades in Market Square. Rescue six stranded citizens across the campaign and watch them settle into the city. Select a returned citizen in the rescue ledger and choose **Find in City** to follow their marker through the streets. Boss victories award XP and crystals; new equipment comes from your mentor.
 
 ![Actual gameplay: a Mage defending the meadow sanctuary with a focused enemy's attack timer visible](docs/images/player-target-focus.png)
+
+### In the current development build
+
+Enemy archers and hexers telegraph shots at the Beacon and at survivors. Step into the firing line, face the attacker, and parry to earn a riposte. If a survivor falls behind, hold Interact when their rescue card offers the call.
 
 ## Follow the northern road
 
@@ -83,7 +89,7 @@ On Mac, choose **macOS ARM64** for Apple Silicon or **macOS x64** for Intel. Kee
 | Orbit the camera | Hold right mouse button |
 | Pause | Esc |
 
-Controls can be changed in Settings. The sanctuary's marked ring restores health. Press G there to spend crystals repairing it.
+Controls can be changed in Settings. The sanctuary's marked ring restores health. Stand between an enemy archer and the beacon or a survivor, face the incoming shot, and time a parry to intercept it and ready a riposte. When the beacon takes a hit, its marker pulses red on the radar. Press G inside the ring to repair up to 100 integrity for 30 crystals. Smaller repairs cost proportionally less.
 
 </details>
 

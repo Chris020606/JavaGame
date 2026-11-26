@@ -1,6 +1,7 @@
 package Entities;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 /** Local perception and squad rules; no renderer or desktop input required. */
 public final class SquadTactics {
@@ -30,6 +31,10 @@ public final class SquadTactics {
     }
 
     public static Enemy woundedAlly(Enemy healer, List<Enemy> allies) {
+        return woundedAlly(healer, allies, ally -> true);
+    }
+
+    public static Enemy woundedAlly(Enemy healer, List<Enemy> allies, Predicate<Enemy> visible) {
         Enemy best = null;
         for (Enemy ally : allies)
             if (ally != healer
@@ -37,8 +42,16 @@ public final class SquadTactics {
                     && ally.health > 0
                     && ally.health < ally.maxHealth * .6f
                     && ally.distance(healer.x, healer.z) < 7)
-                if (best == null || ally.health / ally.maxHealth < best.health / best.maxHealth)
-                    best = ally;
+                if ((best == null || ally.health / ally.maxHealth < best.health / best.maxHealth)
+                        && visible.test(ally)
+                        && !alreadyReceivingWard(ally, allies)) best = ally;
         return best;
+    }
+
+    private static boolean alreadyReceivingWard(Enemy patient, List<Enemy> allies) {
+        for (Enemy caster : allies)
+            if (caster.health > 0 && caster.healingTarget == patient && caster.impactPending)
+                return true;
+        return false;
     }
 }

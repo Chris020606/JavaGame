@@ -5,6 +5,8 @@ import Config.Controls;
 
 /** Renders the Citadel Hub HUD, NPC interaction prompts, and RPG dialogue windows. */
 public final class CitadelScreen {
+    private CitadelNpc previousSpeaker;
+
     public enum Action {
         NONE,
         CLAIM_STARTER_WEAPON,
@@ -12,7 +14,6 @@ public final class CitadelScreen {
         OPEN_SUPPLIES,
         OPEN_TRAINING,
         DEPLOY_MISSION,
-        OPEN_JOURNAL,
         OPEN_RESCUE_LEDGER,
         CLOSE_DIALOGUE
     }
@@ -26,6 +27,14 @@ public final class CitadelScreen {
             int chapterIndex) {
         int w = GetScreenWidth(), h = GetScreenHeight();
         Action action = Action.NONE;
+
+        CitadelNpc speaker = hub.activeNpc();
+        if (speaker != null && !hub.isTeleporting()) {
+            boolean acceptKeys = previousSpeaker == speaker;
+            previousSpeaker = speaker;
+            return drawDialogueModal(hub, speaker, progress, w, h, chapterIndex, acceptKeys);
+        }
+        previousSpeaker = null;
 
         // Top Sanctuary Banner
         int saved = progress.rescuedSurvivors();
@@ -51,7 +60,7 @@ public final class CitadelScreen {
                 Menu.TEAL);
 
         if (hub.activeNpc() == null && !hub.isTeleporting()) {
-            CitadelGuide.Destination destination = CityMinimap.destination(progress);
+            CitadelGuide.Destination destination = CityMinimap.destination(progress, hub);
             int guideWidth = 340, gx = 16;
             Menu.panel(gx, 88, guideWidth, 90);
             Menu.text("NEXT STEP", gx + 16, 99, 11, Menu.TEAL);
@@ -69,13 +78,13 @@ public final class CitadelScreen {
         }
 
         if (hub.activeNpc() == null && !hub.isTeleporting())
-            CityMinimap.draw(progress, playerX, playerZ);
+            CityMinimap.draw(hub, progress, playerX, playerZ);
 
         // Bottom Controls Reminder
         int cw = 580, cx = (w - cw) / 2;
         Menu.panel(cx, h - 44, cw, 34);
         Menu.center(
-                "MOVE: "
+                "Move  "
                         + controls.label(Controls.Action.FORWARD)
                         + "/"
                         + controls.label(Controls.Action.LEFT)
@@ -83,11 +92,11 @@ public final class CitadelScreen {
                         + controls.label(Controls.Action.BACK)
                         + "/"
                         + controls.label(Controls.Action.RIGHT)
-                        + "  /  TALK: "
+                        + "    Talk  "
                         + controls.label(Controls.Action.INTERACT)
-                        + "  /  PACK: "
+                        + "    Pack  "
                         + controls.label(Controls.Action.INVENTORY)
-                        + "  /  CODEX: J  /  MENU: ESC",
+                        + "    Esc  Menu",
                 w / 2,
                 h - 32,
                 11,
@@ -107,11 +116,7 @@ public final class CitadelScreen {
                         250,
                         true)) action = Action.OPEN_RESCUE_LEDGER;
 
-        CitadelNpc active = hub.activeNpc();
-        if (active != null) {
-            // Draw Modal RPG Dialogue Box
-            action = drawDialogueModal(hub, active, progress, w, h, chapterIndex);
-        } else {
+        if (!hub.isTeleporting()) {
             // Check for nearby NPC or Portal prompt
             CitadelNpc nearby = hub.checkNearbyNpc(playerX, playerZ, progress.rescuedSurvivors());
             if (nearby != null) {
@@ -163,7 +168,7 @@ public final class CitadelScreen {
         int px = (w - pw) / 2;
         int py = h - 110;
         Menu.panel(px, py, pw, 46);
-        Menu.icon("crown", px + 14, py + 12, 20, Menu.GOLD);
+        Menu.icon(clickable ? "talk" : "arrow", px + 14, py + 12, 20, Menu.GOLD);
         Vector2 pointer = GetMousePosition();
         boolean hover =
                 clickable
@@ -177,8 +182,13 @@ public final class CitadelScreen {
     }
 
     private Action drawDialogueModal(
-            CitadelHub hub, CitadelNpc npc, Progression progress, int w, int h, int chapterIndex) {
-        Action action = Action.NONE;
+            CitadelHub hub,
+            CitadelNpc npc,
+            Progression progress,
+            int w,
+            int h,
+            int chapterIndex,
+            boolean acceptKeys) {
         int mw = Math.min(740, w - 48);
         int textSize = 18;
         int bodyHeight = Menu.wrappedHeight(hub.npcDialogue(), mw - 48, textSize);
@@ -220,194 +230,72 @@ public final class CitadelScreen {
                         || pointer.x() > mx + mw
                         || pointer.y() < my
                         || pointer.y() > my + mh)) return Action.CLOSE_DIALOGUE;
-        boolean matchesMentor = npc.mentorClass() == progress.heroClass();
-
-        switch (npc) {
-            case BLACKSMITH -> {
-                if (!progress.hasWeapon()) {
-                    if (matchesMentor) {
-                        if (Menu.primaryButton(
-                                "RECEIVE " + progress.weaponName(0).toUpperCase(),
-                                mx + 24,
-                                btnY,
-                                330)) {
-                            progress.grantStarterWeapon();
-                            action = Action.CLAIM_STARTER_WEAPON;
-                            hub.setLoreDialogue(
-                                    "Take this blade, brother in arms! The Beacon's fire tempered"
-                                        + " this steel. Raise your battle rank and bring crystals"
-                                        + " when you are ready to craft heavier weapons and plate"
-                                        + " armor!");
-                        }
-                    } else {
-                        Menu.button(
-                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
-                                mx + 24,
-                                btnY,
-                                330,
-                                false);
-                    }
-                } else {
-                    if (matchesMentor) {
-                        if (Menu.primaryButton("CRAFT", mx + 24, btnY, 330)) {
-                            action = Action.OPEN_FORGE;
-                        }
-                    } else {
-                        Menu.button(
-                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
-                                mx + 24,
-                                btnY,
-                                330,
-                                false);
-                    }
-                }
-                if (Menu.button("TALK", mx + 386, btnY, 330, true)) {
-                    hub.setLoreDialogue(npc.lore());
-                }
-                if (Menu.button("LEAVE [ESC]", mx + 24, btnY + 54, 692, true)) {
-                    action = Action.CLOSE_DIALOGUE;
-                }
+        boolean first = acceptKeys && IsKeyPressed(KEY_ONE);
+        boolean second = acceptKeys && IsKeyPressed(KEY_TWO);
+        boolean commander = npc == CitadelNpc.COMMANDER;
+        if (npc.mentorClass() != null) {
+            if (npc.mentorClass() != progress.heroClass()) {
+                Menu.button(
+                        npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
+                        mx + 24,
+                        btnY,
+                        330,
+                        false);
+            } else if (progress.hasWeapon()) {
+                if (Menu.primaryButton("[1] Craft equipment", symbol, mx + 24, btnY, 330) || first)
+                    return Action.OPEN_FORGE;
+            } else if (Menu.primaryButton(
+                            "[1] Receive " + progress.weaponName(0), symbol, mx + 24, btnY, 330)
+                    || first) {
+                progress.grantStarterWeapon();
+                hub.setLoreDialogue(
+                        switch (npc) {
+                            case BLACKSMITH ->
+                                    "Good fit. Bring me crystals from the valley when you need a"
+                                            + " stronger blade or a piece of armor.";
+                            case ARCHER ->
+                                    "That'll draw true. Bring me crystals when you're ready for a"
+                                            + " new bow or a piece of ranger armor.";
+                            default ->
+                                    "There. It's yours. Bring me crystals when you're ready to"
+                                            + " strengthen your staff or weave your first robes.";
+                        });
+                return Action.CLAIM_STARTER_WEAPON;
             }
-            case ARCANIST -> {
-                if (!progress.hasWeapon()) {
-                    if (matchesMentor) {
-                        if (Menu.primaryButton(
-                                "RECEIVE " + progress.weaponName(0).toUpperCase(),
-                                mx + 24,
-                                btnY,
-                                330)) {
-                            progress.grantStarterWeapon();
-                            action = Action.CLAIM_STARTER_WEAPON;
-                            hub.setLoreDialogue(
-                                    "Take this sun-wand, apprentice! May the Beacon's embers ignite"
-                                            + " your spells! Return to me when you earn crystals to"
-                                            + " craft greater staves.");
-                        }
-                    } else {
-                        Menu.button(
-                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
-                                mx + 24,
-                                btnY,
-                                330,
-                                false);
-                    }
-                } else {
-                    if (matchesMentor) {
-                        if (Menu.primaryButton("CRAFT", mx + 24, btnY, 330)) {
-                            action = Action.OPEN_FORGE;
-                        }
-                    } else {
-                        Menu.button(
-                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
-                                mx + 24,
-                                btnY,
-                                330,
-                                false);
-                    }
-                }
-                if (Menu.button("TALK", mx + 386, btnY, 330, true)) {
-                    hub.setLoreDialogue(npc.lore());
-                }
-                if (Menu.button("LEAVE [ESC]", mx + 24, btnY + 54, 692, true)) {
-                    action = Action.CLOSE_DIALOGUE;
-                }
-            }
-            case CARAVAN_TRADER -> {
-                if (Menu.primaryButton("BROWSE TORVALD'S GOODS", mx + 24, btnY, 330)) {
-                    action = Action.OPEN_SUPPLIES;
-                }
-                if (Menu.button("TALK", mx + 386, btnY, 330, true)) {
-                    hub.setLoreDialogue(npc.lore());
-                }
-                if (Menu.button("LEAVE [ESC]", mx + 24, btnY + 54, 692, true)) {
-                    action = Action.CLOSE_DIALOGUE;
-                }
-            }
-            case ARCHER -> {
-                if (!progress.hasWeapon()) {
-                    if (matchesMentor) {
-                        if (Menu.primaryButton(
-                                "RECEIVE " + progress.weaponName(0).toUpperCase(),
-                                mx + 24,
-                                btnY,
-                                330)) {
-                            progress.grantStarterWeapon();
-                            action = Action.CLAIM_STARTER_WEAPON;
-                            hub.setLoreDialogue(
-                                    "Here is your hunting bow, marksman! Keep your eye sharp and"
-                                        + " your aim steady! Return to me when you have crystals to"
-                                        + " craft heavier recurve bows and crossbows.");
-                        }
-                    } else {
-                        Menu.button(
-                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
-                                mx + 24,
-                                btnY,
-                                330,
-                                false);
-                    }
-                } else {
-                    if (matchesMentor) {
-                        if (Menu.primaryButton("CRAFT", mx + 24, btnY, 330)) {
-                            action = Action.OPEN_FORGE;
-                        }
-                    } else {
-                        Menu.button(
-                                npc.mentorClass().label.toUpperCase() + " EQUIPMENT",
-                                mx + 24,
-                                btnY,
-                                330,
-                                false);
-                    }
-                }
-                if (Menu.button("TALK", mx + 386, btnY, 330, true)) {
-                    hub.setLoreDialogue(npc.lore());
-                }
-                if (Menu.button("LEAVE [ESC]", mx + 24, btnY + 54, 692, true)) {
-                    action = Action.CLOSE_DIALOGUE;
-                }
-            }
-            case COMMANDER -> {
-                if (!progress.hasWeapon()) {
-                    Menu.button(
-                            "RECEIVE YOUR FIRST WEAPON BEFORE DEPLOYING",
+        } else if (commander) {
+            if (!progress.hasWeapon())
+                Menu.button(
+                        "Receive your first weapon before deploying", mx + 24, btnY, 692, false);
+            else if (Menu.primaryButton(
+                            "[1] Deploy to " + Campaign.CHAPTERS[chapterIndex].title(),
+                            "arrow",
                             mx + 24,
                             btnY,
-                            692,
-                            false);
-                } else {
-                    String deployLabel =
-                            "DEPLOY EXPEDITION: CHAPTER "
-                                    + (chapterIndex + 1)
-                                    + " / "
-                                    + Campaign.CHAPTERS[chapterIndex].title();
-                    if (Menu.primaryButton(deployLabel, mx + 24, btnY, 692)) {
-                        action = Action.DEPLOY_MISSION;
-                    }
-                }
-                if (Menu.button("TALK", mx + 24, btnY + 52, 330, true)) {
-                    hub.setLoreDialogue(npc.lore());
-                }
-                if (Menu.button("LEAVE [ESC]", mx + 386, btnY + 52, 330, true)) {
-                    action = Action.CLOSE_DIALOGUE;
-                }
-            }
-            default -> {
-                if (Menu.primaryButton("TALK", mx + 24, btnY, 330)) {
-                    hub.setLoreDialogue(npc.lore());
-                }
-                if (Menu.button("OFFER WARDEN'S BLESSING", mx + 386, btnY, 330, true)) {
-                    hub.setLoreDialogue(
-                            "The survivor bows their head in deep gratitude. 'The warmth of the"
-                                    + " Primordial Beacon and your courage keep us alive,"
-                                    + " Warden!'");
-                }
-                if (Menu.button("LEAVE [ESC]", mx + 24, btnY + 52, 692, true)) {
-                    action = Action.CLOSE_DIALOGUE;
-                }
-            }
+                            692)
+                    || first) return Action.DEPLOY_MISSION;
+        } else if (npc == CitadelNpc.CARAVAN_TRADER) {
+            if (Menu.primaryButton("[1] Browse goods", "bag", mx + 24, btnY, 330) || first)
+                return Action.OPEN_SUPPLIES;
+        } else {
+            if (Menu.primaryButton("[1] Talk", "talk", mx + 24, btnY, 330) || first)
+                hub.setLoreDialogue(npc.lore());
+            if (Menu.button("[2] Offer a blessing", mx + 386, btnY, 330, true) || second)
+                hub.setLoreDialogue(npc.blessingReply());
         }
-
-        return action;
+        if (!npc.isSurvivor()
+                && (Menu.button(
+                                "[2] Talk",
+                                commander ? mx + 24 : mx + 386,
+                                commander ? btnY + 54 : btnY,
+                                330,
+                                true)
+                        || second)) hub.setLoreDialogue(npc.lore());
+        if (Menu.button(
+                "Leave [Esc]",
+                commander ? mx + 386 : mx + 24,
+                btnY + 54,
+                commander ? 330 : 692,
+                true)) return Action.CLOSE_DIALOGUE;
+        return Action.NONE;
     }
 }

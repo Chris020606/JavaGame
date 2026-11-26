@@ -9,6 +9,7 @@ import assets.AssetPaths;
 /** An independent animated character stage; selecting a class never changes the active hero. */
 public final class HeroPortrait implements AutoCloseable {
     private final Player[] heroes = new Player[3];
+    private final Progression[] kits = new Progression[HeroClass.values().length];
     private final RenderTexture target = LoadRenderTexture(600, 800);
     private final Shader shader =
             LoadShader(
@@ -39,23 +40,57 @@ public final class HeroPortrait implements AutoCloseable {
             player.setAnimation(
                     hero == HeroClass.ARCHER
                             ? PlayerAnimation.BOW_IDLE
-                            : PlayerAnimation.UNARMED_IDLE);
+                            : PlayerAnimation.MELEE_IDLE);
+            kits[hero.ordinal()] = new Progression(hero);
             heroes[hero.ordinal()] = player;
         }
         float time = (float) GetTime();
-        player.getRotation().y(18 + (float) Math.sin(time * .5f) * 9);
-        player.updateAnimation(1 / 60f);
+        // A three-quarter view keeps the bow limbs and staff clear of the face.
+        player.getRotation()
+                .y((hero == HeroClass.ARCHER ? -17 : 52) + (float) Math.sin(time * .5f) * 6);
+        player.updateAnimation(Math.max(0, Math.min(.08f, GetFrameTime())));
         BeginTextureMode(target);
-        ClearBackground(Menu.color(21, 36, 45));
+        Color accent = accent(hero);
+        ClearBackground(Menu.INK);
+        DrawRectangleGradientV(0, 0, 600, 800, Menu.color(39, 52, 68), Menu.INK);
+        // A stitched class standard hangs behind the plinth.
+        int left = 158, right = 442, hem = 470;
+        DrawRectangleGradientV(left, 0, right - left, hem, Fade(accent, .44f), Fade(accent, .16f));
+        DrawTriangle(
+                new Vector2().x(left).y(hem),
+                new Vector2().x(300).y(hem + 90),
+                new Vector2().x(right).y(hem),
+                Fade(accent, .16f));
+        DrawLine(left + 10, 0, left + 10, hem - 3, Fade(accent, .64f));
+        DrawLine(right - 10, 0, right - 10, hem - 3, Fade(accent, .64f));
+        Menu.icon(symbol(hero), 266, 52, 68, Fade(accent, .8f));
         BeginMode3D(camera);
-        DrawCylinder(new Vector3().y(-.08f), 1.05f, 1.2f, .08f, 48, Menu.color(48, 66, 69));
+        DrawCylinder(new Vector3().y(-.16f), 1.15f, 1.22f, .12f, 24, Menu.color(53, 62, 74));
+        DrawCylinder(new Vector3().y(-.055f), 1.12f, 1.14f, .038f, 24, accent);
+        DrawCylinder(new Vector3().y(-.027f), 1.08f, 1.12f, .04f, 24, Menu.color(69, 79, 86));
         assets.previewPass(shader);
         assets.preparePlayer(player);
-        assets.drawPlayerBody(player, new Progression(hero), WHITE);
+        assets.drawPlayerBody(player, kits[hero.ordinal()], WHITE);
         assets.drawPlayerWeapon(player, hero.ordinal(), 0);
         assets.endPreview();
         EndMode3D();
         EndTextureMode();
+    }
+
+    static Color accent(HeroClass hero) {
+        return switch (hero) {
+            case WARRIOR -> Menu.GOLD;
+            case ARCHER -> Menu.TEAL;
+            case MAGE -> Menu.color(187, 158, 238);
+        };
+    }
+
+    static String symbol(HeroClass hero) {
+        return switch (hero) {
+            case WARRIOR -> "sword";
+            case ARCHER -> "bow";
+            case MAGE -> "staff";
+        };
     }
 
     public void draw(int x, int y, int w, int h) {

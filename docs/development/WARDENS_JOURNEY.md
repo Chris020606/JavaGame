@@ -350,3 +350,51 @@ The nearby Talk prompt also accepts mouse clicks with hover feedback, preserving
 ### v4.5.0 publication preparation (2026-11-19)
 
 Updated the player-facing repository page with current title/city/inventory screenshots and curated Road Home release notes. Removed remaining active co-op copy, added a player bug-report form and taught tagged releases to use the curated notes. Local verification: unit tests, Java and tracked Python formatting, full native city/conversation/audio/rescue inspection, both-boss enrage regression and desktop package all passed. Private notes and unrelated teaser tooling are excluded from publication.
+
+### Longer, harder boss encounters (2026-11-19)
+
+Added BossBalance endurance/recovery tuning without changing ordinary enemies, hit windows, rewards or telegraphs. Normal Ash Warden health is 1,440 (previously 450); Hollow King is 2,800 (previously 700). Easy uses lower endurance factors and retains its existing recovery gaps. Hard/Extreme scale further; Normal+ recovery gaps shrink, especially for the enraged King. Existing sigil/shockwave phase patterns remain readable.
+
+Enemy saves now optionally record maxHealth. Loading preserves the remaining health fraction; pre-update boss saves use their original maximum for migration, preventing an existing fight from suddenly loading at an incorrect phase. BossEnduranceTest covers scaling, unchanged ordinary enemies/rewards/warnings, recovery windows and current/legacy save percentages. Campaign boss-hit budget expectations updated for intentionally longer encounters.
+
+### Combat clarity and reliable retry (2026-11-20)
+
+Used official Hades patch notes as a reference for clearer action and fewer competing effects. AttackTelegraph now completes at the actual .25s impact boundary; normal parryable strikes use gold, unblockable boss casts retain red. Elite ambient effects recede during windups. Vital number sizes now follow bar height, improving large health values while keeping thin XP rows readable.
+
+RetryLoadout preserves current owned and equipped equipment when restoring the encounter checkpoint, including mixed tiers and intentionally empty/lower-tier slots. Crystal balances cannot increase through retry. Missing/invalid checkpoints preserve the live session instead of silently creating a new game. Native inspection recreates the reported top sword/head plus second-tier other armor, defeats the player and retries twice, then checks the persisted save.
+
+References: https://www.supergiantgames.com/blog/hades-welcome-to-hell-update-patch-notes/ and https://www.supergiantgames.com/blog/hades-updates/ . These inform readability priorities; no borrowed assets or timing claims.
+
+Interface audio follow-up: added original generated menu/error WAV cues (tools/prepare_ui_audio.py) because existing requests had no loaded clips. They use a quieter effects-bus level. Validation: 201 unit tests; native mixed-tier death/retry/save, city/rescue/conversations/audio inspection; both-boss enrage and pattern warnings; Java formatting; desktop packaging all passed. Final log /tmp/outpost-deadline-ready.log. Existing published v4.5.0 is unchanged; these changes remain local.
+
+### Readable rescue objectives (2026-11-20)
+
+ObjectiveStatus and ObjectiveTracker separate expedition objective presentation from Game. The smaller card shows survivor health, time left and distance-aware waiting/following/lead status; supplies and waystones show completion progress. A screen-safe distance marker points to offscreen objectives, including targets behind the camera, while avoiding primary HUD areas. Urgent time/health uses a warning color. Gameplay, timers and rewards are unchanged. Unit tests cover projection boundaries and the actual escort thresholds; native review captures nearby and offscreen survivor views.
+
+Battle notifications now use measured-height cards in the left HUD column instead of the fixed central box. They sit below active objective information, leaving the character and attack warnings unobscured. Marker placement also handles nonfinite camera projections safely.
+
+### Directional combat contacts and clean transitions (2026-11-20)
+
+Melee, arrow and magic impacts now follow the incoming strike direction instead of sharing radial reward/healing bursts. Heavy contacts have stronger spark motion and restrained bright accents, using the existing bounded particle pool. Returning to the city clears combat effects, floating feedback and hit-pause residue; deployment starts fresh. Unit coverage checks forward spread across every facing and finite overlapping contacts. Native inspection checks particle limits, recall cleanup and captures directional contacts. Combat damage, hit rules and timing remain unchanged.
+
+### Clear chapter results and bounded battle radar (2026-11-22)
+
+Replaced overlapping result-screen paragraphs with ChapterResultScreen: readable aftermath, three earned-status cards (Beacon integrity, citizens home, chapter feats), a concise next destination and existing reward/navigation actions. No rewards or chapter rules changed. The defeat screen now accurately states that retries keep equipped gear.
+
+RadarPoint keeps marker geometry inside the circular battle radar, including actors at diagonal arena corners. Final nonboss stragglers receive a subtle radar pulse when no reinforcements remain. Unit tests cover radius bounds, direction preservation and invalid positions. Native result review covers all chapters at the minimum supported window size, plus inventory/return flows.
+
+### Named escorts and Citadel saves
+
+The escort card identifies the citizen by the same name used in the Citadel. The route marker leads to the Beacon while the citizen follows and points back to them if the player gets too far ahead. Field citizens stand idle when they stop. After all six have returned, replaying a rescue wave brings up a supply cache.
+
+City saves now restore the Warden's position and introductory lesson, including a save made from the pause menu near the south gate. An expedition can also resume between the last enemy's death and the last citizen's evacuation. Replay objectives continue counting beyond eight completions.
+
+### Warden creation, city conversations and ranged combat
+
+The character sheet previews each class on its own standard and names the mentor who supplies its first weapon. The title and character sheet skip the expedition's 3D scene and shadow passes. City conversations accept the two numbered choices as well as mouse input. The forge and pack take exclusive input while open. Each rescued resident has a personal reply when offered a blessing.
+
+Enemy archers and hexers show a moving chevron along the committed firing line. The focus frame names the target of an ordinary attack and counts down to release. Healers face the patient, check terrain when choosing and applying a ward, and leave an ally already receiving a ward to the other caster. Archer and Mage attacks favor the focused enemy inside the standard visible aim cone. Projectiles still travel through the world and collide normally.
+
+### Menus and reading text
+
+The J-key Chronicle has been removed from the city, expeditions, title and pause menus. Chapter feats still pay their saved rewards at completion. Body text uses Source Sans 3 Semibold and large headings use Rajdhani. Text measurement and rendering select the same font. The city tutorial now gives one movement instruction and one class-specific direction to the mentor.

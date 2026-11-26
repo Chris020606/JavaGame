@@ -78,7 +78,10 @@ public class Progression {
         result.spireLevel = optional(p, "spireLevel", 1, 10, 1);
         result.sanctuaryAuraLevel = optional(p, "sanctuaryAuraLevel", 1, 10, 1);
         result.solarWardLevel = optional(p, "solarWardLevel", 0, 10, 0);
-        result.rescuedSurvivors = optional(p, "rescuedSurvivors", 0, 10000, 0);
+        result.rescuedSurvivors =
+                Math.min(
+                        CitadelNpc.RESCUED_SURVIVORS.length,
+                        optional(p, "rescuedSurvivors", 0, Integer.MAX_VALUE, 0));
         result.vitality = optional(p, "vitality", 1, 10, 1);
         result.power = optional(p, "power", 1, 10, 1);
         result.endurance = optional(p, "endurance", 1, 10, 1);
@@ -243,7 +246,14 @@ public class Progression {
     }
 
     public void rescueSurvivor() {
-        rescuedSurvivors++;
+        if (rescuedSurvivors < CitadelNpc.RESCUED_SURVIVORS.length) rescuedSurvivors++;
+    }
+
+    public String survivorName() {
+        // Older saves can still have an escort in flight after the entire roster returned.
+        return rescuedSurvivors < CitadelNpc.RESCUED_SURVIVORS.length
+                ? CitadelNpc.RESCUED_SURVIVORS[rescuedSurvivors].npcName()
+                : "Caravan traveler";
     }
 
     public ChapterFeats chapterFeats() {
@@ -527,10 +537,16 @@ public class Progression {
         return potions;
     }
 
+    /** Health this warden would regain by drinking a potion right now. */
+    public float potionHealing() {
+        return potions == 0 || defeated() ? 0 : Math.min(60, Math.max(0, maxHealth() - health));
+    }
+
     public boolean usePotion() {
-        if (potions == 0 || defeated() || health >= maxHealth()) return false;
+        float healing = potionHealing();
+        if (healing <= 0) return false;
         potions--;
-        health = Math.min(maxHealth(), health + 60);
+        health += healing;
         return true;
     }
 
@@ -865,11 +881,21 @@ public class Progression {
                                                                 Expedition.Blessing.BULWARK)));
     }
 
+    /** A full repair restores 100 integrity for 30 crystals. Round the price up once. */
+    public float repairAmount() {
+        return defeated() ? 0 : Math.min(100, Math.max(0, maxBaseHealth() - baseHealth));
+    }
+
+    public int repairCost() {
+        return (int) Math.ceil(repairAmount() * 30.0 / 100);
+    }
+
     public boolean repairBase() {
-        int cost = 30, amount = 100;
-        if (defeated() || baseHealth >= maxBaseHealth() || crystals < cost) return false;
+        float amount = repairAmount();
+        int cost = repairCost();
+        if (amount <= 0 || crystals < cost) return false;
         crystals -= cost;
-        baseHealth = Math.min(maxBaseHealth(), baseHealth + amount);
+        baseHealth += amount;
         return true;
     }
 

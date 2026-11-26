@@ -14,6 +14,17 @@ public final class RangedAim {
             float range,
             List<Enemy> enemies,
             Predicate<Enemy> visible) {
+        return target(x, z, facing, range, enemies, null, visible);
+    }
+
+    public static Enemy target(
+            float x,
+            float z,
+            float facing,
+            float range,
+            List<Enemy> enemies,
+            Enemy focus,
+            Predicate<Enemy> visible) {
         Enemy best = null;
         double bestScore = Double.POSITIVE_INFINITY;
         for (Enemy enemy : enemies) {
@@ -26,7 +37,9 @@ public final class RangedAim {
                                     360));
             if (angle > 12) continue;
             double score = angle + distance * .12;
-            if (score < bestScore && visible.test(enemy)) {
+            if ((enemy == focus || score < bestScore) && visible.test(enemy)) {
+                // A deliberate focus takes priority in a crowd only inside the normal assist cone.
+                if (enemy == focus) return enemy;
                 best = enemy;
                 bestScore = score;
             }

@@ -4,6 +4,17 @@ import org.junit.jupiter.api.Test;
 
 class CityNavigationTest {
     @Test
+    void ledgerOnlyRoutesToCitizensWhoHaveReturned() {
+        Progression progress = new Progression();
+        CityNavigation navigation = new CityNavigation();
+        assertFalse(navigation.visit(CitadelNpc.SURVIVOR_BRAM, progress));
+        progress.rescueSurvivor();
+        assertTrue(navigation.visit(CitadelNpc.SURVIVOR_BRAM, progress));
+        assertFalse(navigation.visit(CitadelNpc.SURVIVOR_MIRA, progress));
+        assertEquals(CitadelNpc.SURVIVOR_BRAM.npcName(), navigation.destination(progress).title());
+    }
+
+    @Test
     void trackingMerchantChangesOnlyGuidanceAndCanBeCleared() {
         Progression p = new Progression();
         CityNavigation navigation = new CityNavigation();

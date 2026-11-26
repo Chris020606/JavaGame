@@ -2,6 +2,13 @@ import java.util.Properties;
 
 /** Optional timed encounters. Their simulation pauses with the rest of the game. */
 public final class FieldEvent {
+    static final float FOLLOW_RANGE = 16, CALL_RANGE = 24;
+    private float distressTime;
+
+    public boolean underAttack() {
+        return vulnerable() && distressTime > 0;
+    }
+
     public enum Kind {
         SUPPLIES,
         SURVIVOR,
@@ -21,7 +28,18 @@ public final class FieldEvent {
     private int wave;
     private float x, z, time, progress, health = 100, facing;
     private float hurtCooldown;
-    private boolean rewarded;
+    private boolean rewarded, walking;
+
+    public boolean canCall(float distance) {
+        return kind == Kind.SURVIVOR
+                && status == Status.ACTIVE
+                && distance >= FOLLOW_RANGE
+                && distance < CALL_RANGE;
+    }
+
+    public boolean walking() {
+        return walking;
+    }
 
     public Kind kind() {
         return kind;
@@ -91,18 +109,22 @@ public final class FieldEvent {
         status = Status.NONE;
         progress = time = facing = 0;
         health = 100;
-        hurtCooldown = 0;
-        rewarded = false;
+        hurtCooldown = distressTime = 0;
+        rewarded = walking = false;
     }
 
     public void begin(int wave) {
+        begin(wave, true);
+    }
+
+    public void begin(int wave, boolean missingCitizens) {
         if (wave == this.wave) return;
         this.wave = wave;
-        rewarded = false;
+        rewarded = walking = false;
         progress = 0;
         health = 100;
         facing = 0;
-        hurtCooldown = 0;
+        hurtCooldown = distressTime = 0;
         if (Campaign.chapter(wave).bossOnly() || wave < 1) {
             status = Status.NONE;
             return;
@@ -115,6 +137,7 @@ public final class FieldEvent {
                 };
         // Six authored rescue opportunities across both expedition regions; boss duels stay clear.
         if (wave == 4 || wave == 6 || wave == 7 || wave == 9) kind = Kind.SURVIVOR;
+        if (kind == Kind.SURVIVOR && !missingCitizens) kind = Kind.SUPPLIES;
         x = wave % 2 == 0 ? -12 : 12;
         z = wave >= 6 ? -10 : 8;
         time = kind == Kind.SURVIVOR ? 65 : 45;
@@ -126,8 +149,10 @@ public final class FieldEvent {
     }
 
     public void update(float dt, float px, float pz, boolean interact, int chapterIndex) {
+        walking = false;
         if (!visible()) return;
         hurtCooldown = Math.max(0, hurtCooldown - dt);
+        distressTime = Math.max(0, distressTime - dt);
         time = Math.max(0, time - dt);
         if (time <= 0 || health <= 0) {
             status = Status.FAILED;
@@ -147,7 +172,7 @@ public final class FieldEvent {
                 progress += dt;
                 if (progress >= 14) status = Status.COMPLETE;
             } else {
-                if (d > 2 && d < 16) {
+                if (d > 2 && (d < FOLLOW_RANGE || interact && canCall(d))) {
                     ArenaNavigation.Position steer =
                             ArenaNavigation.steering(chapterIndex, x, z, px, pz);
                     float dirX = (px - x) / d + steer.x() * 0.45f;
@@ -164,6 +189,7 @@ public final class FieldEvent {
                     float targetZ = z + dirZ * step;
                     ArenaNavigation.Position moved =
                             ArenaNavigation.move(chapterIndex, x, z, targetX, targetZ, 0.45f);
+                    walking = Math.hypot(moved.x() - x, moved.z() - z) > .0001f;
                     x = moved.x();
                     z = moved.z();
                 }
@@ -178,9 +204,10 @@ public final class FieldEvent {
     }
 
     public void damage(float amount) {
-        if (vulnerable()) {
+        if (vulnerable() && Float.isFinite(amount) && amount > 0) {
             if (hurtCooldown > 0) return;
             hurtCooldown = 0.35f;
+            distressTime = 2.5f;
             health = Math.max(0, health - Math.max(0, amount));
             if (health <= 0) status = Status.FAILED;
         }

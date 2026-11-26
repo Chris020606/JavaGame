@@ -97,8 +97,18 @@ public class CitadelVisualInspection {
                     "PASS: sun and moon mouse dragging changes lighting and releases correctly");
             if (java.util.Arrays.asList(args).contains("--title-only")) return;
 
-            // Travel to Citadel and unlock all 4 rescued survivors so they appear in town
+            // Repeated directional impacts stay pooled; recalling clears the prior encounter.
+            for (int burst = 0; burst < 100; burst++)
+                game.combatEffects().strike(0, 4, -1, 3, Menu.GOLD, true);
+            if (game.combatEffects().particleCount() > 240
+                    || game.combatEffects().particleCount() == 0)
+                throw new AssertionError("Directional impact particle budget invalid");
             game.travelToCitadel();
+            if (game.combatEffects().particleCount() != 0)
+                throw new AssertionError("Recall retained combat effects");
+            System.out.println(
+                    "PASS: directional impact pool stays bounded and recall clears effects");
+            // Unlock rescued survivors so they appear in town.
             game.getProgression().rescueSurvivor();
             game.getProgression().rescueSurvivor();
             game.getProgression().rescueSurvivor();
@@ -116,13 +126,14 @@ public class CitadelVisualInspection {
                     radarX + 80 + Math.round(CitadelNpc.CARAVAN_TRADER.x() * .95f),
                     82 + 88 + Math.round((CitadelNpc.CARAVAN_TRADER.z() + 7) * .95f),
                     MOUSE_BUTTON_LEFT);
-            if (!CityMinimap.destination(game.getProgression())
+            if (!CityMinimap.destination(game.getProgression(), game.getCitadelHub())
                     .title()
                     .equals(CitadelNpc.CARAVAN_TRADER.npcName()))
                 throw new AssertionError("Radar click did not track merchant");
             capture(game, outDir.resolve("city-tracked-merchant.png").toString());
             inventoryClick(game, radarX + 80, 82 + 88, MOUSE_BUTTON_RIGHT);
-            if (CityMinimap.destination(game.getProgression()).z() != CitadelHub.PORTAL_Z)
+            if (CityMinimap.destination(game.getProgression(), game.getCitadelHub()).z()
+                    != CitadelHub.PORTAL_Z)
                 throw new AssertionError("Radar right-click did not clear tracking");
 
             // 1. Capture Spawn North Avenue (Default View)
@@ -343,17 +354,34 @@ public class CitadelVisualInspection {
             Image forge = LoadImageFromScreen();
             ExportImage(forge, outDir.resolve("individual-armor-forge.png").toString());
             UnloadImage(forge);
-            for (int frame = 0; frame < 3; frame++) {
+            Progression roster = new Progression();
+            roster.rescueSurvivor();
+            int ledgerX = (GetScreenWidth() - 900) / 2, ledgerY = (GetScreenHeight() - 590) / 2;
+            for (int frame = 0; frame < 4; frame++) {
+                titlePointer(ledgerX + (frame < 2 ? 70 : 660), ledgerY + (frame < 2 ? 145 : 550));
+                try (AutomationEvent click = new AutomationEvent().type(frame % 2 == 0 ? 6 : 5)) {
+                    click.params(0, MOUSE_BUTTON_LEFT);
+                    PlayAutomationEvent(click);
+                }
                 BeginDrawing();
                 ClearBackground(Menu.INK);
                 BeginMode2D(new Camera2D().zoom((float) GetRenderWidth() / GetScreenWidth()));
-                RescueLedgerScreen.draw(game.getProgression());
+                boolean closed = RescueLedgerScreen.draw(roster, game.getCitadelHub());
                 EndMode2D();
                 EndDrawing();
+                if (frame == 1) {
+                    Image ledger = LoadImageFromScreen();
+                    ExportImage(ledger, outDir.resolve("rescue-ledger.png").toString());
+                    UnloadImage(ledger);
+                }
+                if (frame == 2 && !closed)
+                    throw new AssertionError("Visit did not close the ledger");
             }
-            Image ledger = LoadImageFromScreen();
-            ExportImage(ledger, outDir.resolve("rescue-ledger.png").toString());
-            UnloadImage(ledger);
+            var visit = CityMinimap.destination(roster, game.getCitadelHub());
+            if (!visit.title().equals(CitadelNpc.SURVIVOR_BRAM.npcName())
+                    || visit.x() != game.getCitadelHub().npcX(CitadelNpc.SURVIVOR_BRAM)
+                    || visit.z() != game.getCitadelHub().npcZ(CitadelNpc.SURVIVOR_BRAM))
+                throw new AssertionError("Ledger did not mark Bram's current location");
 
             for (CitadelNpc npc : CitadelNpc.RESCUED_SURVIVORS) {
                 game.getPlayer().getPosition().x(npc.x()).y(0).z(npc.z() + 2.5f);
@@ -369,15 +397,27 @@ public class CitadelVisualInspection {
                         outDir.resolve("citizen-" + npc.name().toLowerCase() + ".png").toString());
             }
 
+            Progression escortKit = new Progression();
+            escortKit.rescueSurvivor(); // Kaelen follows Bram in both the field and city roster.
+            escortKit.fieldEvent().begin(2);
+            SaveGame.write(
+                    profile.resolve("save.properties"),
+                    new SaveGame.Snapshot(
+                            "Escort",
+                            -10,
+                            9,
+                            0,
+                            escortKit,
+                            new WaveDirector.State(2, 0, 1, 8, 0, 21, 0),
+                            java.util.List.of(new Entities.Enemy(18, 18, 2))));
+            if (!game.loadCurrent()) throw new AssertionError("Escort inspection save failed");
             game.setState(GameState.PLAYING);
-            game.getPlayer().getPosition().x(-10).y(0).z(12);
             if (cam != null) {
                 cam.setYaw(0);
                 cam.setPitch(24);
                 cam.setDistance(8);
             }
             renderFrames(game, 3);
-            game.getProgression().fieldEvent().begin(2);
             for (int frame = 0; frame < 3; frame++) {
                 BeginDrawing();
                 ClearBackground(Menu.INK);
@@ -387,6 +427,39 @@ public class CitadelVisualInspection {
             Image fieldCitizen = LoadImageFromScreen();
             ExportImage(fieldCitizen, outDir.resolve("field-survivor-shared-model.png").toString());
             UnloadImage(fieldCitizen);
+
+            capture(game, outDir.resolve("objective-survivor-nearby.png").toString());
+            FieldEvent companion = game.getProgression().fieldEvent();
+            companion.update(.01f, companion.x(), companion.z(), true);
+            game.getPlayer().getPosition().x(-8).z(6);
+            capture(game, outDir.resolve("escort-beacon-route.png").toString());
+            if (!companion.walking()) throw new AssertionError("Nearby escort failed to walk");
+            game.getPlayer().getPosition().x(15).z(-15);
+            if (cam != null) cam.setDistance(4);
+            capture(game, outDir.resolve("objective-survivor-offscreen.png").toString());
+
+            if (companion.walking()) throw new AssertionError("Separated escort walked in place");
+
+            // Result content at minimum size: earned values, short next destination, no story
+            // overlap.
+            SetWindowSize(1000, 680);
+            for (int chapter = 0; chapter < 4; chapter++) {
+                for (int frame = 0; frame < 5; frame++) {
+                    BeginDrawing();
+                    ClearBackground(Menu.INK);
+                    BeginMode2D(new Camera2D().zoom((float) GetRenderWidth() / GetScreenWidth()));
+                    Menu.panel(146, 76, 708, 510);
+                    ChapterResultScreen.draw(
+                            game.getProgression(), chapter, chapter == 3, 170, 100);
+                    EndMode2D();
+                    EndDrawing();
+                }
+                Image result = LoadImageFromScreen();
+                ExportImage(
+                        result, outDir.resolve("chapter-results-" + chapter + ".png").toString());
+                UnloadImage(result);
+            }
+            SetWindowSize(1280, 800);
 
             // Returning through the city must consume the already-completed chapter transition
             // once.
@@ -430,6 +503,14 @@ public class CitadelVisualInspection {
                 if (game.getState() != GameState.PLAYING
                         || !game.getProgression().fieldEvent().visible())
                     throw new AssertionError("Wave cut off rescue " + rescueWave);
+                if (Campaign.boundary(rescueWave)) {
+                    if (!game.saveCurrent()
+                            || !game.loadCurrent()
+                            || game.getState() != GameState.PAUSED
+                            || game.getProgression().unlockedChapter() > Campaign.index(rescueWave))
+                        throw new AssertionError("Reload skipped unfinished rescue " + rescueWave);
+                    game.setState(GameState.PLAYING);
+                }
                 FieldEvent escort = game.getProgression().fieldEvent();
                 escort.update(.01f, escort.x(), escort.z(), true, game.chapterIndex());
                 for (int step = 0; step < 500 && escort.visible(); step++) {
@@ -450,14 +531,145 @@ public class CitadelVisualInspection {
                 throw new AssertionError("Campaign did not return all six citizens");
             game.travelToCitadel();
             renderFrames(game, 10);
-            for (CitadelNpc npc : CitadelNpc.RESCUED_SURVIVORS) {
-                CitadelHub city = game.getCitadelHub();
-                if (!city.citizenWalkable(city.npcX(npc), city.npcZ(npc)))
-                    throw new AssertionError("Citizen inside rendered building: " + npc.npcName());
+            CitadelHub city = game.getCitadelHub();
+            CitadelNpc[] residents = CitadelNpc.values();
+            float[] startX = new float[residents.length], startZ = new float[residents.length];
+            boolean[] walked = new boolean[residents.length];
+            for (CitadelNpc npc : residents) {
+                startX[npc.ordinal()] = city.npcX(npc);
+                startZ[npc.ordinal()] = city.npcZ(npc);
             }
+            for (int step = 0; step < 800; step++) {
+                city.updateCitizens(.05f, 30, 0, 6);
+                for (CitadelNpc npc : residents) {
+                    float x = city.npcX(npc), z = city.npcZ(npc);
+                    if (!city.citizenWalkable(x, z))
+                        throw new AssertionError(
+                                "Citizen inside rendered building: " + npc.npcName());
+                    int index = npc.ordinal();
+                    walked[index] |= Math.hypot(x - startX[index], z - startZ[index]) > .5;
+                }
+            }
+            for (CitadelNpc npc : residents)
+                if (!walked[npc.ordinal()])
+                    throw new AssertionError("Stationary citizen: " + npc.npcName());
             System.out.println(
                     "PASS: no repeat chapter result, all six rescue opportunities retained and"
                             + " citizens outside rendered houses");
+
+            // The gate road extends beyond the expedition's 22 metre save boundary.
+            game.getPlayer().getPosition().x(0).z(26);
+            if (!game.saveCurrent()
+                    || !game.loadCurrent()
+                    || game.getState() != GameState.CITADEL
+                    || game.getPlayer().getPosition().z() != 26
+                    || game.getProgression().rescuedSurvivors() != 6
+                    || game.getPlayer().isBoundsEnabled())
+                throw new AssertionError(
+                        "City save did not return to gate road with the full roster");
+            capture(game, outDir.resolve("citadel-resumed-gate-road.png").toString());
+            System.out.println(
+                    "PASS: open chapter-end escorts survive reload and city saves restore gate road"
+                            + " and roster");
+
+            // Resume a saved mentor visit through the pause menu's actual Save & Exit action.
+            var savedVisit = AppData.read(profile.resolve("save.properties"));
+            savedVisit.setProperty("cityVisit", "MENTOR");
+            AppData.write(profile.resolve("save.properties"), savedVisit);
+            if (!game.loadCurrent()
+                    || game.tutorial() == null
+                    || game.tutorial().step() != Tutorial.Step.FOCUS)
+                throw new AssertionError("City tutorial did not resume at mentor");
+            try (AutomationEvent down = new AutomationEvent().type(2)) {
+                down.params(0, KEY_ESCAPE);
+                PlayAutomationEvent(down);
+            }
+            renderFrames(game, 1);
+            try (AutomationEvent up = new AutomationEvent().type(1)) {
+                up.params(0, KEY_ESCAPE);
+                PlayAutomationEvent(up);
+            }
+            renderFrames(game, 1);
+            if (game.getState() != GameState.PAUSED) throw new AssertionError("City pause failed");
+            inventoryClick(
+                    game,
+                    GetScreenWidth() / 2,
+                    (GetScreenHeight() - 440) / 2 + 336,
+                    MOUSE_BUTTON_LEFT);
+            if (game.getState() != GameState.MAIN_MENU
+                    || !game.loadCurrent()
+                    || game.getState() != GameState.CITADEL
+                    || game.tutorial() == null
+                    || game.tutorial().step() != Tutorial.Step.FOCUS
+                    || game.getPlayer().getPosition().z() != 26)
+                throw new AssertionError("Save & Exit lost mentor visit or gate position");
+            System.out.println(
+                    "PASS: paused Save & Exit retains the city tutorial and coordinates");
+
+            // Mixed loadout must survive actual death/retry and repeated checkpoint reloads.
+            java.util.Properties retryProps = new java.util.Properties();
+            new Progression().store(retryProps);
+            retryProps.setProperty("characterLevel", "10");
+            retryProps.setProperty("crystals", "10000");
+            Progression entryGear = Progression.restore(retryProps);
+            entryGear.buyWeapon(2);
+            entryGear.equipWeapon(2);
+            for (Entities.ArmorSlot slot : Entities.ArmorSlot.values()) {
+                entryGear.buyArmor(slot, 2);
+                entryGear.equipArmor(slot, 2);
+            }
+            var checkpoint = profile.resolve("chapter-checkpoint.properties");
+            SaveGame.write(
+                    checkpoint,
+                    new SaveGame.Snapshot(
+                            "Warden",
+                            0,
+                            4,
+                            0,
+                            entryGear,
+                            new WaveDirector.State(4, 0, 0, 5, 0, 21, 0),
+                            java.util.List.of(),
+                            Arena.HIGHLANDS));
+            entryGear.store(retryProps);
+            Progression defeatGear = Progression.restore(retryProps);
+            defeatGear.buyWeapon(3);
+            defeatGear.equipWeapon(3);
+            defeatGear.buyArmor(Entities.ArmorSlot.HEAD, 3);
+            defeatGear.equipArmor(Entities.ArmorSlot.HEAD, 3);
+            SaveGame.write(
+                    profile.resolve("save.properties"),
+                    new SaveGame.Snapshot(
+                            "Warden",
+                            0,
+                            4,
+                            0,
+                            defeatGear,
+                            new WaveDirector.State(5, 0, 1, 8, 0, 21, 0),
+                            java.util.List.of(new Entities.Enemy(0, 12, 5, 5, .5f)),
+                            Arena.HIGHLANDS));
+            if (!game.loadCurrent()) throw new AssertionError("Retry setup failed");
+            for (int attempt = 0; attempt < 2; attempt++) {
+                game.getProgression().damagePlayer(100000);
+                game.setState(GameState.GAME_OVER);
+                game.retryChapter();
+                if (game.getState() != GameState.PLAYING || game.getProgression().defeated())
+                    throw new AssertionError("Retry did not restore a playable encounter");
+                Progression retried = game.getProgression();
+                if (retried.weaponTier() != 3 || retried.armorTier(Entities.ArmorSlot.HEAD) != 3)
+                    throw new AssertionError("Retry lost final sword/helmet");
+                for (Entities.ArmorSlot slot : Entities.ArmorSlot.values())
+                    if (slot != Entities.ArmorSlot.HEAD && retried.armorTier(slot) != 2)
+                        throw new AssertionError("Retry changed mixed armor selection");
+                if (retried.crystals() > defeatGear.crystals())
+                    throw new AssertionError("Retry refunded gear");
+            }
+            capture(game, outDir.resolve("retry-preserved-loadout.png").toString());
+            if (SaveGame.read(profile.resolve("save.properties")).progression().weaponTier() != 3)
+                throw new AssertionError("Retry equipment was not persisted");
+            game.travelToCitadel();
+            System.out.println(
+                    "PASS: final sword/helmet and second-tier other armor survive death and"
+                            + " repeated retries");
 
             // NPC conversations: real Talk input, readable body height and dismissal.
             game.getPlayer()
@@ -540,11 +752,55 @@ public class CitadelVisualInspection {
             game.setState(GameState.PLAYING);
             game.getEnemies().getFirst().stun = 100;
             capture(game, outDir.resolve("polish-encounter-hud.png").toString());
+            var contact = game.getEnemies().getFirst();
+            game.combatEffects()
+                    .strike(
+                            contact.x,
+                            contact.z,
+                            game.getPlayer().getPosition().x(),
+                            game.getPlayer().getPosition().z(),
+                            Menu.GOLD,
+                            true);
+            capture(game, outDir.resolve("directional-contact-impact.png").toString());
             game.getEnemies().getFirst().health = 0;
             renderFrames(game, 2);
             capture(game, outDir.resolve("polish-rewards.png").toString());
             if (game.getProgression().kills() != 1)
                 throw new AssertionError("Reward path did not resolve");
+
+            Progression sortie = new Progression(HeroClass.ARCHER);
+            sortie.grantStarterWeapon();
+            SaveGame.write(
+                    profile.resolve("save.properties"),
+                    new SaveGame.Snapshot(
+                            "Watch",
+                            0,
+                            6,
+                            180,
+                            sortie,
+                            new WaveDirector.State(3, 0, 1, 8, 0, 21, 0),
+                            java.util.List.of(new Entities.Enemy(-3, 1, 3, 3, .5f))));
+            if (!game.loadCurrent()) throw new AssertionError("Ranged volley fixture failed");
+            game.setState(GameState.PLAYING);
+            Entities.Enemy shooter = game.getEnemies().getFirst();
+            shooter.beginAttack(0, 6, true);
+            for (int frame = 0; frame < 7; frame++) renderFrames(game, 1);
+            try (AutomationEvent down = new AutomationEvent().type(2)) {
+                down.params(0, KEY_T);
+                PlayAutomationEvent(down);
+            }
+            renderFrames(game, 1);
+            try (AutomationEvent up = new AutomationEvent().type(1)) {
+                up.params(0, KEY_T);
+                PlayAutomationEvent(up);
+            }
+            SetWindowSize(1000, 680);
+            capture(game, outDir.resolve("ranged-volley-1000.png").toString());
+            if (game.focusedEnemy() != shooter || !shooter.impactPending)
+                throw new AssertionError("Expected the focused archer's committed windup");
+            renderFrames(game, 24);
+            if (shooter.impactPending) throw new AssertionError("Archer never released the shot");
+            SetWindowSize(1280, 800);
 
             TargetFrameScreen targetView = new TargetFrameScreen();
             Entities.Enemy king = new Entities.Enemy(0, 0, 10, 5, .5f);

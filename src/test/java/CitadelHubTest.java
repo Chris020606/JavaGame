@@ -260,9 +260,15 @@ public class CitadelHubTest {
         // Dynamic greeting test
         Progression unarmedMage = new Progression(HeroClass.MAGE);
         unarmedMage.setHasWeapon(false);
-        assertTrue(CitadelNpc.ARCANIST.dynamicGreeting(unarmedMage).contains("Sun-Wand"));
-        assertTrue(CitadelNpc.BLACKSMITH.dynamicGreeting(unarmedMage).contains("Mage"));
-        assertTrue(CitadelNpc.COMMANDER.dynamicGreeting(unarmedMage).contains("HALT"));
+        assertTrue(CitadelNpc.ARCANIST.dynamicGreeting(unarmedMage).contains("staff"));
+        assertTrue(
+                CitadelNpc.BLACKSMITH
+                        .dynamicGreeting(unarmedMage)
+                        .contains(CitadelNpc.ARCANIST.npcName()));
+        assertTrue(
+                CitadelNpc.COMMANDER
+                        .dynamicGreeting(unarmedMage)
+                        .contains(CitadelNpc.ARCANIST.npcName()));
 
         // WorkshopScreen mentor matching
         WorkshopScreen workshop = new WorkshopScreen();
@@ -292,15 +298,15 @@ public class CitadelHubTest {
 
         // Dynamic greeting checks for mismatched mentors
         String mageToWarrior = CitadelNpc.ARCANIST.dynamicGreeting(warrior);
-        assertTrue(mageToWarrior.contains("mentor of Mages"));
-        assertTrue(mageToWarrior.contains("Warrior"));
+        assertTrue(mageToWarrior.contains(CitadelNpc.BLACKSMITH.npcName()));
+        assertTrue(mageToWarrior.contains("west"));
 
         String blacksmithToMage =
                 CitadelNpc.BLACKSMITH.dynamicGreeting(new Progression(HeroClass.MAGE));
-        assertTrue(blacksmithToMage.contains("mentor of Warriors"));
+        assertTrue(blacksmithToMage.contains(CitadelNpc.ARCANIST.npcName()));
 
         String archerToWarrior = CitadelNpc.ARCHER.dynamicGreeting(warrior);
-        assertTrue(archerToWarrior.contains("mentor of Archers"));
+        assertTrue(archerToWarrior.contains(CitadelNpc.BLACKSMITH.npcName()));
     }
 
     @Test

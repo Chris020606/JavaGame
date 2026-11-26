@@ -14,7 +14,6 @@ public final class MainMenuScreen {
         LOAD_GAME,
         QUIT,
         SETTINGS,
-        CHRONICLE,
         PLAYER_HISTORY
     }
 
@@ -40,7 +39,6 @@ public final class MainMenuScreen {
         Menu.ember(x, y - 3, 18, 1, Menu.GOLD);
         Menu.text("OUTPOST", x - 1, y + 41, 76, Fade(Menu.GOLD, .22f));
         Menu.text("OUTPOST", x - 3, y + 38, 76, Menu.TEXT);
-        Menu.text("A E T H E L G A R D", x + 3, y + 123, 11, Menu.MUTED);
         DrawRectangle(x, y + 149, 52, 2, Menu.GOLD);
         DrawLine(x + 64, y + 150, x + 290, y + 150, Fade(Menu.GOLD, .22f));
         Menu.text("The kingdom fell. Its last light remains.", x, y + 166, 20, Menu.GOLD);
@@ -60,21 +58,31 @@ public final class MainMenuScreen {
             name = name.substring(0, name.length() - 1);
             shortened = true;
         }
-        Menu.text("WARDEN / " + name + (shortened ? "..." : ""), x, y + 286, 15, Menu.TEXT);
-        Menu.text(hasSave ? "JOURNEY SAVED" : "A NEW CHAPTER", x + 300, y + 288, 10, Menu.TEAL);
+        Menu.text(
+                hasSave ? "WARDEN / " + name + (shortened ? "..." : "") : "New adventure",
+                x,
+                y + 286,
+                15,
+                Menu.TEXT);
+        if (hasSave) Menu.text("JOURNEY SAVED", x + 300, y + 288, 10, Menu.TEAL);
         Action action = Action.NONE;
-        if (Menu.primaryButton(
-                hasSave ? "CONTINUE YOUR JOURNEY" : "BEGIN YOUR JOURNEY", x, y + 321, 420))
+        if (Menu.primaryButton(hasSave ? "Continue journey" : "Begin journey", x, y + 321, 420))
             action = hasSave ? Action.LOAD_GAME : Action.NEW_GAME;
-        if (Menu.button("NEW WARDEN", x, y + 380, 200, true)) action = Action.NEW_GAME;
-        if (Menu.button("PLAYERS & SAVES", x + 220, y + 380, 200, true))
+        if (hasSave && Menu.button("New Warden", x, y + 380, 200, true)) action = Action.NEW_GAME;
+        if (Menu.button(
+                "Players & saves", hasSave ? x + 220 : x, y + 380, hasSave ? 200 : 420, true))
             action = Action.PLAYER_HISTORY;
-        if (Menu.button("CHRONICLE", x, y + 439, 130, true)) action = Action.CHRONICLE;
-        if (Menu.button("SETTINGS", x + 145, y + 439, 130, true)) action = Action.SETTINGS;
-        if (Menu.button("QUIT", x + 290, y + 439, 130, true)) action = Action.QUIT;
+        if (Menu.button("Settings", x, y + 439, 200, true)) action = Action.SETTINGS;
+        if (Menu.button("Quit", x + 220, y + 439, 200, true)) action = Action.QUIT;
         if (!message.isEmpty()) Menu.text(message, x, y + 532, 14, Menu.GOLD);
         Menu.text("v" + BuildInfo.VERSION, x, height - 32, 12, Menu.MUTED);
         return action;
+    }
+
+    void creationBackdrop(int w, int h) {
+        sky.update(GetFrameTime(), 0, 0, false, false, w, h);
+        winterBackdrop(w, h);
+        DrawRectangle(0, 0, w, h, Fade(Menu.INK, .6f));
     }
 
     private void winterBackdrop(int width, int height) {
@@ -308,7 +316,7 @@ public final class MainMenuScreen {
         for (int r = 4; r > 0; r--)
             DrawCircle(cx + 1, beaconY, r * 9, Fade(Menu.GOLD, .018f * pulse));
         Menu.ember(cx - 6, beaconY - 8, 15, pulse, Menu.GOLD);
-        Menu.center("A E T H E L G A R D", cx + 10, horizon - 225, 12, Fade(Menu.TEXT, .6f));
+        Menu.center("Aethelgard", cx + 10, horizon - 225, 12, Fade(Menu.TEXT, .6f));
     }
 
     /**

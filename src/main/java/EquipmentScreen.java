@@ -420,7 +420,18 @@ public final class EquipmentScreen implements AutoCloseable {
                                     - p.armorBonus(slot(selected), p.armorTier(slot(selected)));
             EquipmentComparison.draw(
                     selected < 4 ? "POWER" : "DEFENSE", current, next, x + 18, y + 250, 244);
-        } else Menu.text("Restores up to 60 health.", x + 18, y + 252, 14, Menu.TEXT);
+        } else {
+            String effect =
+                    !have
+                            ? "Your satchel is empty."
+                            : p.potionHealing() == 0
+                                    ? "Health is full."
+                                    : "Health: "
+                                            + Math.round(p.health())
+                                            + "  ->  "
+                                            + Math.round(p.health() + p.potionHealing());
+            Menu.text(effect, x + 18, y + 252, 14, Menu.TEXT);
+        }
         String action =
                 !have
                         ? "NOT OWNED"
@@ -430,22 +441,29 @@ public final class EquipmentScreen implements AutoCloseable {
                                         ? selected == 0 ? "STARTER EQUIPPED" : "REMOVE"
                                         : "EQUIP [ENTER]";
         boolean usable =
-                have
-                        && !(wearing && selected == 0)
-                        && (selected != 16 || p.health() < p.maxHealth());
+                have && !(wearing && selected == 0) && (selected != 16 || p.potionHealing() > 0);
         if (Menu.button(action, x + 18, y + 302, 244, usable)) {
             if (wearing) remove(p, selected);
             else equip(p, selected);
         }
-        String help =
-                !have
-                        ? "Forge this piece with your class mentor in the city. Requires level "
-                                + Progression.requiredLevel(tier(selected))
-                                + "."
-                        : selected == 16
-                                ? "Buy replacement potions from Torvald in Market Square."
-                                : "Double-click or drag to a matching equipment slot. Right-click"
-                                        + " an equipped slot to remove it.";
+        String help;
+        if (selected == 16) {
+            help = "Buy replacement potions from Torvald in Market Square.";
+        } else if (!have) {
+            String mentor = CitadelGuide.mentor(p.heroClass()).npcName();
+            help =
+                    selected == 0
+                            ? "Speak to " + mentor + " in the Citadel to receive your first weapon."
+                            : "Visit "
+                                    + mentor
+                                    + " in the Citadel. Requires level "
+                                    + Progression.requiredLevel(tier(selected))
+                                    + ".";
+        } else {
+            help =
+                    "Double-click or drag to a matching equipment slot. Right-click an equipped"
+                            + " slot to remove it.";
+        }
         Menu.wrapped(help, x + 18, y + 368, 244, 12, Menu.MUTED);
     }
 

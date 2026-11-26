@@ -224,11 +224,17 @@ public final class WorkshopScreen {
                 13,
                 Menu.MUTED);
         if (Menu.button(
-                        "REPAIR +100 / 30 CRYSTALS",
+                        p.repairAmount() == 0
+                                ? "BEACON AT FULL INTEGRITY"
+                                : "REPAIR +"
+                                        + (int) Math.ceil(p.repairAmount())
+                                        + " / "
+                                        + p.repairCost()
+                                        + " CRYSTALS",
                         col1 + 16,
                         y + 420,
                         278,
-                        p.crystals() >= 30 && p.baseHealth() < p.maxBaseHealth())
+                        p.repairAmount() > 0 && p.crystals() >= p.repairCost())
                 && p.repairBase()) audio.play("upgrade");
 
         // Right Column: Caravan Merchant Provisions (No manual upgrading)

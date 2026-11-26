@@ -3,6 +3,7 @@ package Entities;
 /** Stamina and defensive windows, independent of graphics and desktop input. */
 public final class CombatDiscipline {
     public static final float LIGHT = 14, HEAVY = 32, LUNGE = 24, DODGE = 22, PARRY = 12;
+    public static final float PARRY_WINDOW = .22f;
     private float maximum = 100, regeneration = 22;
 
     public void configure(float maximum, float regeneration) {
@@ -55,7 +56,7 @@ public final class CombatDiscipline {
 
     public boolean beginParry() {
         if (recovery > 0 || !spend(PARRY)) return false;
-        parry = .22f;
+        parry = PARRY_WINDOW;
         recovery = .70f;
         return true;
     }

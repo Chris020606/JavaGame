@@ -4,6 +4,7 @@ import static com.raylib.Raylib.*;
 
 import Config.Controls;
 
+import Entities.CombatDiscipline;
 import Entities.Player;
 
 /** Outpost's ember vitals and six-slot action belt. Geometry is shared with input. */
@@ -16,10 +17,18 @@ public final class HudScreen {
             int combo,
             float comboWindow,
             String mastery,
-            boolean empowered) {}
+            boolean empowered,
+            boolean intercept) {}
 
     private static final Controls.Action[] ACTIONS = {
         SLASH, HEAVY, PARRY, LUNGE, POTION, INVENTORY
+    };
+
+    private static final float[] COSTS = {
+        CombatDiscipline.LIGHT,
+        CombatDiscipline.HEAVY,
+        CombatDiscipline.PARRY,
+        CombatDiscipline.LUNGE
     };
 
     private float ghostHealth = -1;
@@ -112,13 +121,13 @@ public final class HudScreen {
         Menu.frame(x - 8, y - 8, span + 16, 78, Menu.PANEL, Menu.LINE);
         Vector2 mouse = GetMousePosition();
         int hover = layout.hit(mouse.x(), mouse.y());
-        String weapon =
-                p.heroClass() == HeroClass.WARRIOR
-                        ? "sword"
-                        : p.heroClass() == HeroClass.ARCHER
-                                ? (p.weaponTier() >= 2 ? "crossbow" : "bow")
-                                : "staff";
-        String[] icons = {weapon, "charge", "shield", "lunge", "potion", "bag"};
+        String[] icons = {crest, "charge", "shield", "lunge", "potion", "bag"};
+        Color classAccent =
+                switch (p.heroClass()) {
+                    case MAGE -> Menu.color(169, 153, 250);
+                    case ARCHER -> Menu.color(133, 214, 169);
+                    default -> Menu.GOLD;
+                };
         String[] labels = {
             p.heroClass() == HeroClass.WARRIOR
                     ? "STRIKE"
@@ -135,23 +144,46 @@ public final class HudScreen {
                     i == 0 && player.isAttacking()
                             || i == 1 && state.charge() > 0
                             || i == 2 && player.discipline().parrying();
-            Menu.slot(sx, y, size, hover == i, active);
-            if ((i == 0 || i == 3) && state.cooldown() > 0)
-                DrawRectangle(
-                        sx + 3,
-                        y + 3,
-                        size - 6,
-                        (int) ((size - 6) * Math.min(1, state.cooldown() / state.duration())),
-                        Fade(Menu.INK, .55f));
-            Menu.text(controls.label(ACTIONS[i]), sx + 5, y + 4, 9, Menu.MUTED);
+            boolean intercept = i == 2 && state.intercept();
+            Menu.slot(sx, y, size, hover == i, active || intercept);
+            Color accent =
+                    active || intercept || hover == i
+                            ? Menu.GOLD
+                            : i == 4 ? Menu.RED : i == 5 ? Menu.MUTED : classAccent;
+            boolean lowResource = i < COSTS.length && player.discipline().stamina() < COSTS[i];
+            if (!active && (lowResource || i == 4 && p.potionHealing() == 0)) accent = Menu.MUTED;
+            DrawRectangleGradientV(
+                    sx + 2, y + 2, size - 4, size - 4, Fade(accent, .22f), Fade(Menu.INK, .64f));
+            int iconSize = compact ? 25 : 30;
             Menu.icon(
                     icons[i],
-                    sx + size / 2 - 12,
-                    y + 18,
-                    24,
-                    i == 4 ? Menu.RED : active ? Menu.GOLD : Menu.TEXT);
-            if (i == 4) Menu.text("" + p.potions(), sx + size - 15, y + size - 18, 13, Menu.GOLD);
-            Menu.center(labels[i], sx + size / 2, y + size + 3, 9, Menu.MUTED);
+                    sx + (size - iconSize) / 2,
+                    y + size - iconSize - 5,
+                    iconSize,
+                    accent);
+            String key = controls.label(ACTIONS[i]);
+            int keySize = 12;
+            while (keySize > 8 && Menu.measure(key, keySize) > size - 8) keySize--;
+            DrawRectangle(sx + 2, y + 2, Menu.measure(key, keySize) + 6, keySize + 3, Menu.INK);
+            Menu.text(key, sx + 5, y + 3, keySize, Menu.TEXT);
+            if (i == 4)
+                Menu.text(
+                        Integer.toString(p.potions()),
+                        sx + size - 15,
+                        y + size - 18,
+                        14,
+                        Menu.TEXT);
+            float ready =
+                    (i == 0 || i == 3) && state.cooldown() > 0
+                            ? 1 - Math.min(1, state.cooldown() / Math.max(.001f, state.duration()))
+                            : 1;
+            DrawRectangle(sx + 2, y + size - 3, (int) ((size - 4) * ready), 2, accent);
+            Menu.center(
+                    intercept ? "PARRY NOW" : labels[i],
+                    sx + size / 2,
+                    y + size + 2,
+                    intercept ? 10 : 12,
+                    intercept ? Menu.GOLD : Menu.TEXT);
         }
         if (state.charge() > 0) {
             float charge = state.charge();
@@ -190,24 +222,22 @@ public final class HudScreen {
                             : p.heroClass() == HeroClass.ARCHER
                                     ? "POWER SHOT"
                                     : p.weaponTier() >= 3 ? "DAWNWEAVER MEND" : "ARCANE SURGE";
-            Menu.text(spellName, x + 8, barY + 2, 11, inCritWindow ? Menu.GOLD : Menu.TEXT);
-            Menu.text(
-                    String.format("%.2fs / 1.40s", charge), x + span - 84, barY + 2, 11, Menu.GOLD);
-            if (inCritWindow) {
-                Menu.center(
-                        "CRITICAL RELEASE WINDOW!", GetScreenWidth() / 2, barY - 16, 11, Menu.GOLD);
-            } else {
-                Menu.center(
-                        "HOLD TO CHARGE / RELEASE IN GOLD",
-                        GetScreenWidth() / 2,
-                        barY - 16,
-                        10,
-                        Menu.MUTED);
-            }
+            DrawRectangle(
+                    x + 3,
+                    barY + 1,
+                    Menu.measure(spellName, 11) + 10,
+                    barH - 4,
+                    Fade(Menu.INK, .90f));
+            Menu.text(spellName, x + 8, barY + 2, 11, Menu.TEXT);
+            String cue =
+                    inCritWindow
+                            ? "Release now"
+                            : charge < .75f ? "Hold for gold" : "Release to fire";
+            Menu.text(cue, x + span - Menu.measure(cue, 13) - 8, barY + 2, 13, Menu.TEXT);
         } else {
             String timing =
                     player.discipline().riposteReady()
-                            ? "RIPOSTE READY! [PRESS STRIKE]"
+                            ? "Riposte / " + controls.label(SLASH)
                             : state.combo() > 0
                                             && state.comboWindow() > 0
                                             && state.cooldown() <= .22f
@@ -229,14 +259,26 @@ public final class HudScreen {
             Menu.icon(icons[hover], tx + 12, ty + 12, 22, Menu.GOLD);
             String help =
                     switch (hover) {
-                        case 0 -> "Strike toward your facing";
+                        case 0 ->
+                                switch (p.heroClass()) {
+                                    case ARCHER -> "Loose an arrow";
+                                    case MAGE -> "Cast a bolt";
+                                    default -> "Swing your weapon";
+                                };
                         case 1 ->
                                 p.heroClass() == HeroClass.MAGE && p.weaponTier() >= 3
                                         ? "Charged Dawnweaver shots mend allies"
                                         : "Hold to charge, release in gold";
-                        case 2 -> "Time your block before a gold hit";
+                        case 2 -> "Parry a blow or intercept a shot";
                         case 3 -> "Close the gap with a lunge";
-                        case 4 -> "Restore up to 60 health";
+                        case 4 ->
+                                p.potions() == 0
+                                        ? "Restock with Torvald in Market Square"
+                                        : p.potionHealing() == 0
+                                                ? "Health is full"
+                                                : "Restore "
+                                                        + Math.round(p.potionHealing())
+                                                        + " health";
                         default -> "Inspect and change equipment";
                     };
             Menu.text(
@@ -245,6 +287,12 @@ public final class HudScreen {
                     ty + 7,
                     13,
                     Menu.GOLD);
+            if (hover < COSTS.length)
+                help +=
+                        " / "
+                                + (int) COSTS[hover]
+                                + " "
+                                + p.resourceLabel().toLowerCase(java.util.Locale.ROOT);
             Menu.text(help, tx + 44, ty + 27, 11, Menu.TEXT);
         }
     }

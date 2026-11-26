@@ -32,3 +32,9 @@ Version 1 migration is retained. Do not remove it or reinterpret numeric enemy v
 - `outpost.dataDir`: override writable user data.
 
 Do not point both at the same directory. The resource directory contains game assets; the data directory contains player state.
+
+Boss endurance updates preserve fight progress with optional `enemy.<index>.maxHealth` metadata. Saves without it use the pre-rebalance boss maximum; loading scales remaining health by percentage into the current maximum. Ordinary enemies remain unchanged.
+
+The optional `cityVisit` property records whether a Warden is exploring Aethelgard, watching the opening, learning movement, or visiting the mentor. City positions use the same perimeter as city collision. A missing property means an expedition save and uses the original field bounds. Older files did not record the visit, so a city location cannot be reliably inferred from them.
+
+`expedition.objectives` counts completions across chapter replays. Stored embers can fund the remaining blessing ranks. During loading, excess embers from older runs are capped to those ranks and the rescued citizen count is capped to the six-person roster. An unfinished escort still holds chapter completion after loading a cleared battlefield.

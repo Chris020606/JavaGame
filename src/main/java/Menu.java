@@ -14,23 +14,37 @@ public class Menu {
         return new Color().r((byte) r).g((byte) g).b((byte) b).a((byte) 255);
     }
 
-    private static Font font;
+    private static Font body, display;
 
-    private static Font font() {
-        if (font == null) {
-            font =
-                    LoadFontEx(
-                            assets.AssetPaths.path("resources/outpost/interface.ttf"),
-                            96,
-                            (int[]) null,
-                            0);
-            SetTextureFilter(font.texture(), TEXTURE_FILTER_BILINEAR);
+    // The condensed title lettering stays on large headings. Body copy gets a heavier face
+    // rasterized closer to its displayed size so small counters survive filtering.
+    private static Font font(int size) {
+        if (size >= 26) {
+            if (display == null) display = loadFont("interface.ttf", 80);
+            return display;
         }
+        if (body == null) body = loadFont("SourceSans3-Semibold.ttf", 33);
+        return body;
+    }
+
+    private static Font loadFont(String file, int pixels) {
+        int[] glyphs =
+                java.util.stream.IntStream.concat(
+                                java.util.stream.IntStream.rangeClosed(32, 126),
+                                "’“”–—•×→".codePoints())
+                        .toArray();
+        Font font =
+                LoadFontEx(
+                        assets.AssetPaths.path("resources/outpost/" + file),
+                        pixels,
+                        glyphs,
+                        glyphs.length);
+        SetTextureFilter(font.texture(), TEXTURE_FILTER_BILINEAR);
         return font;
     }
 
     public static int measure(String text, int size) {
-        return Math.round(MeasureTextEx(font(), text, size * 1.15f, .5f).x());
+        return Math.round(MeasureTextEx(font(size), text, size * 1.15f, .5f).x());
     }
 
     public static void center(String text, int x, int y, int size, Color color) {
@@ -38,10 +52,9 @@ public class Menu {
     }
 
     public static void close() {
-        if (font != null) {
-            UnloadFont(font);
-            font = null;
-        }
+        if (body != null) UnloadFont(body);
+        if (display != null) UnloadFont(display);
+        body = display = null;
     }
 
     public static void panel(int x, int y, int w, int h) {
@@ -118,13 +131,25 @@ public class Menu {
             DrawRectangleGradientV(x + 3, y + 3, amount, height - 6, fill, Fade(fill, .66f));
             DrawLine(x + 4, y + 4, x + Math.max(4, amount), y + 4, Fade(TEXT, .35f));
         }
-        text(label, x + 10, y + (height - 16) / 2, 13, TEXT);
+        int labelSize = height >= 24 ? 14 : height >= 20 ? 12 : 10;
+        int valueSize = height >= 24 ? 16 : height >= 20 ? 14 : 11;
+        text(
+                label,
+                x + 10,
+                y + Math.max(0, (height - Math.round(labelSize * 1.15f)) / 2),
+                labelSize,
+                TEXT);
         String value = Math.round(current) + " / " + Math.round(maximum);
-        text(value, x + width - measure(value, 14) - 10, y + (height - 17) / 2, 14, TEXT);
+        text(
+                value,
+                x + width - measure(value, valueSize) - 10,
+                y + Math.max(0, (height - Math.round(valueSize * 1.15f)) / 2),
+                valueSize,
+                TEXT);
     }
 
     public static void text(String text, int x, int y, int size, Color color) {
-        DrawTextEx(font(), text, new Vector2().x(x).y(y), size * 1.15f, .5f, color);
+        DrawTextEx(font(size), text, new Vector2().x(x).y(y), size * 1.15f, .5f, color);
     }
 
     /**
@@ -295,6 +320,12 @@ public class Menu {
                 iconLine(x + u, y + 3 * u, cx - u, y + 3 * u, color);
                 iconLine(cx + u, y + 3 * u, x + size - u, y + 3 * u, color);
             }
+            case "talk" -> {
+                DrawRectangleLines(x + u, y + u, size - 2 * u, size - 3 * u, color);
+                iconLine(x + 2 * u, y + size - 2 * u, x + 2 * u, y + size, color);
+                iconLine(x + 2 * u, y + size, cx, y + size - 2 * u, color);
+                iconLine(x + 3 * u, cy - u, x + size - 3 * u, cy - u, color);
+            }
             case "gear" -> {
                 DrawCircleLines(cx, cy, size / 3f, color);
                 DrawCircle(cx, cy, u, color);
@@ -336,7 +367,8 @@ public class Menu {
         if (label.contains("SAVE")) return "save";
         if (label.contains("INVENTORY") || label.contains("GEAR")) return "bag";
         if (label.contains("SETTINGS")) return "gear";
-        if (label.contains("CHRONICLE")) return "book";
+        if (label.equals("Players & saves")) return "save";
+        if (label.equals("Settings")) return "gear";
         if (label.contains("UPGRADE")) return "shield";
         if (label.contains("NEW GAME") || label.contains("BEGIN")) return "sword";
         if (label.contains("CONTINUE")
@@ -364,12 +396,23 @@ public class Menu {
     }
 
     public static boolean primaryButton(String label, int x, int y, int width) {
+        return primaryButton(label, "sword", x, y, width);
+    }
+
+    public static boolean primaryButton(String label, String symbol, int x, int y, int width) {
         Vector2 mouse = GetMousePosition();
         boolean hover =
                 mouse.x() >= x && mouse.x() <= x + width && mouse.y() >= y && mouse.y() <= y + 44;
         frame(x, y, width, 44, hover ? color(239, 198, 113) : color(195, 151, 72), GOLD);
-        icon("sword", x + 16, y + 12, 20, INK);
-        center(label, x + width / 2 + 8, y + 12, 19, INK);
+        icon(symbol, x + 16, y + 12, 20, INK);
+        int size = 19;
+        while (size > 11 && measure(label, size) > width - 60) size--;
+        text(
+                label,
+                x + 42 + (width - 52 - measure(label, size)) / 2,
+                y + (44 - size) / 2,
+                size,
+                INK);
         return hover && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     }
 

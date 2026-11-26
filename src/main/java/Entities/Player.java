@@ -155,8 +155,16 @@ public class Player extends Entity {
         requestedParry = true;
     }
 
+    public boolean canParry() {
+        return !isAttacking()
+                && !isDodging()
+                && !charging
+                && discipline.recovery() <= 0
+                && discipline.stamina() >= CombatDiscipline.PARRY;
+    }
+
     public void parry() {
-        if (!isAttacking() && !isDodging() && !charging) discipline.beginParry();
+        if (canParry()) discipline.beginParry();
     }
 
     public boolean invulnerable() {
@@ -512,11 +520,16 @@ public class Player extends Entity {
             }
         } else if (weaponStyle == 1) {
             clip = elapsed < attackImpact ? PlayerAnimation.BOW_DRAW : PlayerAnimation.BOW_RELEASE;
-            progress =
-                    elapsed < attackImpact
-                            ? AttackMotion.contact(
-                                    elapsed, attackImpact, attackDuration, 1, attackStartPose)
-                            : after / Math.max(.1f, attackDuration - attackImpact);
+            // Settle at full draw before contact, then let the string snap forward.
+            if (elapsed < attackImpact) {
+                float draw =
+                        AttackMotion.smooth(
+                                Math.min(1, elapsed / Math.max(.01f, attackImpact * .85f)));
+                progress = attackStartPose + (1 - attackStartPose) * draw;
+            } else {
+                float release = Math.min(1, after / Math.max(.01f, attackDuration - attackImpact));
+                progress = 1 - (1 - release) * (1 - release);
+            }
         } else if (weaponStyle == 2) {
             if (heavyAttack) {
                 clip =

@@ -17,6 +17,7 @@ public final class Expedition {
         }
     }
 
+    private static final int TOTAL_RANKS = Blessing.values().length * 3;
     private final int[] ranks = new int[Blessing.values().length];
     private int embers, lastWave, choices, objectives;
     private int offerRevision = -1;
@@ -42,13 +43,18 @@ public final class Expedition {
         if (wave <= lastWave || wave < 1 || wave > 10) return false;
         lastWave = wave;
         if (Campaign.chapter(wave).bossOnly()) return false;
-        embers++;
-        return true;
+        return earnEmber();
     }
 
     public void objectiveCompleted() {
-        objectives++;
+        if (objectives < Integer.MAX_VALUE) objectives++;
+        earnEmber();
+    }
+
+    private boolean earnEmber() {
+        if (embers >= TOTAL_RANKS - choices) return false;
         embers++;
+        return true;
     }
 
     public List<Blessing> offers() {
@@ -84,10 +90,12 @@ public final class Expedition {
 
     public static Expedition restore(Properties p) {
         Expedition e = new Expedition();
-        e.embers = read(p, "expedition.embers", 0, 30);
+        int savedEmbers = read(p, "expedition.embers", 0, Integer.MAX_VALUE);
         e.lastWave = read(p, "expedition.lastWave", 0, 10);
-        e.choices = read(p, "expedition.choices", 0, 18);
-        e.objectives = read(p, "expedition.objectives", 0, 8);
+        e.choices = read(p, "expedition.choices", 0, TOTAL_RANKS);
+        e.embers = Math.min(savedEmbers, TOTAL_RANKS - e.choices);
+        // Chapter replays can complete more than the eight first-run objectives.
+        e.objectives = read(p, "expedition.objectives", 0, Integer.MAX_VALUE);
         int ranks = 0;
         for (Blessing b : Blessing.values()) {
             e.ranks[b.ordinal()] = read(p, "blessing." + b.name(), 0, 3);
