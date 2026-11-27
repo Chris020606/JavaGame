@@ -90,21 +90,6 @@ tasks.register('inputSmokeTest', JavaExec) {
     workingDir = projectDir
 }
 
-tasks.register('captureTrailer', JavaExec) {
-    dependsOn testClasses
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'TrailerCapture'
-    jvmArgs = application.applicationDefaultJvmArgs
-    workingDir = projectDir
-}
-tasks.register('trailerTitles', JavaExec) {
-    dependsOn testClasses
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'TrailerTitles'
-    systemProperty 'java.awt.headless', 'true'
-    workingDir = projectDir
-}
-
 tasks.register('citadelInspection', JavaExec) {
     dependsOn testClasses
     classpath = sourceSets.test.runtimeClasspath

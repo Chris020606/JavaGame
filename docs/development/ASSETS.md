@@ -20,7 +20,6 @@
 | `create_effects.py` | Produces procedural effect textures |
 | `prepare_audio.py` | Generates original synthesized WAV scores and effects |
 | `create_icon.py` | Produces app icons |
-| `edit_trailer.py` | Edits captured footage; not part of the gameplay runtime |
 | `archive_release.py` | Archives a platform's native package and writes its checksum |
 
 Run authoring tools from the repository root. Read the chosen script's inputs before running it: import scripts may require retained source archives or source directories, and generators overwrite their output files. You do not need to regenerate assets to compile or play the tracked game.

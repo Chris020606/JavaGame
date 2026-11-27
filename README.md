@@ -13,29 +13,51 @@
 
 The gates of Aethelgard are still holding. Six people are stranded beyond them. Choose a Warrior, Archer, or Mage and lead them back to the Beacon before the valley falls.
 
-## Watch The Ash Warden
+## Outpost field guide
 
-Face the Ash Warden with sword in hand. Watch 32 seconds of uninterrupted Warrior gameplay in 1080p.
-
-[![Play The Ash Warden](docs/media/ash-warden.jpg)](https://chris020606.github.io/JavaGame/)
-
-[Download the film](https://github.com/Chris020606/JavaGame/raw/refs/heads/master/docs/media/ash-warden.mp4)
-
-## Your next watch
-
-Walk the streets of Aethelgard, talk with its people, and prepare for the road beyond its gates. Out in the valley, every expedition means defending the Beacon and bringing someone home.
-
-| A city worth returning to | Equipment that changes your build |
-| --- | --- |
-| ![Aethelgard Market Square](docs/images/player-city-current.png) | ![Equipment inventory and character preview](docs/images/player-inventory-current.png) |
-
-## Choose your class
+[Explore the illustrated field guide](https://chris020606.github.io/JavaGame/) · [Maps](https://chris020606.github.io/JavaGame/#maps) · [Bosses & enemies](https://chris020606.github.io/JavaGame/#enemies) · [Citadel](https://chris020606.github.io/JavaGame/#citadel) · [Meet the townsfolk](https://chris020606.github.io/JavaGame/#people)
 
 | Warrior | Archer | Mage |
 | --- | --- | --- |
-| Fight up close with sword combos, parries, and heavy strikes. | Keep your distance with a bow, then equip a hand or siege crossbow. | Send spells through enemy ranks and spend mana on powerful casts. |
+| ![Warrior](docs/atlas/warrior.png) | ![Archer](docs/atlas/archer.png) | ![Mage](docs/atlas/mage.png) |
 
-New solo characters begin in Aethelgard with a story opening and guided training. Meet your class mentor, receive your first weapon, then learn the essentials in the field, including enemy focus with **T**. Choose **Easy, Normal, Hard, or Extreme** when you start your adventure.
+### Warrior
+
+Break a raider’s guard with a heavy strike, then parry the counterattack. Find **Goran the Iron Hand** in Aethelgard for weapons and armor.
+
+![Warrior weapons and all twelve armor pieces](docs/atlas/warrior-collection.jpg)
+
+### Archer
+
+Keep moving between shots. Trade your bow for a hand crossbow or the heavier siege crossbow. Find **Diana the Huntress** in Aethelgard for weapons and armor.
+
+![Archer weapons and all twelve armor pieces](docs/atlas/archer-collection.jpg)
+
+### Mage
+
+Line up your targets and send a bolt through the whole rank. Save mana for the next rush. Find **Lady Elyndra** in Aethelgard for weapons and armor.
+
+![Mage weapons and all twelve armor pieces](docs/atlas/mage-collection.jpg)
+
+## Aethelgard Citadel
+
+![The castle overlooking Aethelgard](docs/atlas/02_castle_overlook_south.webp)
+
+Meet the three class mentors, restock with Torvald, and find Commander Sean at the expedition gate.
+
+![The mentors, merchant and commander](docs/atlas/townsfolk.jpg)
+
+Bring these six survivors back through the Beacon to see them in the streets of Aethelgard.
+
+![Bram, Kaelen, Rowan, Theron, Mira and Owen](docs/atlas/survivors.jpg)
+
+## Bosses and enemies
+
+| Ash Warden · Ash Cemetery | Hollow King · Hollow Necropolis |
+| --- | --- |
+| ![Ash Warden](docs/atlas/warden.webp) | ![Hollow King](docs/atlas/king.webp) |
+
+![Valley raiders and undead enemies](docs/atlas/bestiary.jpg)
 
 ## Defend the sanctuary
 
@@ -57,7 +79,7 @@ Travel from **Ember Meadow** through the **Ash Cemetery** and **Frozen Pass** to
 
 In solo play, the **World Map / Chapters** screen lets you return to unlocked chapters with your current gear. Travelling restarts that chapter and replaces its checkpoint.
 
-![Choose your route through the valley](docs/images/player-world-map.png)
+![The four campaign maps](docs/atlas/route.jpg)
 
 ## Start playing
 
