@@ -15,6 +15,10 @@ The gates of Aethelgard are still holding. Six people are stranded beyond them. 
 
 ## Outpost field guide
 
+| Ash Warden | Frozen Pass | Citadel townsfolk |
+| --- | --- | --- |
+| [![Ash Warden](docs/atlas/warden-02cbfe13.webp)](https://chris020606.github.io/JavaGame/#enemies) | [![Frozen Pass](docs/atlas/pass-c486b555.webp)](https://chris020606.github.io/JavaGame/#maps) | [![Citadel townsfolk](docs/atlas/townsfolk-64b14f5f.jpg)](https://chris020606.github.io/JavaGame/#people) |
+
 [Explore the illustrated field guide](https://chris020606.github.io/JavaGame/) · [Maps](https://chris020606.github.io/JavaGame/#maps) · [Bosses & enemies](https://chris020606.github.io/JavaGame/#enemies) · [Citadel](https://chris020606.github.io/JavaGame/#citadel) · [Meet the townsfolk](https://chris020606.github.io/JavaGame/#people)
 
 | Warrior | Archer | Mage |
@@ -45,17 +49,17 @@ Line up your targets and send a bolt through the whole rank. Save mana for the n
 
 Meet the three class mentors, restock with Torvald, and find Commander Sean at the expedition gate.
 
-![The mentors, merchant and commander](docs/atlas/townsfolk.jpg)
+![The mentors, merchant and commander](docs/atlas/townsfolk-64b14f5f.jpg)
 
 Bring these six survivors back through the Beacon to see them in the streets of Aethelgard.
 
-![Bram, Kaelen, Rowan, Theron, Mira and Owen](docs/atlas/survivors.jpg)
+![Bram, Kaelen, Rowan, Theron, Mira and Owen](docs/atlas/survivors-00864441.jpg)
 
 ## Bosses and enemies
 
 | Ash Warden · Ash Cemetery | Hollow King · Hollow Necropolis |
 | --- | --- |
-| ![Ash Warden](docs/atlas/warden.webp) | ![Hollow King](docs/atlas/king.webp) |
+| ![Ash Warden](docs/atlas/warden-02cbfe13.webp) | ![Hollow King](docs/atlas/king-90b9a588.webp) |
 
 ![Valley raiders and undead enemies](docs/atlas/bestiary.jpg)
 
@@ -79,7 +83,7 @@ Travel from **Ember Meadow** through the **Ash Cemetery** and **Frozen Pass** to
 
 In solo play, the **World Map / Chapters** screen lets you return to unlocked chapters with your current gear. Travelling restarts that chapter and replaces its checkpoint.
 
-![The four campaign maps](docs/atlas/route.jpg)
+![The four campaign maps](docs/atlas/route-a5030363.jpg)
 
 ## Start playing
 
