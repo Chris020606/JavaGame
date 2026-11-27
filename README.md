@@ -73,7 +73,7 @@ Torvald sells potions and permanent caravan upgrades in Market Square. Rescue si
 
 ![Actual gameplay: a Mage defending the meadow sanctuary with a focused enemy's attack timer visible](docs/images/player-target-focus.png)
 
-### In the current development build
+### On the battlefield
 
 Enemy archers and hexers telegraph shots at the Beacon and at survivors. Step into the firing line, face the attacker, and parry to earn a riposte. If a survivor falls behind, hold Interact when their rescue card offers the call.
 
@@ -92,6 +92,8 @@ Download the archive for your computer from the [latest release](https://github.
 Music and sound effects have separate volume controls in **Settings**.
 
 On Mac, choose **macOS ARM64** for Apple Silicon or **macOS x64** for Intel. Keep the application and its bundled files together.
+
+[What’s new in v4.6.0](docs/releases/v4.6.0.md)
 
 <details>
 <summary><strong>Default controls</strong></summary>
